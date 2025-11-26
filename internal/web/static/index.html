@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DSA Tutor</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Collapsible Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-logo">DSA</span>
+        <span class="sidebar-title">DSA Tutor</span>
+      </div>
+      <nav class="sidebar-nav" id="chapters"></nav>
+      <div class="sidebar-footer">
+        <button id="reload" class="sidebar-btn" title="Reload">
+          <span class="btn-icon">R</span>
+          <span class="btn-text">Reload</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Empty State -->
+      <div id="detail-empty" class="empty-state">
+        <div class="empty-icon">DSA</div>
+        <h2>Select a Chapter</h2>
+        <p>Choose a chapter from the sidebar to begin learning algorithms with interactive visualizations.</p>
+      </div>
+
+      <!-- Chapter Detail -->
+      <div id="detail" class="hidden">
+        <!-- Top Bar -->
+        <header class="content-header">
+          <div class="header-info">
+            <span class="chapter-badge" id="detail-slug"></span>
+            <h1 id="detail-title"></h1>
+          </div>
+          <div class="header-controls">
+            <div class="control-group">
+              <label>Animation
+                <select id="storyboard-select"></select>
+              </label>
+            </div>
+            <div class="control-group">
+              <button id="toggle-edit" class="btn-small ghost">Edit</button>
+              <button id="download-json" class="btn-small ghost">Export</button>
+            </div>
+          </div>
+        </header>
+
+        <!-- Animation Workspace - Primary Focus -->
+        <section class="workspace">
+          <!-- Animation Controls -->
+          <div class="workspace-controls">
+            <div class="control-buttons">
+              <button id="anim-reset" class="ctrl-btn" title="Reset">Reset</button>
+              <button id="anim-step-back" class="ctrl-btn" title="Step Back">Back</button>
+              <button id="anim-play" class="ctrl-btn primary" title="Play/Pause">Play</button>
+              <button id="anim-step" class="ctrl-btn" title="Step Forward">Step</button>
+            </div>
+            <div class="control-meta">
+              <span id="anim-step-counter" class="step-counter">Step 0/0</span>
+              <label class="speed-slider">
+                <input type="range" id="anim-speed" min="1" max="10" value="5">
+                <span>Speed</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Main Animation Area -->
+          <div class="workspace-main">
+            <!-- Code Panel -->
+            <div class="panel code-panel">
+              <div class="panel-header">
+                <h3>Code</h3>
+              </div>
+              <div class="panel-body">
+                <div id="code-display" class="code-display">
+                  <pre id="code-lines"></pre>
+                </div>
+              </div>
+            </div>
+
+            <!-- Visualization Panel -->
+            <div class="panel viz-panel">
+              <div class="panel-header">
+                <h3>Visualization</h3>
+                <span id="visualizer-meta" class="panel-meta"></span>
+              </div>
+              <div class="panel-body">
+                <div id="visualizer-canvas" class="viz-canvas"></div>
+              </div>
+            </div>
+
+            <!-- Variables Panel -->
+            <div class="panel vars-panel">
+              <div class="panel-header">
+                <h3>Variables</h3>
+              </div>
+              <div class="panel-body">
+                <div id="vars-display" class="vars-display"></div>
+                <div id="input-display" class="input-display"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- State Description -->
+          <div class="workspace-state">
+            <div id="visualizer-state" class="state-text"></div>
+          </div>
+        </section>
+
+        <!-- Collapsible Info Sections -->
+        <div class="info-sections">
+          <details class="info-section" open>
+            <summary>Chapter Overview</summary>
+            <div class="info-content">
+              <p id="detail-summary" class="summary-text"></p>
+              <div class="info-grid">
+                <div>
+                  <h4>Objectives</h4>
+                  <ul id="detail-objectives"></ul>
+                </div>
+                <div>
+                  <h4>Visualizers</h4>
+                  <ul id="detail-visualizers"></ul>
+                  <label class="viz-select">
+                    <select id="visualizer-select"></select>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <details class="info-section">
+            <summary>Storyboard Steps</summary>
+            <div class="info-content">
+              <div id="storyboard-steps" class="steps-list"></div>
+              <div class="storyboard-controls">
+                <button id="play-storyboard" class="btn-small">Play Storyboard</button>
+                <button id="stop-storyboard" class="btn-small ghost">Stop</button>
+              </div>
+            </div>
+          </details>
+
+          <details class="info-section">
+            <summary>Code Examples</summary>
+            <div class="info-content">
+              <div id="detail-examples" class="examples-grid"></div>
+            </div>
+          </details>
+
+          <details class="info-section">
+            <summary>Event Log</summary>
+            <div class="info-content">
+              <div id="visualizer-log" class="log"></div>
+            </div>
+          </details>
+        </div>
+
+        <!-- Edit Panel (Hidden by default) -->
+        <div id="edit-panel" class="hidden edit-panel">
+          <h3>Edit Chapter</h3>
+          <label class="field">
+            <span>Summary</span>
+            <textarea id="summary-input" rows="3"></textarea>
+          </label>
+          <label class="field">
+            <span>Objectives (one per line)</span>
+            <textarea id="objectives-input" rows="4"></textarea>
+          </label>
+          <div>
+            <h4>Storyboard Steps</h4>
+            <div id="edit-storyboard-steps" class="edit-steps"></div>
+          </div>
+          <div class="buttons">
+            <button id="save-edit">Save edits</button>
+            <button id="cancel-edit" class="ghost">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

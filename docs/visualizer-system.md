@@ -1,0 +1,432 @@
+# Visualizer and Animation System
+
+The DSA Tutor provides two visualization systems:
+
+1. **Visualizers** - Static/interactive visualizations tied to visualizer metadata (e.g., Big-O curves)
+2. **Algorithm Animators** - Step-by-step algorithm animations with code highlighting tied to storyboards
+
+## Architecture Overview
+
+Both systems use a registry pattern to map IDs (defined in the backend) to JavaScript handler classes.
+
+### Key Components
+
+1. **Visualizer Registry** (`visualizerRegistry` in `app.js`)
+   - Maps visualizer IDs to handler classes
+   - Located at the top of `app.js`
+
+2. **Handler Classes** (e.g., `RuntimeShapesVisualizer`)
+   - Implement the visualization rendering and interaction logic
+   - Must implement the standard interface methods
+
+3. **Hook System**
+   - Hooks defined in backend metadata (`onStep`, `onReset`, `onCurveSelect`)
+   - Dispatched to handler methods when storyboard events occur
+
+## Handler Interface
+
+All visualizer handlers must implement these methods:
+
+```javascript
+class MyVisualizer {
+  constructor(container, config) {
+    // container: DOM element to render into
+    // config: visualizer metadata from backend
+  }
+
+  mount() {
+    // Called when visualizer is attached
+    // Build DOM elements and render initial state
+  }
+
+  unmount() {
+    // Called when visualizer is detached
+    // Clean up animations, event listeners, etc.
+  }
+
+  // Hook handlers (optional, based on metadata)
+  onStep(payload) {
+    // payload: { step: number, cue: string }
+  }
+
+  onReset(payload) {
+    // payload: {}
+  }
+
+  onCurveSelect(payload) {
+    // payload: { curve: string, visible: boolean }
+  }
+}
+```
+
+## Existing Visualizers
+
+### RuntimeShapesVisualizer (`timeline-big-o`)
+
+Displays Big-O complexity curves comparing growth rates.
+
+**Features:**
+- SVG rendering with logarithmic Y-axis scaling
+- Toggle buttons to show/hide individual curves
+- Interactive N-value slider for scrubbing
+- Animated transitions during storyboard playback
+
+**Curves displayed:**
+- O(1) - Constant (green)
+- O(log n) - Logarithmic (cyan)
+- O(n) - Linear (orange)
+- O(n log n) - Linearithmic (purple)
+- O(n^2) - Quadratic (red)
+
+**Hooks:**
+- `onStep`: Animates to target N value based on step index
+- `onReset`: Resets visualization to n=1
+- `onCurveSelect`: Toggles curve visibility
+
+## Adding a New Visualizer
+
+1. **Define metadata in backend** (`internal/chapter/templates.go`):
+```go
+Visualizers: []Visualizer{
+  {
+    ID:           "my-visualizer-id",
+    Title:        "My Visualizer",
+    Goal:         "Description of what it visualizes",
+    DataModel:    "Description of data structure",
+    Interactions: []string{"interaction-1", "interaction-2"},
+    Hooks:        []string{"onStep", "onReset"},
+  },
+}
+```
+
+2. **Create handler class** in `app.js`:
+```javascript
+class MyVisualizer {
+  constructor(container, config) {
+    this.container = container;
+    this.config = config;
+  }
+
+  mount() {
+    // Render your visualization
+  }
+
+  unmount() {
+    // Cleanup
+  }
+
+  onStep(payload) {
+    // Handle step changes
+  }
+
+  onReset() {
+    // Reset state
+  }
+}
+```
+
+3. **Register in visualizerRegistry**:
+```javascript
+const visualizerRegistry = {
+  'timeline-big-o': RuntimeShapesVisualizer,
+  'my-visualizer-id': MyVisualizer,  // Add your visualizer
+};
+```
+
+4. **Add CSS styles** in `styles.css` as needed.
+
+## CSS Classes
+
+| Class | Description |
+|-------|-------------|
+| `.viz-canvas` | SVG container element |
+| `.viz-controls` | Controls container (toggles + slider) |
+| `.curve-toggles` | Container for toggle buttons |
+| `.curve-toggle` | Individual toggle button |
+| `.curve-toggle.active` | Active toggle state |
+| `.toggle-dot` | Colored dot in toggle button |
+| `.slider-wrap` | Slider container |
+| `.n-slider` | Range input for N value |
+| `.n-label` | Label showing current N value |
+
+## Hook Event Flow
+
+```
+Storyboard Play
+    |
+    v
+playStoryboard()
+    |
+    v
+setTimeout for each step
+    |
+    v
+emitVisualizerHook("onStep", { step, cue })
+    |
+    v
+Check if handler exists and has method
+    |
+    v
+handler.onStep(payload)
+    |
+    v
+Visualization animates
+```
+
+## Storyboard Step Mapping
+
+The `stepToNMap` object defines which N value to animate to for each storyboard step:
+
+```javascript
+const stepToNMap = { 0: 10, 1: 25, 2: 50, 3: 75, 4: 100 };
+```
+
+Customize this mapping based on your storyboard content.
+
+---
+
+# Algorithm Animation System
+
+The animation system provides detailed step-by-step algorithm walkthroughs with synchronized code highlighting.
+
+## Animation Registry
+
+```javascript
+const animationRegistry = {
+  'binary-search': BinarySearchAnimator,
+  'selection-sort': SelectionSortAnimator,
+  'bfs': BFSAnimator,
+  'call-stack': CallStackAnimator,
+};
+```
+
+## AlgorithmAnimator Base Class
+
+All algorithm animators extend this base class:
+
+```javascript
+class AlgorithmAnimator {
+  constructor(canvasEl, codeEl, stateEl, config) { }
+
+  setCode(code)           // Set the code to display
+  highlightLine(lineNum)  // Highlight a single line
+  highlightLines(nums)    // Highlight multiple lines
+  buildSteps()            // Generate animation steps (override)
+  render()                // Render current state (override)
+  goToStep(idx)           // Jump to specific step
+  stepForward()           // Advance one step
+  stepBack()              // Go back one step
+  play()                  // Start auto-play
+  pause()                 // Pause auto-play
+  reset()                 // Reset to initial state
+  mount()                 // Initialize and render
+  unmount()               // Cleanup
+  getVariables()          // Return current variable state (override)
+  getInputData()          // Return input data for display (override)
+  updateVariables(vars)   // Update the variables panel
+  updateInputDisplay(data) // Update the input data panel
+}
+```
+
+## Step Structure
+
+Each animation step contains:
+
+```javascript
+{
+  lineNum: 5,                    // Single line to highlight
+  lineNums: [6, 7],              // Multiple lines to highlight
+  state: "Description text",     // State description shown below viz
+  apply: () => { /* mutate */ }, // Function to apply state changes
+  // ... custom properties for rendering
+}
+```
+
+## Available Animators
+
+### BinarySearchAnimator
+- Shows array with low/mid/high pointers
+- Highlights discarded portions
+- Demonstrates halving search space
+
+### SelectionSortAnimator
+- Bar chart visualization with heights
+- Shows scanning pointer, minimum tracking
+- Animates swaps between elements
+
+### BFSAnimator
+- Graph visualization with nodes and edges
+- Queue display showing frontier
+- Visit order tracking
+
+### CallStackAnimator
+- Stack frame visualization
+- Shows push/pop phases
+- Demonstrates recursion unwinding
+
+## Adding a New Algorithm Animation
+
+1. Create a class extending `AlgorithmAnimator`:
+
+```javascript
+class MyAlgorithmAnimator extends AlgorithmAnimator {
+  constructor(canvasEl, codeEl, stateEl, config) {
+    super(canvasEl, codeEl, stateEl, config);
+
+    // Initialize state
+    this.data = [...];
+
+    // Set the code to display
+    this.setCode(`def my_algorithm(data):
+    # algorithm code here
+    pass`);
+  }
+
+  buildSteps() {
+    this.steps = [];
+
+    // Generate steps by simulating the algorithm
+    this.steps.push({
+      lineNum: 1,
+      state: "Starting algorithm",
+      myData: [...this.data],
+      apply: () => { /* update this.data */ }
+    });
+
+    // ... more steps
+  }
+
+  render() {
+    const step = this.steps[this.currentStep] || {};
+    const data = step.myData || this.data;
+
+    // Render visualization to this.canvas
+    this.canvas.innerHTML = `<div>...</div>`;
+  }
+}
+```
+
+2. Register in `animationRegistry`:
+
+```javascript
+animationRegistry['my-algorithm'] = MyAlgorithmAnimator;
+```
+
+3. Use matching storyboard ID in `templates.go`:
+
+```go
+Animations: []Storyboard{
+  {
+    ID:    "my-algorithm",
+    Title: "My Algorithm Walkthrough",
+    // ...
+  },
+}
+```
+
+## UI Controls
+
+The animation workspace provides:
+- **Step Forward/Back** - Manual stepping
+- **Play/Pause** - Auto-advance through steps
+- **Reset** - Return to initial state
+- **Speed slider** - Adjust auto-play speed
+- **Step counter** - Shows current position
+
+## CSS Classes Reference
+
+| Class | Description |
+|-------|-------------|
+| `.animation-workspace` | Main container |
+| `.animation-controls` | Control buttons bar |
+| `.animation-split` | Side-by-side layout |
+| `.code-panel` | Code display area |
+| `.code-line` | Individual code line |
+| `.code-line.active` | Highlighted line |
+| `.viz-panel` | Visualization area |
+| `.state-display` | Current state text |
+| `.array-viz` | Array visualization |
+| `.array-cell` | Array element |
+| `.graph-viz` | Graph SVG |
+| `.graph-node` | Graph node circle |
+| `.stack-viz` | Stack visualization |
+| `.stack-frame` | Stack frame element |
+
+---
+
+# Page Layout
+
+The DSA Tutor uses a full-width layout with a collapsible sidebar for navigation.
+
+## Layout Structure
+
+```
++------------------+----------------------------------------+
+|                  |                                        |
+|     Sidebar      |            Main Content                |
+|   (Chapters)     |                                        |
+|                  |  +----------+----------+----------+    |
+|                  |  |   Code   |   Viz    |   Vars   |    |
+|                  |  |  Panel   |  Panel   |  Panel   |    |
+|                  |  +----------+----------+----------+    |
+|                  |                                        |
++------------------+----------------------------------------+
+```
+
+## Sidebar Behavior
+
+- **Collapsed state**: 60px width, shows chapter numbers only
+- **Expanded state**: 260px width, shows full chapter info
+- **Hover-triggered**: Expands smoothly on mouse hover
+- **Transition**: 200ms ease animation
+
+## Three-Panel Workspace
+
+The animation workspace displays three panels:
+
+1. **Code Panel** (left): Shows the algorithm code with line highlighting
+2. **Visualization Panel** (center): Renders the algorithm visualization
+3. **Variables Panel** (right): Displays current variable state and input data
+
+## Variable Tracking
+
+Each animator implements `getVariables()` and `getInputData()` methods:
+
+```javascript
+class MyAnimator extends AlgorithmAnimator {
+  getVariables() {
+    return {
+      'variable_name': value,
+      'another_var': another_value,
+    };
+  }
+
+  getInputData() {
+    return this.inputArray; // or object with input info
+  }
+}
+```
+
+The variables panel automatically updates on each step to show:
+- Current variable values
+- Input data being processed
+- Value changes as the algorithm progresses
+
+## CSS Variables
+
+Key CSS variables for theming:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `--sidebar-width` | 60px | Collapsed sidebar width |
+| `--sidebar-expanded` | 260px | Expanded sidebar width |
+| `--bg` | #0a0a0f | Background color |
+| `--panel` | #12121a | Panel background |
+| `--accent` | #38bdf8 | Primary accent color |
+| `--accent-2` | #22c55e | Secondary accent (success) |
+| `--warning` | #f59e0b | Warning/number color |
+
+## Responsive Breakpoints
+
+- **1200px**: Variables panel hidden, 2-column layout
+- **900px**: Single column layout, code panel height reduced
