@@ -1257,11 +1257,3567 @@ class CallStackAnimator extends AlgorithmAnimator {
   }
 }
 
+// DFS (Depth-First Search) Animator
+class DFSAnimator extends AlgorithmAnimator {
+  constructor(canvasEl, codeEl, stateEl, config) {
+    super(canvasEl, codeEl, stateEl, config);
+    this.graph = {
+      'A': ['B', 'C'],
+      'B': ['D', 'E'],
+      'C': ['F'],
+      'D': [],
+      'E': ['F'],
+      'F': []
+    };
+    this.nodePositions = {
+      'A': { x: 150, y: 30 },
+      'B': { x: 75, y: 100 },
+      'C': { x: 225, y: 100 },
+      'D': { x: 40, y: 170 },
+      'E': { x: 110, y: 170 },
+      'F': { x: 225, y: 170 }
+    };
+    this.startNode = 'A';
+    this.visited = new Set();
+    this.stack = [];
+    this.currentNode = null;
+    this.visitOrder = [];
+
+    this.setCode(`def dfs(start, graph):
+    visited = set()
+    stack = [start]
+    order = []
+    while stack:
+        node = stack.pop()
+        if node in visited:
+            continue
+        visited.add(node)
+        order.append(node)
+        # Add neighbors in reverse for left-to-right order
+        for nbr in reversed(graph.get(node, [])):
+            if nbr not in visited:
+                stack.append(nbr)
+    return order`);
+  }
+
+  buildSteps() {
+    this.steps = [];
+    const visited = new Set();
+    const stack = [this.startNode];
+    const order = [];
+
+    this.steps.push({
+      lineNum: 3,
+      state: `Initialize: stack=[${this.startNode}]`,
+      visited: new Set(), stack: [...stack], currentNode: null, order: [],
+      apply: () => { this.visited = new Set(); this.stack = [...stack]; this.visitOrder = []; }
+    });
+
+    while (stack.length > 0) {
+      const node = stack.pop();
+
+      this.steps.push({
+        lineNum: 5,
+        state: `Pop '${node}' from stack`,
+        visited: new Set(visited), stack: [...stack], currentNode: node, order: [...order], popping: node,
+        apply: () => { this.currentNode = node; }
+      });
+
+      if (visited.has(node)) {
+        this.steps.push({
+          lineNums: [6, 7],
+          state: `'${node}' already visited, skip`,
+          visited: new Set(visited), stack: [...stack], currentNode: node, order: [...order],
+          apply: () => {}
+        });
+        continue;
+      }
+
+      visited.add(node);
+      order.push(node);
+
+      this.steps.push({
+        lineNums: [8, 9],
+        state: `Visit '${node}', order: [${order.join(', ')}]`,
+        visited: new Set(visited), stack: [...stack], currentNode: node, order: [...order],
+        apply: () => { this.visited.add(node); this.visitOrder = [...order]; }
+      });
+
+      const neighbors = [...(this.graph[node] || [])].reverse();
+      for (const nbr of neighbors) {
+        if (!visited.has(nbr)) {
+          stack.push(nbr);
+          this.steps.push({
+            lineNums: [11, 12, 13],
+            state: `Push '${nbr}' to stack. Stack: [${stack.join(', ')}]`,
+            visited: new Set(visited), stack: [...stack], currentNode: node, order: [...order], pushing: nbr,
+            apply: () => { this.stack = [...stack]; }
+          });
+        }
+      }
+    }
+
+    this.steps.push({
+      lineNum: 14,
+      state: `DFS complete! Order: [${order.join(', ')}]`,
+      visited: new Set(visited), stack: [], currentNode: null, order: [...order], done: true,
+      apply: () => { this.stack = []; this.currentNode = null; }
+    });
+  }
+
+  render() {
+    if (!this.canvas) return;
+    const step = this.steps[this.currentStep] || {};
+    const { visited = this.visited, stack = this.stack, currentNode, order = this.visitOrder, popping, pushing, done } = step;
+
+    let html = '<svg class="graph-viz" viewBox="0 0 300 220">';
+
+    // Draw edges
+    const drawnEdges = new Set();
+    Object.entries(this.graph).forEach(([node, neighbors]) => {
+      neighbors.forEach(nbr => {
+        const p1 = this.nodePositions[node];
+        const p2 = this.nodePositions[nbr];
+        html += `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" class="edge" marker-end="url(#arrowhead)"/>`;
+      });
+    });
+
+    // Arrowhead marker
+    html += `<defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="var(--border-light)"/>
+    </marker></defs>`;
+
+    // Draw nodes
+    Object.entries(this.nodePositions).forEach(([node, pos]) => {
+      let nodeClass = 'graph-node';
+      if (visited.has(node)) nodeClass += ' visited';
+      if (node === currentNode) nodeClass += ' current';
+      if (stack.includes(node)) nodeClass += ' in-stack';
+      if (node === popping) nodeClass += ' popping';
+      if (node === pushing) nodeClass += ' pushing';
+
+      html += `<circle cx="${pos.x}" cy="${pos.y}" r="18" class="${nodeClass}"/>`;
+      html += `<text x="${pos.x}" y="${pos.y + 5}" class="node-label">${node}</text>`;
+    });
+
+    html += '</svg>';
+
+    // Stack display
+    html += '<div class="stack-display">';
+    html += '<span class="stack-label">Stack (LIFO):</span>';
+    html += '<div class="stack-items">';
+    if (stack.length === 0) {
+      html += '<span class="stack-empty">empty</span>';
+    } else {
+      [...stack].reverse().forEach((item, idx) => {
+        html += `<span class="stack-item ${idx === 0 ? 'top' : ''}">${item}</span>`;
+      });
+    }
+    html += '</div></div>';
+
+    // Visit order
+    html += '<div class="visit-order">';
+    html += `<span class="order-label">Visit Order:</span> [${order.join(' -> ')}]`;
+    html += '</div>';
+
+    this.canvas.innerHTML = html;
+  }
+
+  getVariables() {
+    const step = this.steps[this.currentStep] || {};
+    return {
+      'current': step.currentNode || '-',
+      'visited': Array.from(step.visited || this.visited).join(', ') || '-',
+      'stack': (step.stack || this.stack).join(', ') || 'empty',
+      'order': (step.order || this.visitOrder).join(' -> ') || '-'
+    };
+  }
+
+  getInputData() {
+    return { 'Start': this.startNode, 'Graph': this.graph };
+  }
+}
+
+// Linked List Animator
+class LinkedListAnimator extends AlgorithmAnimator {
+  constructor(canvasEl, codeEl, stateEl, config) {
+    super(canvasEl, codeEl, stateEl, config);
+    this.nodes = [
+      { val: 1, id: 0 },
+      { val: 3, id: 1 },
+      { val: 5, id: 2 },
+      { val: 7, id: 3 },
+      { val: 9, id: 4 }
+    ];
+    this.head = 0;
+    this.current = -1;
+    this.target = 5;
+    this.found = false;
+
+    this.setCode(`class Node:
+    def __init__(self, val, next=None):
+        self.val = val
+        self.next = next
+
+def search(head, target):
+    current = head
+    while current is not None:
+        if current.val == target:
+            return current  # Found!
+        current = current.next
+    return None  # Not found`);
+  }
+
+  buildSteps() {
+    this.steps = [];
+
+    this.steps.push({
+      lineNum: 7,
+      state: `Start search for ${this.target}, current = head`,
+      current: 0, found: false,
+      apply: () => { this.current = 0; this.found = false; }
+    });
+
+    for (let i = 0; i < this.nodes.length; i++) {
+      this.steps.push({
+        lineNum: 8,
+        state: `Check: current (${this.nodes[i].val}) is not None? Yes`,
+        current: i, found: false,
+        apply: () => { this.current = i; }
+      });
+
+      this.steps.push({
+        lineNum: 9,
+        state: `Compare: ${this.nodes[i].val} == ${this.target}? ${this.nodes[i].val === this.target ? 'Yes!' : 'No'}`,
+        current: i, found: this.nodes[i].val === this.target, comparing: true,
+        apply: () => {}
+      });
+
+      if (this.nodes[i].val === this.target) {
+        this.steps.push({
+          lineNum: 10,
+          state: `Found ${this.target} at node ${i}!`,
+          current: i, found: true, done: true,
+          apply: () => { this.found = true; }
+        });
+        return;
+      }
+
+      this.steps.push({
+        lineNum: 11,
+        state: `Move to next node`,
+        current: i, found: false, moving: true,
+        apply: () => {}
+      });
+    }
+
+    this.steps.push({
+      lineNum: 12,
+      state: `Reached end (None), ${this.target} not found`,
+      current: -1, found: false, done: true,
+      apply: () => { this.current = -1; }
+    });
+  }
+
+  render() {
+    if (!this.canvas) return;
+    const step = this.steps[this.currentStep] || {};
+    const { current, found, comparing, moving, done } = step;
+
+    let html = '<div class="linked-list-viz">';
+
+    // Head pointer
+    html += '<div class="list-head-ptr">head</div>';
+
+    // Nodes
+    html += '<div class="list-nodes">';
+    this.nodes.forEach((node, idx) => {
+      let nodeClass = 'list-node';
+      if (idx === current) nodeClass += ' current';
+      if (idx === current && found) nodeClass += ' found';
+      if (idx === current && comparing) nodeClass += ' comparing';
+      if (idx < current) nodeClass += ' visited';
+
+      html += `<div class="${nodeClass}">
+        <div class="node-val">${node.val}</div>
+        <div class="node-ptr">${idx < this.nodes.length - 1 ? '->' : 'None'}</div>
+      </div>`;
+
+      if (idx < this.nodes.length - 1) {
+        html += '<div class="list-arrow">-></div>';
+      }
+    });
+    html += '<div class="list-null">None</div>';
+    html += '</div>';
+
+    // Current pointer
+    if (current >= 0 && current < this.nodes.length) {
+      html += `<div class="current-ptr" style="left: calc(${current} * 90px + 45px)">current</div>`;
+    }
+
+    html += '</div>';
+    html += `<div class="target-display">Target: <strong>${this.target}</strong></div>`;
+
+    this.canvas.innerHTML = html;
+  }
+
+  getVariables() {
+    const step = this.steps[this.currentStep] || {};
+    const curr = step.current;
+    return {
+      'current': curr >= 0 && curr < this.nodes.length ? `Node(${this.nodes[curr].val})` : 'None',
+      'current.val': curr >= 0 && curr < this.nodes.length ? this.nodes[curr].val : '-',
+      'target': this.target,
+      'found': step.found ? 'Yes' : 'No'
+    };
+  }
+
+  getInputData() {
+    return this.nodes.map(n => n.val);
+  }
+}
+
+// Two Pointers (Floyd's Cycle Detection) Animator
+class TwoPointersAnimator extends AlgorithmAnimator {
+  constructor(canvasEl, codeEl, stateEl, config) {
+    super(canvasEl, codeEl, stateEl, config);
+    // Linked list with cycle: 1->2->3->4->5->6->3 (cycle back to 3)
+    this.nodes = [
+      { val: 1, next: 1 },
+      { val: 2, next: 2 },
+      { val: 3, next: 3 },
+      { val: 4, next: 4 },
+      { val: 5, next: 5 },
+      { val: 6, next: 2 }  // Points back to node index 2 (val=3)
+    ];
+    this.slow = 0;
+    this.fast = 0;
+    this.hasCycle = false;
+
+    this.setCode(`def has_cycle(head):
+    if not head or not head.next:
+        return False
+    slow = head
+    fast = head
+    while fast and fast.next:
+        slow = slow.next        # Move 1 step
+        fast = fast.next.next   # Move 2 steps
+        if slow == fast:
+            return True  # Cycle detected!
+    return False  # No cycle`);
+  }
+
+  buildSteps() {
+    this.steps = [];
+    let slow = 0;
+    let fast = 0;
+
+    this.steps.push({
+      lineNums: [4, 5],
+      state: 'Initialize: slow = head, fast = head',
+      slow: 0, fast: 0, hasCycle: false,
+      apply: () => { this.slow = 0; this.fast = 0; }
+    });
+
+    let iterations = 0;
+    const maxIterations = 20;
+
+    while (iterations < maxIterations) {
+      iterations++;
+
+      // Check while condition
+      const fastNode = this.nodes[fast];
+      const fastNextIdx = fastNode ? fastNode.next : -1;
+      const canContinue = fast < this.nodes.length && fastNextIdx < this.nodes.length;
+
+      this.steps.push({
+        lineNum: 6,
+        state: `Check: fast and fast.next exist? ${canContinue ? 'Yes' : 'No'}`,
+        slow, fast, hasCycle: false,
+        apply: () => {}
+      });
+
+      if (!canContinue) break;
+
+      // Move slow
+      const oldSlow = slow;
+      slow = this.nodes[slow].next;
+      this.steps.push({
+        lineNum: 7,
+        state: `slow = slow.next (${this.nodes[oldSlow].val} -> ${this.nodes[slow].val})`,
+        slow, fast, hasCycle: false, slowMoving: true,
+        apply: () => { this.slow = slow; }
+      });
+
+      // Move fast (2 steps)
+      const oldFast = fast;
+      fast = this.nodes[fast].next;
+      if (fast < this.nodes.length) {
+        fast = this.nodes[fast].next;
+      }
+      this.steps.push({
+        lineNum: 8,
+        state: `fast = fast.next.next (${this.nodes[oldFast].val} -> ${this.nodes[fast].val})`,
+        slow, fast, hasCycle: false, fastMoving: true,
+        apply: () => { this.fast = fast; }
+      });
+
+      // Check if they meet
+      this.steps.push({
+        lineNum: 9,
+        state: `Check: slow == fast? (${this.nodes[slow].val} == ${this.nodes[fast].val}) ${slow === fast ? 'Yes!' : 'No'}`,
+        slow, fast, hasCycle: slow === fast, checking: true,
+        apply: () => {}
+      });
+
+      if (slow === fast) {
+        this.steps.push({
+          lineNum: 10,
+          state: 'Cycle detected! Pointers met.',
+          slow, fast, hasCycle: true, done: true,
+          apply: () => { this.hasCycle = true; }
+        });
+        return;
+      }
+    }
+
+    this.steps.push({
+      lineNum: 11,
+      state: 'No cycle found (fast reached end)',
+      slow, fast, hasCycle: false, done: true,
+      apply: () => {}
+    });
+  }
+
+  render() {
+    if (!this.canvas) return;
+    const step = this.steps[this.currentStep] || {};
+    const { slow, fast, hasCycle, slowMoving, fastMoving, checking, done } = step;
+
+    let html = '<div class="two-pointers-viz">';
+
+    // Draw nodes in a line with cycle arrow
+    html += '<div class="cycle-nodes">';
+    this.nodes.forEach((node, idx) => {
+      let nodeClass = 'cycle-node';
+      if (idx === slow && idx === fast) nodeClass += ' both-ptrs';
+      else if (idx === slow) nodeClass += ' slow-ptr';
+      else if (idx === fast) nodeClass += ' fast-ptr';
+      if (hasCycle && idx === slow) nodeClass += ' cycle-found';
+
+      html += `<div class="${nodeClass}">
+        <div class="node-val">${node.val}</div>
+        <div class="node-idx">${idx}</div>
+      </div>`;
+    });
+    html += '</div>';
+
+    // Cycle arrow indicator
+    html += '<div class="cycle-arrow">Cycle: node 5 -> node 2</div>';
+
+    // Pointer labels
+    html += '<div class="pointer-info">';
+    html += `<span class="slow-label">Slow (1x): ${slow < this.nodes.length ? this.nodes[slow].val : '-'}</span>`;
+    html += `<span class="fast-label">Fast (2x): ${fast < this.nodes.length ? this.nodes[fast].val : '-'}</span>`;
+    html += '</div>';
+
+    if (hasCycle) {
+      html += '<div class="cycle-result found">Cycle Detected!</div>';
+    }
+
+    html += '</div>';
+    this.canvas.innerHTML = html;
+  }
+
+  getVariables() {
+    const step = this.steps[this.currentStep] || {};
+    return {
+      'slow': step.slow < this.nodes.length ? `Node(${this.nodes[step.slow].val})` : '-',
+      'fast': step.fast < this.nodes.length ? `Node(${this.nodes[step.fast].val})` : '-',
+      'slow position': step.slow,
+      'fast position': step.fast,
+      'cycle found': step.hasCycle ? 'Yes' : 'No'
+    };
+  }
+
+  getInputData() {
+    return { 'List': '1->2->3->4->5->6->3 (cycle)', 'Cycle at': 'Node 3' };
+  }
+}
+
+// Quicksort Animator
+class QuicksortAnimator extends AlgorithmAnimator {
+  constructor(canvasEl, codeEl, stateEl, config) {
+    super(canvasEl, codeEl, stateEl, config);
+    this.originalArray = [38, 27, 43, 3, 9, 82, 10];
+    this.array = [...this.originalArray];
+    this.pivot = -1;
+    this.left = -1;
+    this.right = -1;
+    this.partitionStart = 0;
+    this.partitionEnd = this.array.length - 1;
+
+    this.setCode(`def quicksort(arr, lo, hi):
+    if lo < hi:
+        pivot_idx = partition(arr, lo, hi)
+        quicksort(arr, lo, pivot_idx - 1)
+        quicksort(arr, pivot_idx + 1, hi)
+
+def partition(arr, lo, hi):
+    pivot = arr[hi]  # Choose last as pivot
+    i = lo - 1
+    for j in range(lo, hi):
+        if arr[j] <= pivot:
+            i += 1
+            arr[i], arr[j] = arr[j], arr[i]
+    arr[i + 1], arr[hi] = arr[hi], arr[i + 1]
+    return i + 1`);
+  }
+
+  buildSteps() {
+    this.steps = [];
+    const arr = [...this.originalArray];
+
+    this.steps.push({
+      lineNum: 1,
+      state: `Initial array: [${arr.join(', ')}]`,
+      array: [...arr], pivot: -1, i: -1, j: -1, lo: 0, hi: arr.length - 1,
+      apply: () => { this.array = [...arr]; }
+    });
+
+    this.quicksortSteps(arr, 0, arr.length - 1, 0);
+  }
+
+  quicksortSteps(arr, lo, hi, depth) {
+    if (lo >= hi) return;
+
+    // Show partition start
+    const pivot = arr[hi];
+    const pivotIdx = hi;
+
+    this.steps.push({
+      lineNum: 8,
+      state: `Partition [${lo}:${hi}], pivot = ${pivot}`,
+      array: [...arr], pivot: pivotIdx, i: lo - 1, j: lo, lo, hi, depth,
+      apply: () => {}
+    });
+
+    let i = lo - 1;
+    for (let j = lo; j < hi; j++) {
+      this.steps.push({
+        lineNum: 10,
+        state: `j=${j}: arr[${j}]=${arr[j]} <= pivot(${pivot})? ${arr[j] <= pivot ? 'Yes' : 'No'}`,
+        array: [...arr], pivot: pivotIdx, i, j, lo, hi, depth, comparing: j,
+        apply: () => {}
+      });
+
+      if (arr[j] <= pivot) {
+        i++;
+        if (i !== j) {
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+          this.steps.push({
+            lineNums: [11, 12, 13],
+            state: `Swap arr[${i}] and arr[${j}]: [${arr.join(', ')}]`,
+            array: [...arr], pivot: pivotIdx, i, j, lo, hi, depth, swapping: [i, j],
+            apply: () => { this.array = [...arr]; }
+          });
+        }
+      }
+    }
+
+    // Final swap: pivot into place
+    [arr[i + 1], arr[hi]] = [arr[hi], arr[i + 1]];
+    const newPivotIdx = i + 1;
+
+    this.steps.push({
+      lineNum: 14,
+      state: `Place pivot: swap arr[${i + 1}] and arr[${hi}]: [${arr.join(', ')}]`,
+      array: [...arr], pivot: newPivotIdx, i: i + 1, j: -1, lo, hi, depth, pivotPlaced: true,
+      apply: () => { this.array = [...arr]; }
+    });
+
+    // Recurse left
+    if (lo < newPivotIdx - 1) {
+      this.quicksortSteps(arr, lo, newPivotIdx - 1, depth + 1);
+    }
+    // Recurse right
+    if (newPivotIdx + 1 < hi) {
+      this.quicksortSteps(arr, newPivotIdx + 1, hi, depth + 1);
+    }
+  }
+
+  render() {
+    if (!this.canvas) return;
+    const step = this.steps[this.currentStep] || {};
+    const { array, pivot, i, j, lo, hi, swapping = [], comparing, pivotPlaced } = step;
+    const arr = array || this.array;
+
+    let html = '<div class="quicksort-viz">';
+    html += '<div class="qs-array">';
+
+    arr.forEach((val, idx) => {
+      let cellClass = 'qs-cell';
+      if (idx === pivot) cellClass += ' pivot';
+      if (idx === i) cellClass += ' i-ptr';
+      if (idx === comparing) cellClass += ' comparing';
+      if (swapping.includes(idx)) cellClass += ' swapping';
+      if (idx < lo || idx > hi) cellClass += ' inactive';
+      if (pivotPlaced && idx === pivot) cellClass += ' placed';
+
+      const height = Math.max(25, val * 2.5);
+      html += `<div class="${cellClass}" style="height: ${height}px">
+        <div class="cell-value">${val}</div>
+      </div>`;
+    });
+
+    html += '</div>';
+
+    // Pointer indicators
+    html += '<div class="qs-pointers">';
+    if (lo !== undefined && hi !== undefined) {
+      html += `<span>Range: [${lo}, ${hi}]</span>`;
+    }
+    if (pivot >= 0) {
+      html += `<span class="pivot-info">Pivot: ${arr[pivot]}</span>`;
+    }
+    html += '</div>';
+
+    html += '</div>';
+    this.canvas.innerHTML = html;
+  }
+
+  getVariables() {
+    const step = this.steps[this.currentStep] || {};
+    const arr = step.array || this.array;
+    return {
+      'pivot': step.pivot >= 0 ? arr[step.pivot] : '-',
+      'i': step.i >= 0 ? step.i : '-',
+      'j': step.j >= 0 ? step.j : '-',
+      'range': `[${step.lo}, ${step.hi}]`,
+      'array': arr.join(', ')
+    };
+  }
+
+  getInputData() {
+    return this.originalArray;
+  }
+}
+
+// Hash Table Animator
+class HashTableAnimator extends AlgorithmAnimator {
+  constructor(canvasEl, codeEl, stateEl, config) {
+    super(canvasEl, codeEl, stateEl, config);
+    this.bucketCount = 7;
+    this.buckets = Array(this.bucketCount).fill(null).map(() => []);
+    this.insertions = [
+      { key: 'apple', val: 5 },
+      { key: 'banana', val: 3 },
+      { key: 'cherry', val: 8 },
+      { key: 'date', val: 2 },
+      { key: 'elder', val: 6 },  // Will collide
+      { key: 'fig', val: 4 }
+    ];
+    this.currentKey = null;
+    this.currentBucket = -1;
+
+    this.setCode(`class HashTable:
+    def __init__(self, size=7):
+        self.buckets = [[] for _ in range(size)]
+
+    def _hash(self, key):
+        return hash(key) % len(self.buckets)
+
+    def insert(self, key, value):
+        idx = self._hash(key)
+        bucket = self.buckets[idx]
+        for i, (k, v) in enumerate(bucket):
+            if k == key:
+                bucket[i] = (key, value)  # Update
+                return
+        bucket.append((key, value))  # Insert`);
+  }
+
+  buildSteps() {
+    this.steps = [];
+    const buckets = Array(this.bucketCount).fill(null).map(() => []);
+
+    this.steps.push({
+      lineNums: [2, 3],
+      state: `Initialize hash table with ${this.bucketCount} buckets`,
+      buckets: buckets.map(b => [...b]), currentKey: null, currentBucket: -1,
+      apply: () => { this.buckets = buckets.map(b => [...b]); }
+    });
+
+    for (const item of this.insertions) {
+      const hashVal = this.simpleHash(item.key);
+      const bucketIdx = hashVal % this.bucketCount;
+
+      this.steps.push({
+        lineNum: 9,
+        state: `Insert '${item.key}': hash('${item.key}') = ${hashVal}`,
+        buckets: buckets.map(b => [...b]), currentKey: item.key, currentBucket: -1, hashing: true,
+        apply: () => { this.currentKey = item.key; }
+      });
+
+      this.steps.push({
+        lineNum: 9,
+        state: `Bucket index = ${hashVal} % ${this.bucketCount} = ${bucketIdx}`,
+        buckets: buckets.map(b => [...b]), currentKey: item.key, currentBucket: bucketIdx,
+        apply: () => { this.currentBucket = bucketIdx; }
+      });
+
+      const existingIdx = buckets[bucketIdx].findIndex(([k]) => k === item.key);
+      if (existingIdx >= 0) {
+        buckets[bucketIdx][existingIdx] = [item.key, item.val];
+        this.steps.push({
+          lineNums: [12, 13],
+          state: `Key exists, update value to ${item.val}`,
+          buckets: buckets.map(b => [...b]), currentKey: item.key, currentBucket: bucketIdx, updating: true,
+          apply: () => { this.buckets = buckets.map(b => [...b]); }
+        });
+      } else {
+        const hasCollision = buckets[bucketIdx].length > 0;
+        buckets[bucketIdx].push([item.key, item.val]);
+        this.steps.push({
+          lineNum: 15,
+          state: hasCollision
+            ? `Collision! Chain '${item.key}' in bucket ${bucketIdx}`
+            : `Insert '${item.key}' -> ${item.val} in bucket ${bucketIdx}`,
+          buckets: buckets.map(b => [...b]), currentKey: item.key, currentBucket: bucketIdx,
+          collision: hasCollision, inserting: true,
+          apply: () => { this.buckets = buckets.map(b => [...b]); }
+        });
+      }
+    }
+
+    this.steps.push({
+      lineNum: 15,
+      state: 'All items inserted!',
+      buckets: buckets.map(b => [...b]), currentKey: null, currentBucket: -1, done: true,
+      apply: () => {}
+    });
+  }
+
+  simpleHash(key) {
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) {
+      hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+    }
+    return hash;
+  }
+
+  render() {
+    if (!this.canvas) return;
+    const step = this.steps[this.currentStep] || {};
+    const { buckets, currentBucket, collision, inserting, hashing } = step;
+    const bkts = buckets || this.buckets;
+
+    let html = '<div class="hashtable-viz">';
+
+    bkts.forEach((bucket, idx) => {
+      let bucketClass = 'ht-bucket';
+      if (idx === currentBucket) bucketClass += ' active';
+      if (idx === currentBucket && collision) bucketClass += ' collision';
+
+      html += `<div class="${bucketClass}">
+        <div class="bucket-idx">${idx}</div>
+        <div class="bucket-chain">`;
+
+      if (bucket.length === 0) {
+        html += '<span class="bucket-empty">empty</span>';
+      } else {
+        bucket.forEach(([k, v], i) => {
+          let entryClass = 'bucket-entry';
+          if (idx === currentBucket && i === bucket.length - 1 && inserting) {
+            entryClass += ' new-entry';
+          }
+          html += `<div class="${entryClass}">${k}: ${v}</div>`;
+        });
+      }
+
+      html += '</div></div>';
+    });
+
+    html += '</div>';
+
+    if (step.currentKey) {
+      html += `<div class="hash-info">Key: <strong>${step.currentKey}</strong></div>`;
+    }
+
+    this.canvas.innerHTML = html;
+  }
+
+  getVariables() {
+    const step = this.steps[this.currentStep] || {};
+    return {
+      'key': step.currentKey || '-',
+      'bucket': step.currentBucket >= 0 ? step.currentBucket : '-',
+      'collision': step.collision ? 'Yes' : 'No',
+      'total items': (step.buckets || this.buckets).reduce((sum, b) => sum + b.length, 0)
+    };
+  }
+
+  getInputData() {
+    return this.insertions.map(i => `${i.key}: ${i.val}`);
+  }
+}
+
+// Dijkstra's Algorithm Animator
+class DijkstraAnimator extends AlgorithmAnimator {
+  constructor(canvasEl, codeEl, stateEl, config) {
+    super(canvasEl, codeEl, stateEl, config);
+    // Weighted graph
+    this.graph = {
+      'A': [['B', 4], ['C', 2]],
+      'B': [['C', 1], ['D', 5]],
+      'C': [['D', 8], ['E', 10]],
+      'D': [['E', 2]],
+      'E': []
+    };
+    this.nodePositions = {
+      'A': { x: 50, y: 100 },
+      'B': { x: 130, y: 40 },
+      'C': { x: 130, y: 160 },
+      'D': { x: 220, y: 100 },
+      'E': { x: 300, y: 100 }
+    };
+    this.start = 'A';
+    this.dist = {};
+    this.prev = {};
+    this.visited = new Set();
+    this.current = null;
+
+    this.setCode(`import heapq
+
+def dijkstra(graph, start):
+    dist = {v: float('inf') for v in graph}
+    dist[start] = 0
+    prev = {v: None for v in graph}
+    pq = [(0, start)]
+    visited = set()
+
+    while pq:
+        d, u = heapq.heappop(pq)
+        if u in visited:
+            continue
+        visited.add(u)
+        for v, w in graph[u]:
+            if dist[u] + w < dist[v]:
+                dist[v] = dist[u] + w
+                prev[v] = u
+                heapq.heappush(pq, (dist[v], v))
+    return dist, prev`);
+  }
+
+  buildSteps() {
+    this.steps = [];
+    const nodes = Object.keys(this.graph);
+    const dist = {};
+    const prev = {};
+    const visited = new Set();
+    const pq = [];
+
+    // Initialize
+    nodes.forEach(v => {
+      dist[v] = v === this.start ? 0 : Infinity;
+      prev[v] = null;
+    });
+    pq.push([0, this.start]);
+
+    this.steps.push({
+      lineNums: [4, 5, 6, 7],
+      state: `Initialize: dist[${this.start}]=0, others=Inf`,
+      dist: {...dist}, prev: {...prev}, visited: new Set(), current: null, pq: [...pq],
+      apply: () => { this.dist = {...dist}; this.prev = {...prev}; this.visited = new Set(); }
+    });
+
+    while (pq.length > 0) {
+      pq.sort((a, b) => a[0] - b[0]);
+      const [d, u] = pq.shift();
+
+      this.steps.push({
+        lineNum: 11,
+        state: `Pop (${d}, '${u}') from priority queue`,
+        dist: {...dist}, prev: {...prev}, visited: new Set(visited), current: u, pq: [...pq], popping: u,
+        apply: () => { this.current = u; }
+      });
+
+      if (visited.has(u)) {
+        this.steps.push({
+          lineNums: [12, 13],
+          state: `'${u}' already visited, skip`,
+          dist: {...dist}, prev: {...prev}, visited: new Set(visited), current: u, pq: [...pq],
+          apply: () => {}
+        });
+        continue;
+      }
+
+      visited.add(u);
+      this.steps.push({
+        lineNum: 14,
+        state: `Mark '${u}' as visited`,
+        dist: {...dist}, prev: {...prev}, visited: new Set(visited), current: u, pq: [...pq],
+        apply: () => { this.visited.add(u); }
+      });
+
+      // Relax edges
+      for (const [v, w] of this.graph[u]) {
+        const newDist = dist[u] + w;
+
+        this.steps.push({
+          lineNum: 16,
+          state: `Check edge ${u}->${v} (w=${w}): ${dist[u]}+${w}=${newDist} < ${dist[v] === Infinity ? 'Inf' : dist[v]}?`,
+          dist: {...dist}, prev: {...prev}, visited: new Set(visited), current: u, pq: [...pq],
+          checking: v, edgeWeight: w,
+          apply: () => {}
+        });
+
+        if (newDist < dist[v]) {
+          dist[v] = newDist;
+          prev[v] = u;
+          pq.push([newDist, v]);
+
+          this.steps.push({
+            lineNums: [17, 18, 19],
+            state: `Relax! dist[${v}] = ${newDist}, prev[${v}] = ${u}`,
+            dist: {...dist}, prev: {...prev}, visited: new Set(visited), current: u, pq: [...pq],
+            relaxed: v,
+            apply: () => { this.dist = {...dist}; this.prev = {...prev}; }
+          });
+        }
+      }
+    }
+
+    this.steps.push({
+      lineNum: 20,
+      state: `Done! Shortest distances from '${this.start}'`,
+      dist: {...dist}, prev: {...prev}, visited: new Set(visited), current: null, pq: [], done: true,
+      apply: () => {}
+    });
+  }
+
+  render() {
+    if (!this.canvas) return;
+    const step = this.steps[this.currentStep] || {};
+    const { dist, visited, current, checking, relaxed, done } = step;
+
+    let html = '<svg class="dijkstra-viz" viewBox="0 0 350 200">';
+
+    // Draw edges with weights
+    Object.entries(this.graph).forEach(([u, edges]) => {
+      edges.forEach(([v, w]) => {
+        const p1 = this.nodePositions[u];
+        const p2 = this.nodePositions[v];
+        const midX = (p1.x + p2.x) / 2;
+        const midY = (p1.y + p2.y) / 2;
+
+        let edgeClass = 'edge';
+        if (checking === v && current === u) edgeClass += ' checking';
+        if (relaxed === v && current === u) edgeClass += ' relaxed';
+
+        html += `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" class="${edgeClass}"/>`;
+        html += `<text x="${midX}" y="${midY - 5}" class="edge-weight">${w}</text>`;
+      });
+    });
+
+    // Draw nodes
+    Object.entries(this.nodePositions).forEach(([node, pos]) => {
+      let nodeClass = 'dijkstra-node';
+      if (visited && visited.has(node)) nodeClass += ' visited';
+      if (node === current) nodeClass += ' current';
+      if (node === checking) nodeClass += ' checking';
+      if (node === relaxed) nodeClass += ' relaxed';
+
+      const d = dist ? (dist[node] === Infinity ? 'Inf' : dist[node]) : 'Inf';
+
+      html += `<circle cx="${pos.x}" cy="${pos.y}" r="20" class="${nodeClass}"/>`;
+      html += `<text x="${pos.x}" y="${pos.y + 4}" class="node-label">${node}</text>`;
+      html += `<text x="${pos.x}" y="${pos.y + 32}" class="dist-label">${d}</text>`;
+    });
+
+    html += '</svg>';
+
+    // Distance table
+    html += '<div class="dist-table">';
+    Object.keys(this.graph).forEach(node => {
+      const d = dist ? (dist[node] === Infinity ? 'Inf' : dist[node]) : 'Inf';
+      let cellClass = 'dist-cell';
+      if (visited && visited.has(node)) cellClass += ' final';
+      html += `<div class="${cellClass}"><span>${node}</span><span>${d}</span></div>`;
+    });
+    html += '</div>';
+
+    this.canvas.innerHTML = html;
+  }
+
+  getVariables() {
+    const step = this.steps[this.currentStep] || {};
+    const dist = step.dist || this.dist;
+    return {
+      'current': step.current || '-',
+      'dist': Object.entries(dist).map(([k, v]) => `${k}:${v === Infinity ? 'Inf' : v}`).join(', '),
+      'visited': Array.from(step.visited || this.visited).join(', ') || '-'
+    };
+  }
+
+  getInputData() {
+    return { 'Start': this.start, 'Graph': 'Weighted directed' };
+  }
+}
+
+// Memoization (Fibonacci) Animator
+class MemoizationAnimator extends AlgorithmAnimator {
+  constructor(canvasEl, codeEl, stateEl, config) {
+    super(canvasEl, codeEl, stateEl, config);
+    this.n = 6;
+    this.memo = {};
+    this.callStack = [];
+    this.currentCall = null;
+
+    this.setCode(`def fib(n, memo={}):
+    if n in memo:
+        return memo[n]
+    if n <= 1:
+        return n
+    memo[n] = fib(n-1, memo) + fib(n-2, memo)
+    return memo[n]
+
+# Call: fib(6)`);
+  }
+
+  buildSteps() {
+    this.steps = [];
+    this.fibSteps(this.n, {}, []);
+  }
+
+  fibSteps(n, memo, stack) {
+    const newStack = [...stack, n];
+
+    this.steps.push({
+      lineNum: 1,
+      state: `Call fib(${n})`,
+      memo: {...memo}, callStack: [...newStack], currentCall: n, phase: 'call',
+      apply: () => { this.callStack = [...newStack]; this.currentCall = n; }
+    });
+
+    // Check memo
+    if (memo[n] !== undefined) {
+      this.steps.push({
+        lineNums: [2, 3],
+        state: `memo[${n}] exists! Return ${memo[n]}`,
+        memo: {...memo}, callStack: [...newStack], currentCall: n, phase: 'memo-hit', memoHit: n,
+        apply: () => {}
+      });
+      return memo[n];
+    }
+
+    this.steps.push({
+      lineNum: 2,
+      state: `memo[${n}] not found, compute it`,
+      memo: {...memo}, callStack: [...newStack], currentCall: n, phase: 'compute',
+      apply: () => {}
+    });
+
+    // Base case
+    if (n <= 1) {
+      this.steps.push({
+        lineNums: [4, 5],
+        state: `Base case: fib(${n}) = ${n}`,
+        memo: {...memo}, callStack: [...newStack], currentCall: n, phase: 'base',
+        apply: () => {}
+      });
+      return n;
+    }
+
+    // Recursive calls
+    this.steps.push({
+      lineNum: 6,
+      state: `Need fib(${n-1}) + fib(${n-2})`,
+      memo: {...memo}, callStack: [...newStack], currentCall: n, phase: 'recurse',
+      apply: () => {}
+    });
+
+    const left = this.fibSteps(n - 1, memo, newStack);
+    const right = this.fibSteps(n - 2, memo, newStack);
+    const result = left + right;
+    memo[n] = result;
+
+    this.steps.push({
+      lineNum: 6,
+      state: `memo[${n}] = fib(${n-1}) + fib(${n-2}) = ${left} + ${right} = ${result}`,
+      memo: {...memo}, callStack: [...newStack], currentCall: n, phase: 'store', storing: n,
+      apply: () => { this.memo = {...memo}; }
+    });
+
+    this.steps.push({
+      lineNum: 7,
+      state: `Return fib(${n}) = ${result}`,
+      memo: {...memo}, callStack: stack, currentCall: stack[stack.length - 1] || null, phase: 'return',
+      apply: () => { this.callStack = [...stack]; }
+    });
+
+    return result;
+  }
+
+  render() {
+    if (!this.canvas) return;
+    const step = this.steps[this.currentStep] || {};
+    const { memo, callStack, currentCall, phase, memoHit, storing } = step;
+
+    let html = '<div class="memo-viz">';
+
+    // Memo table
+    html += '<div class="memo-table">';
+    html += '<div class="memo-header">Memo Table</div>';
+    html += '<div class="memo-entries">';
+    for (let i = 0; i <= this.n; i++) {
+      let cellClass = 'memo-cell';
+      if (memo && memo[i] !== undefined) cellClass += ' filled';
+      if (i === memoHit) cellClass += ' hit';
+      if (i === storing) cellClass += ' storing';
+      html += `<div class="${cellClass}">
+        <span class="memo-key">fib(${i})</span>
+        <span class="memo-val">${memo && memo[i] !== undefined ? memo[i] : '-'}</span>
+      </div>`;
+    }
+    html += '</div></div>';
+
+    // Call stack
+    html += '<div class="memo-stack">';
+    html += '<div class="stack-header">Call Stack</div>';
+    html += '<div class="stack-frames">';
+    if (callStack && callStack.length > 0) {
+      [...callStack].reverse().forEach((n, idx) => {
+        let frameClass = 'memo-frame';
+        if (idx === 0) frameClass += ' active';
+        html += `<div class="${frameClass}">fib(${n})</div>`;
+      });
+    } else {
+      html += '<div class="stack-empty">empty</div>';
+    }
+    html += '</div></div>';
+
+    html += '</div>';
+
+    // Fibonacci sequence preview
+    html += '<div class="fib-sequence">';
+    html += 'Sequence: ';
+    for (let i = 0; i <= this.n; i++) {
+      if (memo && memo[i] !== undefined) {
+        html += `<span class="fib-num">${memo[i]}</span>`;
+      }
+    }
+    html += '</div>';
+
+    this.canvas.innerHTML = html;
+  }
+
+  getVariables() {
+    const step = this.steps[this.currentStep] || {};
+    const memo = step.memo || this.memo;
+    return {
+      'n': step.currentCall !== null ? step.currentCall : '-',
+      'memo entries': Object.keys(memo).length,
+      'stack depth': (step.callStack || this.callStack).length,
+      'phase': step.phase || '-'
+    };
+  }
+
+  getInputData() {
+    return { 'Computing': `fib(${this.n})`, 'Expected': this.fibResult(this.n) };
+  }
+
+  fibResult(n) {
+    if (n <= 1) return n;
+    let a = 0, b = 1;
+    for (let i = 2; i <= n; i++) {
+      [a, b] = [b, a + b];
+    }
+    return b;
+  }
+}
+
+// Topological Sort Animator
+class TopSortAnimator extends AlgorithmAnimator {
+  constructor(canvasEl, codeEl, stateEl, config) {
+    super(canvasEl, codeEl, stateEl, config);
+    // DAG representing course prerequisites
+    this.graph = {
+      'A': ['C'],
+      'B': ['C', 'D'],
+      'C': ['E'],
+      'D': ['E'],
+      'E': ['F'],
+      'F': []
+    };
+    this.nodePositions = {
+      'A': { x: 50, y: 50 },
+      'B': { x: 50, y: 150 },
+      'C': { x: 150, y: 100 },
+      'D': { x: 150, y: 180 },
+      'E': { x: 250, y: 140 },
+      'F': { x: 330, y: 140 }
+    };
+    this.inDegree = {};
+    this.queue = [];
+    this.result = [];
+    this.current = null;
+
+    this.setCode(`from collections import deque
+
+def topsort(graph):
+    in_degree = {u: 0 for u in graph}
+    for u in graph:
+        for v in graph[u]:
+            in_degree[v] += 1
+
+    queue = deque([u for u in graph if in_degree[u] == 0])
+    result = []
+
+    while queue:
+        u = queue.popleft()
+        result.append(u)
+        for v in graph[u]:
+            in_degree[v] -= 1
+            if in_degree[v] == 0:
+                queue.append(v)
+    return result`);
+  }
+
+  buildSteps() {
+    this.steps = [];
+    const nodes = Object.keys(this.graph);
+    const inDegree = {};
+    nodes.forEach(u => inDegree[u] = 0);
+
+    // Calculate in-degrees
+    Object.entries(this.graph).forEach(([u, neighbors]) => {
+      neighbors.forEach(v => inDegree[v]++);
+    });
+
+    this.steps.push({
+      lineNums: [4, 5, 6, 7],
+      state: `Calculate in-degrees: ${Object.entries(inDegree).map(([k,v]) => `${k}:${v}`).join(', ')}`,
+      inDegree: {...inDegree}, queue: [], result: [], current: null,
+      apply: () => { this.inDegree = {...inDegree}; }
+    });
+
+    // Initialize queue with zero in-degree nodes
+    const queue = nodes.filter(u => inDegree[u] === 0);
+
+    this.steps.push({
+      lineNum: 9,
+      state: `Queue nodes with in-degree 0: [${queue.join(', ')}]`,
+      inDegree: {...inDegree}, queue: [...queue], result: [], current: null,
+      apply: () => { this.queue = [...queue]; }
+    });
+
+    const result = [];
+
+    while (queue.length > 0) {
+      const u = queue.shift();
+
+      this.steps.push({
+        lineNum: 13,
+        state: `Dequeue '${u}'`,
+        inDegree: {...inDegree}, queue: [...queue], result: [...result], current: u, dequeuing: u,
+        apply: () => { this.current = u; }
+      });
+
+      result.push(u);
+
+      this.steps.push({
+        lineNum: 14,
+        state: `Add '${u}' to result: [${result.join(', ')}]`,
+        inDegree: {...inDegree}, queue: [...queue], result: [...result], current: u,
+        apply: () => { this.result = [...result]; }
+      });
+
+      // Decrease in-degree of neighbors
+      for (const v of this.graph[u]) {
+        inDegree[v]--;
+
+        this.steps.push({
+          lineNum: 16,
+          state: `Decrement in_degree[${v}] to ${inDegree[v]}`,
+          inDegree: {...inDegree}, queue: [...queue], result: [...result], current: u,
+          decrementing: v,
+          apply: () => { this.inDegree = {...inDegree}; }
+        });
+
+        if (inDegree[v] === 0) {
+          queue.push(v);
+          this.steps.push({
+            lineNums: [17, 18],
+            state: `in_degree[${v}] == 0, enqueue '${v}'`,
+            inDegree: {...inDegree}, queue: [...queue], result: [...result], current: u,
+            enqueuing: v,
+            apply: () => { this.queue = [...queue]; }
+          });
+        }
+      }
+    }
+
+    this.steps.push({
+      lineNum: 19,
+      state: `Topological order: [${result.join(' -> ')}]`,
+      inDegree: {...inDegree}, queue: [], result: [...result], current: null, done: true,
+      apply: () => {}
+    });
+  }
+
+  render() {
+    if (!this.canvas) return;
+    const step = this.steps[this.currentStep] || {};
+    const { inDegree, queue, result, current, dequeuing, enqueuing, decrementing, done } = step;
+
+    let html = '<svg class="topsort-viz" viewBox="0 0 380 220">';
+
+    // Draw edges
+    Object.entries(this.graph).forEach(([u, neighbors]) => {
+      neighbors.forEach(v => {
+        const p1 = this.nodePositions[u];
+        const p2 = this.nodePositions[v];
+        let edgeClass = 'edge';
+        if (current === u && decrementing === v) edgeClass += ' processing';
+        html += `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" class="${edgeClass}" marker-end="url(#arrow)"/>`;
+      });
+    });
+
+    html += `<defs><marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="var(--border-light)"/>
+    </marker></defs>`;
+
+    // Draw nodes with in-degree
+    Object.entries(this.nodePositions).forEach(([node, pos]) => {
+      let nodeClass = 'topsort-node';
+      if (result && result.includes(node)) nodeClass += ' processed';
+      if (node === current) nodeClass += ' current';
+      if (node === dequeuing) nodeClass += ' dequeuing';
+      if (node === enqueuing) nodeClass += ' enqueuing';
+      if (queue && queue.includes(node)) nodeClass += ' in-queue';
+
+      const deg = inDegree ? inDegree[node] : 0;
+
+      html += `<circle cx="${pos.x}" cy="${pos.y}" r="20" class="${nodeClass}"/>`;
+      html += `<text x="${pos.x}" y="${pos.y + 4}" class="node-label">${node}</text>`;
+      html += `<text x="${pos.x + 25}" y="${pos.y - 15}" class="degree-label">${deg}</text>`;
+    });
+
+    html += '</svg>';
+
+    // Queue and result display
+    html += '<div class="topsort-info">';
+    html += `<div class="ts-queue"><span>Queue:</span> [${(queue || []).join(', ') || 'empty'}]</div>`;
+    html += `<div class="ts-result"><span>Result:</span> [${(result || []).join(' -> ') || ''}]</div>`;
+    html += '</div>';
+
+    this.canvas.innerHTML = html;
+  }
+
+  getVariables() {
+    const step = this.steps[this.currentStep] || {};
+    return {
+      'current': step.current || '-',
+      'queue': (step.queue || []).join(', ') || 'empty',
+      'result': (step.result || []).join(' -> ') || '-',
+      'in_degrees': Object.entries(step.inDegree || {}).map(([k,v]) => `${k}:${v}`).join(', ')
+    };
+  }
+
+  getInputData() {
+    return { 'DAG': 'Course prerequisites', 'Nodes': Object.keys(this.graph).join(', ') };
+  }
+}
+
+// String Pattern Matching Animator (KMP-style visualization)
+class StringMatchAnimator extends AlgorithmAnimator {
+  constructor(canvasEl, codeEl, stateEl, config) {
+    super(canvasEl, codeEl, stateEl, config);
+
+    this.text = "ABABDABACDABABCABAB";
+    this.pattern = "ABABCABAB";
+    this.textIdx = 0;
+    this.patternIdx = 0;
+    this.matches = [];
+
+    this.setCode(`def string_match(text, pattern):
+    n, m = len(text), len(pattern)
+    for i in range(n - m + 1):
+        j = 0
+        while j < m and text[i + j] == pattern[j]:
+            j += 1
+        if j == m:
+            return i  # Match found at index i
+    return -1  # No match`);
+  }
+
+  buildSteps() {
+    this.steps = [];
+    const n = this.text.length;
+    const m = this.pattern.length;
+
+    this.steps.push({
+      lineNum: 1,
+      state: `Initialize: text length = ${n}, pattern length = ${m}`,
+      textIdx: -1,
+      patternIdx: -1,
+      comparing: false,
+      matches: [],
+      apply: () => {}
+    });
+
+    for (let i = 0; i <= n - m; i++) {
+      this.steps.push({
+        lineNum: 2,
+        state: `Starting comparison at text index ${i}`,
+        textIdx: i,
+        patternIdx: 0,
+        comparing: false,
+        matches: [...this.matches],
+        apply: () => {}
+      });
+
+      let j = 0;
+      while (j < m && this.text[i + j] === this.pattern[j]) {
+        this.steps.push({
+          lineNum: 4,
+          state: `Comparing text[${i + j}]='${this.text[i + j]}' with pattern[${j}]='${this.pattern[j]}' - Match!`,
+          textIdx: i,
+          patternIdx: j,
+          comparePos: i + j,
+          comparing: true,
+          isMatch: true,
+          matches: [...this.matches],
+          apply: () => {}
+        });
+        j++;
+      }
+
+      if (j === m) {
+        this.matches.push(i);
+        this.steps.push({
+          lineNum: 6,
+          state: `Pattern found at index ${i}!`,
+          textIdx: i,
+          patternIdx: j - 1,
+          comparing: false,
+          foundMatch: true,
+          matchStart: i,
+          matches: [...this.matches],
+          apply: () => {}
+        });
+      } else if (j < m && i + j < n) {
+        this.steps.push({
+          lineNum: 4,
+          state: `Mismatch: text[${i + j}]='${this.text[i + j]}' != pattern[${j}]='${this.pattern[j]}'`,
+          textIdx: i,
+          patternIdx: j,
+          comparePos: i + j,
+          comparing: true,
+          isMatch: false,
+          matches: [...this.matches],
+          apply: () => {}
+        });
+      }
+    }
+
+    this.steps.push({
+      lineNum: 7,
+      state: `Search complete. Found ${this.matches.length} match(es).`,
+      textIdx: -1,
+      patternIdx: -1,
+      comparing: false,
+      matches: [...this.matches],
+      apply: () => {}
+    });
+  }
+
+  render() {
+    const step = this.steps[this.currentStep] || {};
+    const { textIdx, patternIdx, comparePos, comparing, isMatch, foundMatch, matchStart, matches } = step;
+
+    let html = '<div class="string-match-viz">';
+
+    // Text display
+    html += '<div class="string-row"><span class="string-label">Text:</span><div class="string-chars">';
+    for (let i = 0; i < this.text.length; i++) {
+      let charClass = 'string-char';
+      if (matches && matches.some(m => i >= m && i < m + this.pattern.length)) {
+        charClass += ' matched';
+      }
+      if (comparing && i === comparePos) {
+        charClass += isMatch ? ' comparing match' : ' comparing mismatch';
+      }
+      if (foundMatch && i >= matchStart && i < matchStart + this.pattern.length) {
+        charClass += ' found';
+      }
+      html += `<span class="${charClass}">${this.text[i]}<span class="char-idx">${i}</span></span>`;
+    }
+    html += '</div></div>';
+
+    // Pattern display
+    html += '<div class="string-row"><span class="string-label">Pattern:</span><div class="string-chars">';
+    const offset = textIdx >= 0 ? textIdx : 0;
+    for (let i = 0; i < offset && textIdx >= 0; i++) {
+      html += '<span class="string-char spacer"></span>';
+    }
+    for (let i = 0; i < this.pattern.length; i++) {
+      let charClass = 'string-char pattern';
+      if (comparing && i === patternIdx) {
+        charClass += isMatch ? ' comparing match' : ' comparing mismatch';
+      }
+      if (foundMatch) {
+        charClass += ' found';
+      }
+      html += `<span class="${charClass}">${this.pattern[i]}</span>`;
+    }
+    html += '</div></div>';
+
+    // Match positions
+    if (matches && matches.length > 0) {
+      html += `<div class="match-info">Matches found at indices: [${matches.join(', ')}]</div>`;
+    }
+
+    html += '</div>';
+    this.canvas.innerHTML = html;
+  }
+
+  getVariables() {
+    const step = this.steps[this.currentStep] || {};
+    return {
+      'text_index': step.textIdx >= 0 ? step.textIdx : '-',
+      'pattern_index': step.patternIdx >= 0 ? step.patternIdx : '-',
+      'matches_found': (step.matches || []).length
+    };
+  }
+
+  getInputData() {
+    return { 'Text': this.text, 'Pattern': this.pattern };
+  }
+}
+
+// Backtracking Animator (N-Queens)
+class BacktrackingAnimator extends AlgorithmAnimator {
+  constructor(canvasEl, codeEl, stateEl, config) {
+    super(canvasEl, codeEl, stateEl, config);
+
+    this.n = 4;
+    this.board = Array(this.n).fill(-1);
+    this.solutions = [];
+
+    this.setCode(`def solve_n_queens(n):
+    board = [-1] * n  # board[row] = col
+    solutions = []
+
+    def is_safe(row, col):
+        for r in range(row):
+            c = board[r]
+            if c == col or abs(c - col) == row - r:
+                return False
+        return True
+
+    def backtrack(row):
+        if row == n:
+            solutions.append(board[:])
+            return
+        for col in range(n):
+            if is_safe(row, col):
+                board[row] = col
+                backtrack(row + 1)
+                board[row] = -1  # backtrack
+
+    backtrack(0)
+    return solutions`);
+  }
+
+  buildSteps() {
+    this.steps = [];
+    this.board = Array(this.n).fill(-1);
+    this.solutions = [];
+
+    this.steps.push({
+      lineNum: 1,
+      state: `Initialize ${this.n}x${this.n} board for N-Queens`,
+      board: [...this.board],
+      row: -1,
+      col: -1,
+      checking: false,
+      solutions: [],
+      apply: () => {}
+    });
+
+    this.backtrackBuild(0);
+
+    this.steps.push({
+      lineNum: 20,
+      state: `Found ${this.solutions.length} solution(s)!`,
+      board: Array(this.n).fill(-1),
+      row: -1,
+      col: -1,
+      checking: false,
+      solutions: [...this.solutions],
+      apply: () => {}
+    });
+  }
+
+  backtrackBuild(row) {
+    if (row === this.n) {
+      this.solutions.push([...this.board]);
+      this.steps.push({
+        lineNum: 12,
+        state: `Solution found! Queens at columns: [${this.board.join(', ')}]`,
+        board: [...this.board],
+        row: row,
+        col: -1,
+        checking: false,
+        foundSolution: true,
+        solutions: [...this.solutions],
+        apply: () => {}
+      });
+      return;
+    }
+
+    this.steps.push({
+      lineNum: 14,
+      state: `Trying row ${row}`,
+      board: [...this.board],
+      row: row,
+      col: -1,
+      checking: false,
+      solutions: [...this.solutions],
+      apply: () => {}
+    });
+
+    for (let col = 0; col < this.n; col++) {
+      this.steps.push({
+        lineNum: 15,
+        state: `Checking if position (${row}, ${col}) is safe`,
+        board: [...this.board],
+        row: row,
+        col: col,
+        checking: true,
+        solutions: [...this.solutions],
+        apply: () => {}
+      });
+
+      if (this.isSafe(row, col)) {
+        this.board[row] = col;
+        this.steps.push({
+          lineNum: 16,
+          state: `Safe! Placing queen at (${row}, ${col})`,
+          board: [...this.board],
+          row: row,
+          col: col,
+          checking: false,
+          placed: true,
+          solutions: [...this.solutions],
+          apply: () => {}
+        });
+
+        this.backtrackBuild(row + 1);
+
+        this.board[row] = -1;
+        this.steps.push({
+          lineNum: 18,
+          state: `Backtracking: removing queen from (${row}, ${col})`,
+          board: [...this.board],
+          row: row,
+          col: col,
+          checking: false,
+          backtracking: true,
+          solutions: [...this.solutions],
+          apply: () => {}
+        });
+      } else {
+        this.steps.push({
+          lineNum: 15,
+          state: `Not safe at (${row}, ${col}) - conflict detected`,
+          board: [...this.board],
+          row: row,
+          col: col,
+          checking: false,
+          conflict: true,
+          solutions: [...this.solutions],
+          apply: () => {}
+        });
+      }
+    }
+  }
+
+  isSafe(row, col) {
+    for (let r = 0; r < row; r++) {
+      const c = this.board[r];
+      if (c === col || Math.abs(c - col) === row - r) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  render() {
+    const step = this.steps[this.currentStep] || {};
+    const { board, row, col, checking, placed, conflict, backtracking, foundSolution, solutions } = step;
+
+    let html = '<div class="nqueens-viz">';
+    html += '<div class="chess-board">';
+
+    for (let r = 0; r < this.n; r++) {
+      html += '<div class="chess-row">';
+      for (let c = 0; c < this.n; c++) {
+        let cellClass = 'chess-cell';
+        cellClass += (r + c) % 2 === 0 ? ' light' : ' dark';
+
+        if (r === row && c === col) {
+          if (checking) cellClass += ' checking';
+          if (conflict) cellClass += ' conflict';
+          if (placed) cellClass += ' placed';
+          if (backtracking) cellClass += ' backtracking';
+        }
+        if (foundSolution) cellClass += ' solution';
+
+        const hasQueen = board && board[r] === c;
+        html += `<div class="${cellClass}">${hasQueen ? 'Q' : ''}</div>`;
+      }
+      html += '</div>';
+    }
+
+    html += '</div>';
+
+    if (solutions && solutions.length > 0) {
+      html += `<div class="solutions-count">Solutions found: ${solutions.length}</div>`;
+    }
+
+    html += '</div>';
+    this.canvas.innerHTML = html;
+  }
+
+  getVariables() {
+    const step = this.steps[this.currentStep] || {};
+    return {
+      'current_row': step.row >= 0 ? step.row : '-',
+      'trying_col': step.col >= 0 ? step.col : '-',
+      'board': (step.board || []).map((c, r) => c >= 0 ? `(${r},${c})` : '-').filter(x => x !== '-').join(', ') || 'empty',
+      'solutions': (step.solutions || []).length
+    };
+  }
+
+  getInputData() {
+    return { 'Board Size': `${this.n}x${this.n}`, 'Problem': 'N-Queens' };
+  }
+}
+
+// Permutations Animator
+class PermutationsAnimator extends AlgorithmAnimator {
+  constructor(canvasEl, codeEl, stateEl, config) {
+    super(canvasEl, codeEl, stateEl, config);
+
+    this.nums = [1, 2, 3];
+    this.permutations = [];
+
+    this.setCode(`def permute(nums):
+    result = []
+
+    def backtrack(path, remaining):
+        if not remaining:
+            result.append(path[:])
+            return
+        for i, num in enumerate(remaining):
+            path.append(num)
+            new_remaining = remaining[:i] + remaining[i+1:]
+            backtrack(path, new_remaining)
+            path.pop()  # backtrack
+
+    backtrack([], nums)
+    return result`);
+  }
+
+  buildSteps() {
+    this.steps = [];
+    this.permutations = [];
+
+    this.steps.push({
+      lineNum: 1,
+      state: `Generate permutations of [${this.nums.join(', ')}]`,
+      path: [],
+      remaining: [...this.nums],
+      permutations: [],
+      apply: () => {}
+    });
+
+    this.permuteBuild([], [...this.nums]);
+
+    this.steps.push({
+      lineNum: 13,
+      state: `Complete! Generated ${this.permutations.length} permutations`,
+      path: [],
+      remaining: [],
+      permutations: [...this.permutations],
+      apply: () => {}
+    });
+  }
+
+  permuteBuild(path, remaining) {
+    if (remaining.length === 0) {
+      this.permutations.push([...path]);
+      this.steps.push({
+        lineNum: 5,
+        state: `Found permutation: [${path.join(', ')}]`,
+        path: [...path],
+        remaining: [],
+        foundPermutation: true,
+        permutations: [...this.permutations],
+        apply: () => {}
+      });
+      return;
+    }
+
+    for (let i = 0; i < remaining.length; i++) {
+      const num = remaining[i];
+
+      this.steps.push({
+        lineNum: 7,
+        state: `Choose ${num} from remaining [${remaining.join(', ')}]`,
+        path: [...path],
+        remaining: [...remaining],
+        choosing: i,
+        permutations: [...this.permutations],
+        apply: () => {}
+      });
+
+      path.push(num);
+      const newRemaining = [...remaining.slice(0, i), ...remaining.slice(i + 1)];
+
+      this.steps.push({
+        lineNum: 8,
+        state: `Path: [${path.join(', ')}], Remaining: [${newRemaining.join(', ')}]`,
+        path: [...path],
+        remaining: [...newRemaining],
+        permutations: [...this.permutations],
+        apply: () => {}
+      });
+
+      this.permuteBuild(path, newRemaining);
+
+      path.pop();
+      this.steps.push({
+        lineNum: 10,
+        state: `Backtrack: removed ${num}, path now [${path.join(', ')}]`,
+        path: [...path],
+        remaining: [...remaining],
+        backtracking: true,
+        permutations: [...this.permutations],
+        apply: () => {}
+      });
+    }
+  }
+
+  render() {
+    const step = this.steps[this.currentStep] || {};
+    const { path, remaining, choosing, foundPermutation, backtracking, permutations } = step;
+
+    let html = '<div class="permutations-viz">';
+
+    // Current state
+    html += '<div class="perm-state">';
+    html += '<div class="perm-row"><span class="perm-label">Path:</span><div class="perm-array">';
+    (path || []).forEach((n, i) => {
+      html += `<span class="perm-item${foundPermutation ? ' found' : ''}">${n}</span>`;
+    });
+    if ((path || []).length === 0) html += '<span class="perm-empty">empty</span>';
+    html += '</div></div>';
+
+    html += '<div class="perm-row"><span class="perm-label">Remaining:</span><div class="perm-array">';
+    (remaining || []).forEach((n, i) => {
+      let itemClass = 'perm-item';
+      if (choosing === i) itemClass += ' choosing';
+      html += `<span class="${itemClass}">${n}</span>`;
+    });
+    if ((remaining || []).length === 0) html += '<span class="perm-empty">empty</span>';
+    html += '</div></div>';
+    html += '</div>';
+
+    // Generated permutations
+    if (permutations && permutations.length > 0) {
+      html += '<div class="perm-results">';
+      html += `<div class="perm-header">Permutations (${permutations.length}):</div>`;
+      html += '<div class="perm-list">';
+      permutations.forEach((p, i) => {
+        html += `<span class="perm-result">[${p.join(',')}]</span>`;
+      });
+      html += '</div></div>';
+    }
+
+    html += '</div>';
+    this.canvas.innerHTML = html;
+  }
+
+  getVariables() {
+    const step = this.steps[this.currentStep] || {};
+    return {
+      'path': `[${(step.path || []).join(', ')}]`,
+      'remaining': `[${(step.remaining || []).join(', ')}]`,
+      'permutations_found': (step.permutations || []).length
+    };
+  }
+
+  getInputData() {
+    return { 'Input': `[${this.nums.join(', ')}]`, 'Total Permutations': `${this.factorial(this.nums.length)}` };
+  }
+
+  factorial(n) {
+    return n <= 1 ? 1 : n * this.factorial(n - 1);
+  }
+}
+
+// Iterative DP Animator (Fibonacci bottom-up)
+class IterativeDPAnimator extends AlgorithmAnimator {
+  constructor(canvasEl, codeEl, stateEl, config) {
+    super(canvasEl, codeEl, stateEl, config);
+
+    this.n = 8;
+    this.dp = [];
+
+    this.setCode(`def fib_iterative(n):
+    if n <= 1:
+        return n
+
+    dp = [0] * (n + 1)
+    dp[0] = 0
+    dp[1] = 1
+
+    for i in range(2, n + 1):
+        dp[i] = dp[i-1] + dp[i-2]
+
+    return dp[n]`);
+  }
+
+  buildSteps() {
+    this.steps = [];
+    this.dp = new Array(this.n + 1).fill(null);
+
+    this.steps.push({
+      lineNum: 1,
+      state: `Calculate Fibonacci(${this.n}) using bottom-up DP`,
+      dp: [...this.dp],
+      currentIdx: -1,
+      apply: () => {}
+    });
+
+    this.dp[0] = 0;
+    this.steps.push({
+      lineNum: 6,
+      state: 'Base case: dp[0] = 0',
+      dp: [...this.dp],
+      currentIdx: 0,
+      isBase: true,
+      apply: () => {}
+    });
+
+    this.dp[1] = 1;
+    this.steps.push({
+      lineNum: 7,
+      state: 'Base case: dp[1] = 1',
+      dp: [...this.dp],
+      currentIdx: 1,
+      isBase: true,
+      apply: () => {}
+    });
+
+    for (let i = 2; i <= this.n; i++) {
+      this.steps.push({
+        lineNum: 9,
+        state: `Computing dp[${i}] = dp[${i-1}] + dp[${i-2}] = ${this.dp[i-1]} + ${this.dp[i-2]}`,
+        dp: [...this.dp],
+        currentIdx: i,
+        deps: [i-1, i-2],
+        computing: true,
+        apply: () => {}
+      });
+
+      this.dp[i] = this.dp[i-1] + this.dp[i-2];
+      this.steps.push({
+        lineNum: 9,
+        state: `dp[${i}] = ${this.dp[i]}`,
+        dp: [...this.dp],
+        currentIdx: i,
+        computed: true,
+        apply: () => {}
+      });
+    }
+
+    this.steps.push({
+      lineNum: 11,
+      state: `Result: Fibonacci(${this.n}) = ${this.dp[this.n]}`,
+      dp: [...this.dp],
+      currentIdx: this.n,
+      final: true,
+      apply: () => {}
+    });
+  }
+
+  render() {
+    const step = this.steps[this.currentStep] || {};
+    const { dp, currentIdx, deps, isBase, computing, computed, final } = step;
+
+    let html = '<div class="iterative-dp-viz">';
+
+    // DP table
+    html += '<div class="dp-table">';
+    html += '<div class="dp-indices">';
+    for (let i = 0; i <= this.n; i++) {
+      html += `<span class="dp-idx">i=${i}</span>`;
+    }
+    html += '</div>';
+
+    html += '<div class="dp-values">';
+    for (let i = 0; i <= this.n; i++) {
+      let cellClass = 'dp-cell';
+      if (i === currentIdx) {
+        if (isBase) cellClass += ' base';
+        if (computing) cellClass += ' computing';
+        if (computed) cellClass += ' computed';
+        if (final) cellClass += ' final';
+      }
+      if (deps && deps.includes(i)) cellClass += ' dependency';
+
+      const val = dp && dp[i] !== null ? dp[i] : '?';
+      html += `<span class="${cellClass}">${val}</span>`;
+    }
+    html += '</div>';
+    html += '</div>';
+
+    // Formula visualization
+    if (computing && deps) {
+      html += '<div class="dp-formula">';
+      html += `dp[${currentIdx}] = dp[${deps[0]}] + dp[${deps[1]}]`;
+      html += `<br>= ${dp[deps[0]]} + ${dp[deps[1]]}`;
+      html += '</div>';
+    }
+
+    html += '</div>';
+    this.canvas.innerHTML = html;
+  }
+
+  getVariables() {
+    const step = this.steps[this.currentStep] || {};
+    return {
+      'current_index': step.currentIdx >= 0 ? step.currentIdx : '-',
+      'dp_value': step.dp && step.currentIdx >= 0 && step.dp[step.currentIdx] !== null ? step.dp[step.currentIdx] : '-',
+      'n': this.n
+    };
+  }
+
+  getInputData() {
+    return { 'Calculate': `Fibonacci(${this.n})`, 'Method': 'Bottom-up DP' };
+  }
+}
+
+// Rotated Array Search Animator
+class RotatedArrayAnimator extends AlgorithmAnimator {
+  constructor(canvasEl, codeEl, stateEl, config) {
+    super(canvasEl, codeEl, stateEl, config);
+
+    this.nums = [4, 5, 6, 7, 0, 1, 2];
+    this.target = 0;
+    this.low = 0;
+    this.high = this.nums.length - 1;
+
+    this.setCode(`def search_rotated(nums, target):
+    low, high = 0, len(nums) - 1
+
+    while low <= high:
+        mid = (low + high) // 2
+
+        if nums[mid] == target:
+            return mid
+
+        # Left half is sorted
+        if nums[low] <= nums[mid]:
+            if nums[low] <= target < nums[mid]:
+                high = mid - 1
+            else:
+                low = mid + 1
+        # Right half is sorted
+        else:
+            if nums[mid] < target <= nums[high]:
+                low = mid + 1
+            else:
+                high = mid - 1
+
+    return -1`);
+  }
+
+  buildSteps() {
+    this.steps = [];
+    let low = 0;
+    let high = this.nums.length - 1;
+
+    this.steps.push({
+      lineNum: 1,
+      state: `Search for ${this.target} in rotated array [${this.nums.join(', ')}]`,
+      array: [...this.nums],
+      low: low,
+      high: high,
+      mid: -1,
+      target: this.target,
+      apply: () => {}
+    });
+
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+
+      this.steps.push({
+        lineNum: 5,
+        state: `Calculate mid = (${low} + ${high}) / 2 = ${mid}`,
+        array: [...this.nums],
+        low: low,
+        high: high,
+        mid: mid,
+        target: this.target,
+        apply: () => {}
+      });
+
+      if (this.nums[mid] === this.target) {
+        this.steps.push({
+          lineNum: 7,
+          state: `Found! nums[${mid}] = ${this.target}`,
+          array: [...this.nums],
+          low: low,
+          high: high,
+          mid: mid,
+          target: this.target,
+          found: true,
+          apply: () => {}
+        });
+        return;
+      }
+
+      // Left half is sorted
+      if (this.nums[low] <= this.nums[mid]) {
+        this.steps.push({
+          lineNum: 10,
+          state: `Left half [${low}..${mid}] is sorted (${this.nums[low]} <= ${this.nums[mid]})`,
+          array: [...this.nums],
+          low: low,
+          high: high,
+          mid: mid,
+          target: this.target,
+          sortedHalf: 'left',
+          apply: () => {}
+        });
+
+        if (this.nums[low] <= this.target && this.target < this.nums[mid]) {
+          this.steps.push({
+            lineNum: 12,
+            state: `Target ${this.target} is in left half, search left`,
+            array: [...this.nums],
+            low: low,
+            high: mid - 1,
+            mid: mid,
+            target: this.target,
+            searchDirection: 'left',
+            apply: () => {}
+          });
+          high = mid - 1;
+        } else {
+          this.steps.push({
+            lineNum: 14,
+            state: `Target ${this.target} is in right half, search right`,
+            array: [...this.nums],
+            low: mid + 1,
+            high: high,
+            mid: mid,
+            target: this.target,
+            searchDirection: 'right',
+            apply: () => {}
+          });
+          low = mid + 1;
+        }
+      } else {
+        this.steps.push({
+          lineNum: 16,
+          state: `Right half [${mid}..${high}] is sorted (${this.nums[mid]} > ${this.nums[low]})`,
+          array: [...this.nums],
+          low: low,
+          high: high,
+          mid: mid,
+          target: this.target,
+          sortedHalf: 'right',
+          apply: () => {}
+        });
+
+        if (this.nums[mid] < this.target && this.target <= this.nums[high]) {
+          this.steps.push({
+            lineNum: 18,
+            state: `Target ${this.target} is in right half, search right`,
+            array: [...this.nums],
+            low: mid + 1,
+            high: high,
+            mid: mid,
+            target: this.target,
+            searchDirection: 'right',
+            apply: () => {}
+          });
+          low = mid + 1;
+        } else {
+          this.steps.push({
+            lineNum: 20,
+            state: `Target ${this.target} is in left half, search left`,
+            array: [...this.nums],
+            low: low,
+            high: mid - 1,
+            mid: mid,
+            target: this.target,
+            searchDirection: 'left',
+            apply: () => {}
+          });
+          high = mid - 1;
+        }
+      }
+    }
+
+    this.steps.push({
+      lineNum: 22,
+      state: `Target ${this.target} not found`,
+      array: [...this.nums],
+      low: low,
+      high: high,
+      mid: -1,
+      target: this.target,
+      notFound: true,
+      apply: () => {}
+    });
+  }
+
+  render() {
+    const step = this.steps[this.currentStep] || {};
+    const { array, low, high, mid, target, found, sortedHalf, searchDirection, notFound } = step;
+
+    let html = '<div class="rotated-array-viz">';
+
+    // Array visualization
+    html += '<div class="array-viz rotated">';
+    (array || this.nums).forEach((val, i) => {
+      let cellClass = 'array-cell';
+      if (i < low || i > high) cellClass += ' excluded';
+      if (i === mid) cellClass += found ? ' found' : ' mid';
+      if (i === low) cellClass += ' low';
+      if (i === high) cellClass += ' high';
+      if (val === target) cellClass += ' target';
+      if (sortedHalf === 'left' && i >= low && i <= mid) cellClass += ' sorted-half';
+      if (sortedHalf === 'right' && i >= mid && i <= high) cellClass += ' sorted-half';
+
+      html += `<div class="${cellClass}">
+        <span class="cell-value">${val}</span>
+        <span class="cell-index">${i}</span>
+      </div>`;
+    });
+    html += '</div>';
+
+    // Pointer labels
+    html += '<div class="pointer-labels">';
+    if (low >= 0) html += `<span class="ptr-label">low=${low}</span>`;
+    if (mid >= 0) html += `<span class="ptr-label">mid=${mid}</span>`;
+    if (high >= 0) html += `<span class="ptr-label">high=${high}</span>`;
+    html += '</div>';
+
+    // Pivot indicator
+    const pivotIdx = array ? array.findIndex((v, i) => i > 0 && v < array[i-1]) : -1;
+    if (pivotIdx > 0) {
+      html += `<div class="pivot-info">Rotation pivot at index ${pivotIdx}</div>`;
+    }
+
+    html += '</div>';
+    this.canvas.innerHTML = html;
+  }
+
+  getVariables() {
+    const step = this.steps[this.currentStep] || {};
+    return {
+      'low': step.low >= 0 ? step.low : '-',
+      'mid': step.mid >= 0 ? step.mid : '-',
+      'high': step.high >= 0 ? step.high : '-',
+      'target': this.target
+    };
+  }
+
+  getInputData() {
+    return { 'Array': `[${this.nums.join(', ')}]`, 'Target': this.target };
+  }
+}
+
+// Merge Sort Animator
+class MergeSortAnimator extends AlgorithmAnimator {
+  constructor(canvasEl, codeEl, stateEl, config) {
+    super(canvasEl, codeEl, stateEl, config);
+
+    this.original = [38, 27, 43, 3, 9, 82, 10];
+    this.array = [...this.original];
+
+    this.setCode(`def merge_sort(arr):
+    if len(arr) <= 1:
+        return arr
+
+    mid = len(arr) // 2
+    left = merge_sort(arr[:mid])
+    right = merge_sort(arr[mid:])
+
+    return merge(left, right)
+
+def merge(left, right):
+    result = []
+    i = j = 0
+    while i < len(left) and j < len(right):
+        if left[i] <= right[j]:
+            result.append(left[i])
+            i += 1
+        else:
+            result.append(right[j])
+            j += 1
+    result.extend(left[i:])
+    result.extend(right[j:])
+    return result`);
+  }
+
+  buildSteps() {
+    this.steps = [];
+
+    this.steps.push({
+      lineNum: 1,
+      state: `Merge sort array [${this.original.join(', ')}]`,
+      levels: [[...this.original]],
+      currentLevel: 0,
+      phase: 'divide',
+      apply: () => {}
+    });
+
+    // Build divide phase
+    this.buildDivide([[...this.original]], 0);
+
+    // Build merge phase
+    this.buildMerge();
+  }
+
+  buildDivide(levels, level) {
+    const current = levels[level];
+    if (!current || current.every(arr => arr.length <= 1)) {
+      return levels;
+    }
+
+    const nextLevel = [];
+    current.forEach((arr, idx) => {
+      if (arr.length <= 1) {
+        nextLevel.push(arr);
+      } else {
+        const mid = Math.floor(arr.length / 2);
+        const left = arr.slice(0, mid);
+        const right = arr.slice(mid);
+
+        this.steps.push({
+          lineNum: 5,
+          state: `Split [${arr.join(', ')}] into [${left.join(', ')}] and [${right.join(', ')}]`,
+          levels: levels.map(l => [...l]),
+          currentLevel: level,
+          splitting: idx,
+          left: left,
+          right: right,
+          phase: 'divide',
+          apply: () => {}
+        });
+
+        nextLevel.push(left, right);
+      }
+    });
+
+    levels.push(nextLevel);
+    this.steps.push({
+      lineNum: 6,
+      state: `Level ${level + 1}: ${nextLevel.map(a => `[${a.join(',')}]`).join(' ')}`,
+      levels: levels.map(l => [...l]),
+      currentLevel: level + 1,
+      phase: 'divide',
+      apply: () => {}
+    });
+
+    return this.buildDivide(levels, level + 1);
+  }
+
+  buildMerge() {
+    // Simulate the merge phase
+    let levels = [
+      [[38, 27, 43, 3, 9, 82, 10]],
+      [[38, 27, 43], [3, 9, 82, 10]],
+      [[38], [27, 43], [3, 9], [82, 10]],
+      [[38], [27], [43], [3], [9], [82], [10]]
+    ];
+
+    // Merge level 3 -> 2
+    this.steps.push({
+      lineNum: 11,
+      state: 'Begin merging phase',
+      levels: levels,
+      currentLevel: 3,
+      phase: 'merge',
+      apply: () => {}
+    });
+
+    // Merge pairs
+    const mergeOps = [
+      { left: [27], right: [43], result: [27, 43], state: 'Merge [27] and [43]' },
+      { left: [3], right: [9], result: [3, 9], state: 'Merge [3] and [9]' },
+      { left: [82], right: [10], result: [10, 82], state: 'Merge [82] and [10]' },
+      { left: [38], right: [27, 43], result: [27, 38, 43], state: 'Merge [38] and [27,43]' },
+      { left: [3, 9], right: [10, 82], result: [3, 9, 10, 82], state: 'Merge [3,9] and [10,82]' },
+      { left: [27, 38, 43], right: [3, 9, 10, 82], result: [3, 9, 10, 27, 38, 43, 82], state: 'Final merge' }
+    ];
+
+    mergeOps.forEach((op, i) => {
+      this.steps.push({
+        lineNum: 14,
+        state: op.state,
+        merging: { left: op.left, right: op.right },
+        result: op.result,
+        phase: 'merge',
+        apply: () => {}
+      });
+
+      this.steps.push({
+        lineNum: 22,
+        state: `Result: [${op.result.join(', ')}]`,
+        merged: op.result,
+        phase: 'merge',
+        apply: () => {}
+      });
+    });
+
+    this.steps.push({
+      lineNum: 23,
+      state: `Sorted: [${[3, 9, 10, 27, 38, 43, 82].join(', ')}]`,
+      sorted: [3, 9, 10, 27, 38, 43, 82],
+      phase: 'complete',
+      apply: () => {}
+    });
+  }
+
+  render() {
+    const step = this.steps[this.currentStep] || {};
+    const { levels, phase, merging, result, merged, sorted, splitting, left, right } = step;
+
+    let html = '<div class="merge-sort-viz">';
+
+    if (phase === 'divide' && levels) {
+      html += '<div class="divide-phase">';
+      levels.forEach((level, i) => {
+        html += `<div class="merge-level level-${i}">`;
+        level.forEach((arr, j) => {
+          let arrClass = 'merge-array';
+          if (splitting === j && i === step.currentLevel) arrClass += ' splitting';
+          html += `<span class="${arrClass}">[${arr.join(', ')}]</span>`;
+        });
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+
+    if (phase === 'merge' && merging) {
+      html += '<div class="merge-phase">';
+      html += `<div class="merge-inputs">`;
+      html += `<span class="merge-array left">[${merging.left.join(', ')}]</span>`;
+      html += `<span class="merge-op">+</span>`;
+      html += `<span class="merge-array right">[${merging.right.join(', ')}]</span>`;
+      html += '</div>';
+      if (result) {
+        html += `<div class="merge-result">= [${result.join(', ')}]</div>`;
+      }
+      html += '</div>';
+    }
+
+    if (merged) {
+      html += `<div class="merged-result">[${merged.join(', ')}]</div>`;
+    }
+
+    if (sorted) {
+      html += `<div class="final-sorted">Sorted: [${sorted.join(', ')}]</div>`;
+    }
+
+    html += '</div>';
+    this.canvas.innerHTML = html;
+  }
+
+  getVariables() {
+    const step = this.steps[this.currentStep] || {};
+    return {
+      'phase': step.phase || '-',
+      'current_level': step.currentLevel >= 0 ? step.currentLevel : '-'
+    };
+  }
+
+  getInputData() {
+    return { 'Input': `[${this.original.join(', ')}]`, 'Algorithm': 'Merge Sort O(n log n)' };
+  }
+}
+
+// Sliding Window Animator
+class SlidingWindowAnimator extends AlgorithmAnimator {
+  constructor(canvasEl, codeEl, stateEl, config) {
+    super(canvasEl, codeEl, stateEl, config);
+
+    this.nums = [2, 1, 5, 1, 3, 2];
+    this.k = 3;
+    this.maxSum = 0;
+
+    this.setCode(`def max_sum_subarray(nums, k):
+    if len(nums) < k:
+        return 0
+
+    # Initial window sum
+    window_sum = sum(nums[:k])
+    max_sum = window_sum
+
+    # Slide the window
+    for i in range(k, len(nums)):
+        window_sum += nums[i] - nums[i - k]
+        max_sum = max(max_sum, window_sum)
+
+    return max_sum`);
+  }
+
+  buildSteps() {
+    this.steps = [];
+
+    this.steps.push({
+      lineNum: 1,
+      state: `Find max sum of ${this.k} consecutive elements in [${this.nums.join(', ')}]`,
+      windowStart: -1,
+      windowEnd: -1,
+      windowSum: 0,
+      maxSum: 0,
+      apply: () => {}
+    });
+
+    // Initial window
+    let windowSum = 0;
+    for (let i = 0; i < this.k; i++) {
+      windowSum += this.nums[i];
+    }
+
+    this.steps.push({
+      lineNum: 5,
+      state: `Initial window [0..${this.k-1}]: sum = ${windowSum}`,
+      windowStart: 0,
+      windowEnd: this.k - 1,
+      windowSum: windowSum,
+      maxSum: windowSum,
+      isInitial: true,
+      apply: () => {}
+    });
+
+    let maxSum = windowSum;
+
+    // Slide the window
+    for (let i = this.k; i < this.nums.length; i++) {
+      const removing = this.nums[i - this.k];
+      const adding = this.nums[i];
+
+      this.steps.push({
+        lineNum: 10,
+        state: `Slide: remove nums[${i - this.k}]=${removing}, add nums[${i}]=${adding}`,
+        windowStart: i - this.k,
+        windowEnd: i - 1,
+        windowSum: windowSum,
+        maxSum: maxSum,
+        removing: i - this.k,
+        adding: i,
+        apply: () => {}
+      });
+
+      windowSum = windowSum + adding - removing;
+      maxSum = Math.max(maxSum, windowSum);
+
+      this.steps.push({
+        lineNum: 11,
+        state: `New window [${i - this.k + 1}..${i}]: sum = ${windowSum}, max = ${maxSum}`,
+        windowStart: i - this.k + 1,
+        windowEnd: i,
+        windowSum: windowSum,
+        maxSum: maxSum,
+        newMax: windowSum === maxSum,
+        apply: () => {}
+      });
+    }
+
+    this.steps.push({
+      lineNum: 13,
+      state: `Maximum sum of ${this.k} consecutive elements: ${maxSum}`,
+      windowStart: -1,
+      windowEnd: -1,
+      windowSum: windowSum,
+      maxSum: maxSum,
+      final: true,
+      apply: () => {}
+    });
+  }
+
+  render() {
+    const step = this.steps[this.currentStep] || {};
+    const { windowStart, windowEnd, windowSum, maxSum, removing, adding, isInitial, newMax, final } = step;
+
+    let html = '<div class="sliding-window-viz">';
+
+    // Array with window
+    html += '<div class="array-viz window-array">';
+    this.nums.forEach((val, i) => {
+      let cellClass = 'array-cell';
+      if (i >= windowStart && i <= windowEnd) cellClass += ' in-window';
+      if (i === removing) cellClass += ' removing';
+      if (i === adding) cellClass += ' adding';
+
+      html += `<div class="${cellClass}">
+        <span class="cell-value">${val}</span>
+        <span class="cell-index">${i}</span>
+      </div>`;
+    });
+    html += '</div>';
+
+    // Window info
+    html += '<div class="window-info">';
+    if (windowStart >= 0) {
+      html += `<div class="window-range">Window: [${windowStart}..${windowEnd}]</div>`;
+    }
+    html += `<div class="window-sum${newMax ? ' new-max' : ''}">Window Sum: ${windowSum}</div>`;
+    html += `<div class="max-sum">Max Sum: ${maxSum}</div>`;
+    html += '</div>';
+
+    if (final) {
+      html += `<div class="final-result">Answer: ${maxSum}</div>`;
+    }
+
+    html += '</div>';
+    this.canvas.innerHTML = html;
+  }
+
+  getVariables() {
+    const step = this.steps[this.currentStep] || {};
+    return {
+      'window_start': step.windowStart >= 0 ? step.windowStart : '-',
+      'window_end': step.windowEnd >= 0 ? step.windowEnd : '-',
+      'window_sum': step.windowSum,
+      'max_sum': step.maxSum
+    };
+  }
+
+  getInputData() {
+    return { 'Array': `[${this.nums.join(', ')}]`, 'Window Size (k)': this.k };
+  }
+}
+
+// Binary Tree Traversal Animator
+class BinaryTreeAnimator extends AlgorithmAnimator {
+  constructor(canvasEl, codeEl, stateEl, config) {
+    super(canvasEl, codeEl, stateEl, config);
+
+    // Tree structure: { val, left, right }
+    this.root = {
+      val: 1,
+      left: {
+        val: 2,
+        left: { val: 4, left: null, right: null },
+        right: { val: 5, left: null, right: null }
+      },
+      right: {
+        val: 3,
+        left: { val: 6, left: null, right: null },
+        right: { val: 7, left: null, right: null }
+      }
+    };
+
+    this.traversalType = 'inorder';
+    this.result = [];
+
+    this.setCode(`def inorder(node):
+    if node is None:
+        return
+    inorder(node.left)   # Visit left
+    print(node.val)      # Process node
+    inorder(node.right)  # Visit right
+
+# Preorder: node -> left -> right
+# Postorder: left -> right -> node`);
+  }
+
+  buildSteps() {
+    this.steps = [];
+    this.result = [];
+
+    this.steps.push({
+      lineNum: 1,
+      state: `Inorder traversal: Left -> Node -> Right`,
+      current: null,
+      visited: [],
+      result: [],
+      apply: () => {}
+    });
+
+    this.inorderBuild(this.root, []);
+
+    this.steps.push({
+      lineNum: 6,
+      state: `Traversal complete: [${this.result.join(', ')}]`,
+      current: null,
+      visited: [...this.result],
+      result: [...this.result],
+      complete: true,
+      apply: () => {}
+    });
+  }
+
+  inorderBuild(node, visited) {
+    if (!node) return;
+
+    this.steps.push({
+      lineNum: 4,
+      state: `Go left from ${node.val}`,
+      current: node.val,
+      visited: [...visited],
+      result: [...this.result],
+      direction: 'left',
+      apply: () => {}
+    });
+
+    this.inorderBuild(node.left, visited);
+
+    visited.push(node.val);
+    this.result.push(node.val);
+
+    this.steps.push({
+      lineNum: 5,
+      state: `Visit node ${node.val}`,
+      current: node.val,
+      visited: [...visited],
+      result: [...this.result],
+      processing: true,
+      apply: () => {}
+    });
+
+    this.steps.push({
+      lineNum: 6,
+      state: `Go right from ${node.val}`,
+      current: node.val,
+      visited: [...visited],
+      result: [...this.result],
+      direction: 'right',
+      apply: () => {}
+    });
+
+    this.inorderBuild(node.right, visited);
+  }
+
+  render() {
+    const step = this.steps[this.currentStep] || {};
+    const { current, visited, result, processing, direction, complete } = step;
+
+    let html = '<div class="binary-tree-viz">';
+
+    // Tree visualization using SVG
+    html += '<svg class="tree-svg" viewBox="0 0 300 200">';
+
+    // Draw edges
+    html += '<g class="tree-edges">';
+    // Level 1 -> 2
+    html += '<line x1="150" y1="30" x2="75" y2="80" class="tree-edge"/>';
+    html += '<line x1="150" y1="30" x2="225" y2="80" class="tree-edge"/>';
+    // Level 2 -> 3
+    html += '<line x1="75" y1="80" x2="40" y2="140" class="tree-edge"/>';
+    html += '<line x1="75" y1="80" x2="110" y2="140" class="tree-edge"/>';
+    html += '<line x1="225" y1="80" x2="190" y2="140" class="tree-edge"/>';
+    html += '<line x1="225" y1="80" x2="260" y2="140" class="tree-edge"/>';
+    html += '</g>';
+
+    // Draw nodes
+    const positions = [
+      { val: 1, x: 150, y: 30 },
+      { val: 2, x: 75, y: 80 },
+      { val: 3, x: 225, y: 80 },
+      { val: 4, x: 40, y: 140 },
+      { val: 5, x: 110, y: 140 },
+      { val: 6, x: 190, y: 140 },
+      { val: 7, x: 260, y: 140 }
+    ];
+
+    html += '<g class="tree-nodes">';
+    positions.forEach(pos => {
+      let nodeClass = 'tree-node';
+      if (visited && visited.includes(pos.val)) nodeClass += ' visited';
+      if (pos.val === current) {
+        nodeClass += ' current';
+        if (processing) nodeClass += ' processing';
+      }
+
+      html += `<circle cx="${pos.x}" cy="${pos.y}" r="18" class="${nodeClass}"/>`;
+      html += `<text x="${pos.x}" y="${pos.y + 5}" class="node-label">${pos.val}</text>`;
+    });
+    html += '</g>';
+
+    html += '</svg>';
+
+    // Result display
+    html += '<div class="traversal-result">';
+    html += `<span class="result-label">Inorder:</span>`;
+    html += `<span class="result-values">[${(result || []).join(', ')}]</span>`;
+    html += '</div>';
+
+    html += '</div>';
+    this.canvas.innerHTML = html;
+  }
+
+  getVariables() {
+    const step = this.steps[this.currentStep] || {};
+    return {
+      'current_node': step.current || '-',
+      'result': `[${(step.result || []).join(', ')}]`
+    };
+  }
+
+  getInputData() {
+    return { 'Tree': 'Complete binary tree', 'Traversal': 'Inorder (Left-Node-Right)' };
+  }
+}
+
+// Heap/Priority Queue Animator
+class HeapAnimator extends AlgorithmAnimator {
+  constructor(canvasEl, codeEl, stateEl, config) {
+    super(canvasEl, codeEl, stateEl, config);
+
+    this.heap = [];
+    this.insertions = [4, 10, 3, 5, 1, 8];
+
+    this.setCode(`class MinHeap:
+    def __init__(self):
+        self.heap = []
+
+    def insert(self, val):
+        self.heap.append(val)
+        self._bubble_up(len(self.heap) - 1)
+
+    def _bubble_up(self, idx):
+        parent = (idx - 1) // 2
+        if idx > 0 and self.heap[idx] < self.heap[parent]:
+            self.heap[idx], self.heap[parent] = \\
+                self.heap[parent], self.heap[idx]
+            self._bubble_up(parent)`);
+  }
+
+  buildSteps() {
+    this.steps = [];
+    this.heap = [];
+
+    this.steps.push({
+      lineNum: 1,
+      state: `Build min-heap by inserting [${this.insertions.join(', ')}]`,
+      heap: [],
+      apply: () => {}
+    });
+
+    this.insertions.forEach((val, i) => {
+      this.steps.push({
+        lineNum: 5,
+        state: `Insert ${val}`,
+        heap: [...this.heap],
+        inserting: val,
+        apply: () => {}
+      });
+
+      this.heap.push(val);
+      let idx = this.heap.length - 1;
+
+      this.steps.push({
+        lineNum: 6,
+        state: `Added ${val} at index ${idx}`,
+        heap: [...this.heap],
+        currentIdx: idx,
+        apply: () => {}
+      });
+
+      // Bubble up
+      while (idx > 0) {
+        const parentIdx = Math.floor((idx - 1) / 2);
+
+        if (this.heap[idx] < this.heap[parentIdx]) {
+          this.steps.push({
+            lineNum: 10,
+            state: `Bubble up: ${this.heap[idx]} < ${this.heap[parentIdx]}, swap`,
+            heap: [...this.heap],
+            currentIdx: idx,
+            parentIdx: parentIdx,
+            swapping: true,
+            apply: () => {}
+          });
+
+          [this.heap[idx], this.heap[parentIdx]] = [this.heap[parentIdx], this.heap[idx]];
+
+          this.steps.push({
+            lineNum: 12,
+            state: `After swap: heap = [${this.heap.join(', ')}]`,
+            heap: [...this.heap],
+            currentIdx: parentIdx,
+            apply: () => {}
+          });
+
+          idx = parentIdx;
+        } else {
+          this.steps.push({
+            lineNum: 9,
+            state: `Heap property satisfied: ${this.heap[idx]} >= ${this.heap[parentIdx]}`,
+            heap: [...this.heap],
+            currentIdx: idx,
+            parentIdx: parentIdx,
+            satisfied: true,
+            apply: () => {}
+          });
+          break;
+        }
+      }
+
+      if (idx === 0 && this.heap.length > 1) {
+        this.steps.push({
+          lineNum: 9,
+          state: `${val} reached root position`,
+          heap: [...this.heap],
+          currentIdx: 0,
+          isRoot: true,
+          apply: () => {}
+        });
+      }
+    });
+
+    this.steps.push({
+      lineNum: 13,
+      state: `Min-heap built: [${this.heap.join(', ')}], min = ${this.heap[0]}`,
+      heap: [...this.heap],
+      complete: true,
+      apply: () => {}
+    });
+  }
+
+  render() {
+    const step = this.steps[this.currentStep] || {};
+    const { heap, currentIdx, parentIdx, swapping, inserting, complete } = step;
+
+    let html = '<div class="heap-viz">';
+
+    // Tree visualization
+    if (heap && heap.length > 0) {
+      html += '<svg class="heap-tree" viewBox="0 0 320 180">';
+
+      const positions = this.getHeapPositions(heap.length);
+
+      // Draw edges
+      html += '<g class="heap-edges">';
+      for (let i = 1; i < heap.length; i++) {
+        const parentPos = positions[Math.floor((i - 1) / 2)];
+        const childPos = positions[i];
+        let edgeClass = 'heap-edge';
+        if ((i === currentIdx || i === parentIdx) && swapping) edgeClass += ' swapping';
+        html += `<line x1="${parentPos.x}" y1="${parentPos.y}" x2="${childPos.x}" y2="${childPos.y}" class="${edgeClass}"/>`;
+      }
+      html += '</g>';
+
+      // Draw nodes
+      html += '<g class="heap-nodes">';
+      heap.forEach((val, i) => {
+        const pos = positions[i];
+        let nodeClass = 'heap-node';
+        if (i === currentIdx) nodeClass += ' current';
+        if (i === parentIdx) nodeClass += ' parent';
+        if (i === 0 && complete) nodeClass += ' min';
+
+        html += `<circle cx="${pos.x}" cy="${pos.y}" r="18" class="${nodeClass}"/>`;
+        html += `<text x="${pos.x}" y="${pos.y + 5}" class="node-label">${val}</text>`;
+        html += `<text x="${pos.x}" y="${pos.y - 25}" class="idx-label">[${i}]</text>`;
+      });
+      html += '</g>';
+
+      html += '</svg>';
+    }
+
+    // Array representation
+    html += '<div class="heap-array">';
+    html += `<span class="array-label">Array:</span>`;
+    html += `<span class="array-values">[${(heap || []).join(', ')}]</span>`;
+    html += '</div>';
+
+    if (inserting !== undefined) {
+      html += `<div class="inserting">Inserting: ${inserting}</div>`;
+    }
+
+    html += '</div>';
+    this.canvas.innerHTML = html;
+  }
+
+  getHeapPositions(size) {
+    const positions = [];
+    const levels = Math.ceil(Math.log2(size + 1));
+    let idx = 0;
+
+    for (let level = 0; level < levels && idx < size; level++) {
+      const nodesInLevel = Math.pow(2, level);
+      const levelWidth = 300;
+      const spacing = levelWidth / (nodesInLevel + 1);
+
+      for (let i = 0; i < nodesInLevel && idx < size; i++) {
+        positions.push({
+          x: 10 + spacing * (i + 1),
+          y: 25 + level * 45
+        });
+        idx++;
+      }
+    }
+
+    return positions;
+  }
+
+  getVariables() {
+    const step = this.steps[this.currentStep] || {};
+    return {
+      'heap_size': (step.heap || []).length,
+      'current_idx': step.currentIdx >= 0 ? step.currentIdx : '-',
+      'min_value': step.heap && step.heap.length > 0 ? step.heap[0] : '-'
+    };
+  }
+
+  getInputData() {
+    return { 'Insertions': `[${this.insertions.join(', ')}]`, 'Type': 'Min-Heap' };
+  }
+}
+
+// Greedy Algorithm Animator (Activity Selection / Interval Scheduling)
+class GreedyAnimator extends AlgorithmAnimator {
+  constructor(canvasEl, codeEl, stateEl, config) {
+    super(canvasEl, codeEl, stateEl, config);
+
+    // Activities: [start, end, name]
+    this.activities = [
+      [1, 4, 'A'],
+      [3, 5, 'B'],
+      [0, 6, 'C'],
+      [5, 7, 'D'],
+      [3, 9, 'E'],
+      [5, 9, 'F'],
+      [6, 10, 'G'],
+      [8, 11, 'H'],
+      [8, 12, 'I'],
+      [2, 14, 'J'],
+      [12, 16, 'K']
+    ];
+    this.selected = [];
+    this.currentEnd = 0;
+
+    this.setCode(`def activity_selection(activities):
+    # Sort by finish time (greedy choice)
+    sorted_acts = sorted(activities, key=lambda x: x[1])
+
+    selected = []
+    current_end = 0
+
+    for start, end, name in sorted_acts:
+        if start >= current_end:
+            # Activity is compatible
+            selected.append((start, end, name))
+            current_end = end
+
+    return selected`);
+  }
+
+  buildSteps() {
+    this.steps = [];
+    this.selected = [];
+    this.currentEnd = 0;
+
+    // Sort activities by end time
+    const sorted = [...this.activities].sort((a, b) => a[1] - b[1]);
+
+    this.steps.push({
+      lineNum: 1,
+      state: `Activity Selection: maximize non-overlapping activities`,
+      activities: this.activities.map(a => ({ start: a[0], end: a[1], name: a[2] })),
+      sorted: null,
+      selected: [],
+      currentEnd: 0,
+      considering: -1,
+      apply: () => {}
+    });
+
+    this.steps.push({
+      lineNum: 2,
+      state: `Sort activities by finish time (greedy choice property)`,
+      activities: this.activities.map(a => ({ start: a[0], end: a[1], name: a[2] })),
+      sorted: sorted.map(a => ({ start: a[0], end: a[1], name: a[2] })),
+      selected: [],
+      currentEnd: 0,
+      considering: -1,
+      sorting: true,
+      apply: () => {}
+    });
+
+    let currentEnd = 0;
+    const selectedList = [];
+
+    sorted.forEach((activity, idx) => {
+      const [start, end, name] = activity;
+
+      this.steps.push({
+        lineNum: 7,
+        state: `Consider activity ${name} [${start}, ${end}]`,
+        activities: this.activities.map(a => ({ start: a[0], end: a[1], name: a[2] })),
+        sorted: sorted.map(a => ({ start: a[0], end: a[1], name: a[2] })),
+        selected: [...selectedList],
+        currentEnd: currentEnd,
+        considering: idx,
+        checkingStart: start,
+        apply: () => {}
+      });
+
+      if (start >= currentEnd) {
+        this.steps.push({
+          lineNum: 8,
+          state: `${name} is compatible! start(${start}) >= current_end(${currentEnd})`,
+          activities: this.activities.map(a => ({ start: a[0], end: a[1], name: a[2] })),
+          sorted: sorted.map(a => ({ start: a[0], end: a[1], name: a[2] })),
+          selected: [...selectedList],
+          currentEnd: currentEnd,
+          considering: idx,
+          compatible: true,
+          apply: () => {}
+        });
+
+        selectedList.push({ start, end, name });
+        currentEnd = end;
+
+        this.steps.push({
+          lineNum: 10,
+          state: `Select ${name}, update current_end to ${end}`,
+          activities: this.activities.map(a => ({ start: a[0], end: a[1], name: a[2] })),
+          sorted: sorted.map(a => ({ start: a[0], end: a[1], name: a[2] })),
+          selected: [...selectedList],
+          currentEnd: currentEnd,
+          considering: idx,
+          justSelected: true,
+          apply: () => {}
+        });
+      } else {
+        this.steps.push({
+          lineNum: 7,
+          state: `${name} overlaps! start(${start}) < current_end(${currentEnd}). Skip.`,
+          activities: this.activities.map(a => ({ start: a[0], end: a[1], name: a[2] })),
+          sorted: sorted.map(a => ({ start: a[0], end: a[1], name: a[2] })),
+          selected: [...selectedList],
+          currentEnd: currentEnd,
+          considering: idx,
+          overlaps: true,
+          apply: () => {}
+        });
+      }
+    });
+
+    this.steps.push({
+      lineNum: 12,
+      state: `Done! Selected ${selectedList.length} activities: ${selectedList.map(a => a.name).join(', ')}`,
+      activities: this.activities.map(a => ({ start: a[0], end: a[1], name: a[2] })),
+      sorted: sorted.map(a => ({ start: a[0], end: a[1], name: a[2] })),
+      selected: [...selectedList],
+      currentEnd: currentEnd,
+      considering: -1,
+      complete: true,
+      apply: () => {}
+    });
+  }
+
+  render() {
+    const step = this.steps[this.currentStep] || {};
+    const { sorted, selected, currentEnd, considering, compatible, overlaps, justSelected, complete, sorting } = step;
+
+    const maxTime = 16;
+    const timelineWidth = 100; // percentage
+
+    let html = '<div class="greedy-viz">';
+
+    // Timeline header
+    html += '<div class="timeline-header">';
+    for (let t = 0; t <= maxTime; t += 2) {
+      html += `<span class="time-mark" style="left: ${(t / maxTime) * 100}%">${t}</span>`;
+    }
+    html += '</div>';
+
+    // Current end marker
+    if (currentEnd > 0) {
+      html += `<div class="current-end-marker" style="left: ${(currentEnd / maxTime) * 100}%">`;
+      html += `<div class="marker-line"></div>`;
+      html += `<div class="marker-label">end=${currentEnd}</div>`;
+      html += '</div>';
+    }
+
+    // Activities timeline
+    html += '<div class="activities-timeline">';
+    const displayActivities = sorted || step.activities || [];
+
+    displayActivities.forEach((act, idx) => {
+      const left = (act.start / maxTime) * 100;
+      const width = ((act.end - act.start) / maxTime) * 100;
+
+      let barClass = 'activity-bar';
+      const isSelected = selected && selected.some(s => s.name === act.name);
+
+      if (isSelected) {
+        barClass += ' selected';
+      }
+      if (considering === idx) {
+        barClass += ' considering';
+        if (compatible || justSelected) barClass += ' compatible';
+        if (overlaps) barClass += ' overlaps';
+      }
+      if (complete && isSelected) {
+        barClass += ' final';
+      }
+
+      html += `<div class="activity-row">`;
+      html += `<span class="activity-name">${act.name}</span>`;
+      html += `<div class="activity-track">`;
+      html += `<div class="${barClass}" style="left: ${left}%; width: ${width}%;">`;
+      html += `<span class="activity-range">${act.start}-${act.end}</span>`;
+      html += `</div>`;
+      html += `</div>`;
+      html += `</div>`;
+    });
+    html += '</div>';
+
+    // Selected activities summary
+    if (selected && selected.length > 0) {
+      html += '<div class="selected-summary">';
+      html += `<span class="summary-label">Selected:</span>`;
+      html += `<span class="summary-items">${selected.map(a => a.name).join(' -> ')}</span>`;
+      html += '</div>';
+    }
+
+    html += '</div>';
+    this.canvas.innerHTML = html;
+  }
+
+  getVariables() {
+    const step = this.steps[this.currentStep] || {};
+    const considering = step.sorted && step.considering >= 0 ? step.sorted[step.considering] : null;
+    return {
+      'current_end': step.currentEnd || 0,
+      'considering': considering ? `${considering.name} [${considering.start},${considering.end}]` : '-',
+      'selected_count': (step.selected || []).length
+    };
+  }
+
+  getInputData() {
+    return {
+      'Problem': 'Activity Selection',
+      'Activities': this.activities.length,
+      'Strategy': 'Earliest finish time'
+    };
+  }
+}
+
+// Knapsack DP Animator (0/1 Knapsack)
+class KnapsackAnimator extends AlgorithmAnimator {
+  constructor(canvasEl, codeEl, stateEl, config) {
+    super(canvasEl, codeEl, stateEl, config);
+
+    // Items: [weight, value, name]
+    this.items = [
+      [2, 3, 'A'],
+      [3, 4, 'B'],
+      [4, 5, 'C'],
+      [5, 6, 'D']
+    ];
+    this.capacity = 8;
+    this.dp = [];
+
+    this.setCode(`def knapsack(items, capacity):
+    n = len(items)
+    # dp[i][w] = max value using first i items with capacity w
+    dp = [[0] * (capacity + 1) for _ in range(n + 1)]
+
+    for i in range(1, n + 1):
+        weight, value = items[i-1]
+        for w in range(capacity + 1):
+            if weight <= w:
+                # Can include item: max of include vs exclude
+                dp[i][w] = max(dp[i-1][w],
+                               dp[i-1][w-weight] + value)
+            else:
+                # Cannot include item
+                dp[i][w] = dp[i-1][w]
+
+    return dp[n][capacity]`);
+  }
+
+  buildSteps() {
+    this.steps = [];
+    const n = this.items.length;
+    const W = this.capacity;
+
+    // Initialize DP table
+    this.dp = Array(n + 1).fill(null).map(() => Array(W + 1).fill(0));
+
+    this.steps.push({
+      lineNum: 1,
+      state: `0/1 Knapsack: ${n} items, capacity ${W}`,
+      dp: this.dp.map(row => [...row]),
+      currentI: -1,
+      currentW: -1,
+      items: this.items.map(([w, v, name]) => ({ weight: w, value: v, name })),
+      apply: () => {}
+    });
+
+    this.steps.push({
+      lineNum: 4,
+      state: `Initialize DP table with zeros (base case: 0 items = 0 value)`,
+      dp: this.dp.map(row => [...row]),
+      currentI: 0,
+      currentW: -1,
+      items: this.items.map(([w, v, name]) => ({ weight: w, value: v, name })),
+      initializing: true,
+      apply: () => {}
+    });
+
+    // Fill DP table
+    for (let i = 1; i <= n; i++) {
+      const [weight, value, name] = this.items[i - 1];
+
+      this.steps.push({
+        lineNum: 6,
+        state: `Consider item ${name}: weight=${weight}, value=${value}`,
+        dp: this.dp.map(row => [...row]),
+        currentI: i,
+        currentW: -1,
+        currentItem: { weight, value, name },
+        items: this.items.map(([w, v, name]) => ({ weight: w, value: v, name })),
+        apply: () => {}
+      });
+
+      for (let w = 0; w <= W; w++) {
+        if (weight <= w) {
+          const exclude = this.dp[i - 1][w];
+          const include = this.dp[i - 1][w - weight] + value;
+
+          this.steps.push({
+            lineNum: 9,
+            state: `w=${w}: Can include ${name}. Exclude=${exclude}, Include=${include}`,
+            dp: this.dp.map(row => [...row]),
+            currentI: i,
+            currentW: w,
+            currentItem: { weight, value, name },
+            items: this.items.map(([w, v, name]) => ({ weight: w, value: v, name })),
+            comparing: true,
+            excludeValue: exclude,
+            includeValue: include,
+            lookupCells: [[i - 1, w], [i - 1, w - weight]],
+            apply: () => {}
+          });
+
+          this.dp[i][w] = Math.max(exclude, include);
+          const chose = include > exclude ? 'include' : 'exclude';
+
+          this.steps.push({
+            lineNum: 10,
+            state: `dp[${i}][${w}] = max(${exclude}, ${include}) = ${this.dp[i][w]} (${chose})`,
+            dp: this.dp.map(row => [...row]),
+            currentI: i,
+            currentW: w,
+            currentItem: { weight, value, name },
+            items: this.items.map(([w, v, name]) => ({ weight: w, value: v, name })),
+            filled: true,
+            choice: chose,
+            apply: () => {}
+          });
+        } else {
+          this.steps.push({
+            lineNum: 13,
+            state: `w=${w}: Cannot include ${name} (weight ${weight} > ${w})`,
+            dp: this.dp.map(row => [...row]),
+            currentI: i,
+            currentW: w,
+            currentItem: { weight, value, name },
+            items: this.items.map(([w, v, name]) => ({ weight: w, value: v, name })),
+            cannotInclude: true,
+            apply: () => {}
+          });
+
+          this.dp[i][w] = this.dp[i - 1][w];
+
+          this.steps.push({
+            lineNum: 14,
+            state: `dp[${i}][${w}] = dp[${i-1}][${w}] = ${this.dp[i][w]}`,
+            dp: this.dp.map(row => [...row]),
+            currentI: i,
+            currentW: w,
+            currentItem: { weight, value, name },
+            items: this.items.map(([w, v, name]) => ({ weight: w, value: v, name })),
+            filled: true,
+            choice: 'exclude',
+            apply: () => {}
+          });
+        }
+      }
+    }
+
+    // Traceback to find selected items
+    const selected = [];
+    let w = W;
+    for (let i = n; i > 0 && w > 0; i--) {
+      if (this.dp[i][w] !== this.dp[i - 1][w]) {
+        selected.push(this.items[i - 1][2]);
+        w -= this.items[i - 1][0];
+      }
+    }
+
+    this.steps.push({
+      lineNum: 16,
+      state: `Maximum value: ${this.dp[n][W]}. Items: ${selected.reverse().join(', ')}`,
+      dp: this.dp.map(row => [...row]),
+      currentI: n,
+      currentW: W,
+      items: this.items.map(([w, v, name]) => ({ weight: w, value: v, name })),
+      complete: true,
+      selectedItems: selected,
+      maxValue: this.dp[n][W],
+      apply: () => {}
+    });
+  }
+
+  render() {
+    const step = this.steps[this.currentStep] || {};
+    const { dp, currentI, currentW, currentItem, comparing, filled, lookupCells, complete, selectedItems, cannotInclude, choice } = step;
+
+    const n = this.items.length;
+    const W = this.capacity;
+
+    let html = '<div class="knapsack-viz">';
+
+    // Items display
+    html += '<div class="knapsack-items">';
+    this.items.forEach(([weight, value, name], idx) => {
+      let itemClass = 'knapsack-item';
+      if (currentItem && currentItem.name === name) itemClass += ' current';
+      if (selectedItems && selectedItems.includes(name)) itemClass += ' selected';
+
+      html += `<div class="${itemClass}">`;
+      html += `<span class="item-name">${name}</span>`;
+      html += `<span class="item-stats">w:${weight} v:${value}</span>`;
+      html += `</div>`;
+    });
+    html += '</div>';
+
+    // DP Table
+    html += '<div class="dp-grid-container">';
+    html += '<table class="dp-grid">';
+
+    // Header row (capacity)
+    html += '<tr><th></th>';
+    for (let w = 0; w <= W; w++) {
+      html += `<th class="capacity-header">w=${w}</th>`;
+    }
+    html += '</tr>';
+
+    // DP rows
+    for (let i = 0; i <= n; i++) {
+      html += '<tr>';
+      html += `<th class="item-header">${i === 0 ? '0' : this.items[i - 1][2]}</th>`;
+
+      for (let w = 0; w <= W; w++) {
+        let cellClass = 'dp-table-cell';
+        const val = dp ? dp[i][w] : 0;
+
+        if (i === currentI && w === currentW) {
+          cellClass += ' current';
+          if (comparing) cellClass += ' comparing';
+          if (filled) cellClass += ' filled';
+          if (cannotInclude) cellClass += ' cannot-include';
+          if (choice === 'include') cellClass += ' included';
+        }
+
+        if (lookupCells) {
+          lookupCells.forEach(([li, lw]) => {
+            if (i === li && w === lw) cellClass += ' lookup';
+          });
+        }
+
+        if (complete && i === n && w === W) cellClass += ' result';
+
+        html += `<td class="${cellClass}">${val}</td>`;
+      }
+      html += '</tr>';
+    }
+
+    html += '</table>';
+    html += '</div>';
+
+    // Current decision info
+    if (comparing) {
+      html += '<div class="decision-info">';
+      html += `<span>Exclude: ${step.excludeValue}</span>`;
+      html += `<span>Include: ${step.includeValue}</span>`;
+      html += '</div>';
+    }
+
+    if (complete) {
+      html += '<div class="knapsack-result">';
+      html += `<span>Max Value: ${step.maxValue}</span>`;
+      html += `<span>Items: ${selectedItems.join(', ')}</span>`;
+      html += '</div>';
+    }
+
+    html += '</div>';
+    this.canvas.innerHTML = html;
+  }
+
+  getVariables() {
+    const step = this.steps[this.currentStep] || {};
+    return {
+      'item': step.currentItem ? `${step.currentItem.name} (w:${step.currentItem.weight}, v:${step.currentItem.value})` : '-',
+      'i': step.currentI >= 0 ? step.currentI : '-',
+      'w': step.currentW >= 0 ? step.currentW : '-',
+      'dp[i][w]': step.dp && step.currentI >= 0 && step.currentW >= 0 ? step.dp[step.currentI][step.currentW] : '-'
+    };
+  }
+
+  getInputData() {
+    return {
+      'Items': this.items.map(([w, v, n]) => `${n}(${w},${v})`).join(' '),
+      'Capacity': this.capacity
+    };
+  }
+}
+
 // Register animations
 animationRegistry['binary-search'] = BinarySearchAnimator;
 animationRegistry['selection-sort'] = SelectionSortAnimator;
 animationRegistry['bfs'] = BFSAnimator;
 animationRegistry['call-stack'] = CallStackAnimator;
+animationRegistry['dfs'] = DFSAnimator;
+animationRegistry['linked-list'] = LinkedListAnimator;
+animationRegistry['two-pointers'] = TwoPointersAnimator;
+animationRegistry['quicksort'] = QuicksortAnimator;
+animationRegistry['hash-table'] = HashTableAnimator;
+animationRegistry['dijkstra'] = DijkstraAnimator;
+animationRegistry['memoization'] = MemoizationAnimator;
+animationRegistry['topsort'] = TopSortAnimator;
+animationRegistry['string-match'] = StringMatchAnimator;
+animationRegistry['backtracking'] = BacktrackingAnimator;
+animationRegistry['permutations'] = PermutationsAnimator;
+animationRegistry['iterative-dp'] = IterativeDPAnimator;
+animationRegistry['rotated-array'] = RotatedArrayAnimator;
+animationRegistry['merge-sort'] = MergeSortAnimator;
+animationRegistry['sliding-window'] = SlidingWindowAnimator;
+animationRegistry['binary-tree'] = BinaryTreeAnimator;
+animationRegistry['heap'] = HeapAnimator;
+animationRegistry['greedy'] = GreedyAnimator;
+animationRegistry['knapsack'] = KnapsackAnimator;
 
 // Current animation instance
 let currentAnimator = null;

@@ -17,7 +17,26 @@ An interactive Data Structures and Algorithms tutor with step-by-step visualizat
 | Binary Search | Array visualization with low/mid/high pointers |
 | Selection Sort | Bar chart with scanning, minimum tracking, and swaps |
 | BFS | Graph traversal with queue visualization |
+| DFS | Depth-first traversal with stack visualization |
 | Call Stack | Recursion visualization with stack frames |
+| Linked List | Node traversal and search operations |
+| Two Pointers | Floyd's cycle detection with slow/fast pointers |
+| Quicksort | Pivot selection and partitioning with bar chart |
+| Hash Table | Bucket visualization with collision chaining |
+| Dijkstra | Weighted graph with distance table and relaxation |
+| Memoization | Fibonacci with memo table and call stack |
+| Topological Sort | DAG ordering with in-degree tracking |
+| Greedy | Activity selection with interval scheduling |
+| String Match | Pattern matching with character comparison |
+| Backtracking | N-Queens problem with conflict detection |
+| Permutations | Generate permutations with backtracking |
+| Iterative DP | Bottom-up Fibonacci with table filling |
+| Rotated Array | Binary search on rotated sorted array |
+| Merge Sort | Divide and conquer with merge visualization |
+| Sliding Window | Fixed-size window maximum sum |
+| Binary Tree | Inorder/preorder/postorder traversals |
+| Heap | Min-heap insertion with bubble-up |
+| Knapsack | 0/1 Knapsack DP with 2D table filling |
 
 ## Quick Start
 

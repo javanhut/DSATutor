@@ -196,7 +196,26 @@ const animationRegistry = {
   'binary-search': BinarySearchAnimator,
   'selection-sort': SelectionSortAnimator,
   'bfs': BFSAnimator,
+  'dfs': DFSAnimator,
   'call-stack': CallStackAnimator,
+  'linked-list': LinkedListAnimator,
+  'two-pointers': TwoPointersAnimator,
+  'quicksort': QuicksortAnimator,
+  'hash-table': HashTableAnimator,
+  'dijkstra': DijkstraAnimator,
+  'memoization': MemoizationAnimator,
+  'topsort': TopSortAnimator,
+  'greedy': GreedyAnimator,
+  'string-match': StringMatchAnimator,
+  'backtracking': BacktrackingAnimator,
+  'permutations': PermutationsAnimator,
+  'iterative-dp': IterativeDPAnimator,
+  'rotated-array': RotatedArrayAnimator,
+  'merge-sort': MergeSortAnimator,
+  'sliding-window': SlidingWindowAnimator,
+  'binary-tree': BinaryTreeAnimator,
+  'heap': HeapAnimator,
+  'knapsack': KnapsackAnimator,
 };
 ```
 
@@ -244,25 +263,135 @@ Each animation step contains:
 
 ## Available Animators
 
-### BinarySearchAnimator
+### BinarySearchAnimator (`binary-search`)
 - Shows array with low/mid/high pointers
 - Highlights discarded portions
 - Demonstrates halving search space
 
-### SelectionSortAnimator
+### SelectionSortAnimator (`selection-sort`)
 - Bar chart visualization with heights
 - Shows scanning pointer, minimum tracking
 - Animates swaps between elements
 
-### BFSAnimator
+### BFSAnimator (`bfs`)
 - Graph visualization with nodes and edges
 - Queue display showing frontier
 - Visit order tracking
 
-### CallStackAnimator
+### DFSAnimator (`dfs`)
+- Graph visualization with stack-based traversal
+- Stack display (LIFO) showing current path
+- Highlights visited vs in-stack nodes
+
+### CallStackAnimator (`call-stack`)
 - Stack frame visualization
 - Shows push/pop phases
 - Demonstrates recursion unwinding
+
+### LinkedListAnimator (`linked-list`)
+- Node chain visualization
+- Current pointer tracking
+- Search operation with comparison highlighting
+
+### TwoPointersAnimator (`two-pointers`)
+- Floyd's cycle detection (tortoise and hare)
+- Slow pointer (1 step) vs fast pointer (2 steps)
+- Cycle detection visualization
+
+### QuicksortAnimator (`quicksort`)
+- Bar chart visualization
+- Pivot selection and partitioning
+- Recursive subdivision tracking
+
+### HashTableAnimator (`hash-table`)
+- Bucket array visualization
+- Hash calculation display
+- Collision handling with chaining
+
+### DijkstraAnimator (`dijkstra`)
+- Weighted graph with edge labels
+- Distance table showing shortest paths
+- Edge relaxation animation
+
+### MemoizationAnimator (`memoization`)
+- Fibonacci with memoization
+- Memo table showing cached results
+- Call stack visualization
+- Memo hits highlighted
+
+### TopSortAnimator (`topsort`)
+- DAG visualization with in-degrees
+- Queue of zero in-degree nodes
+- Result order building
+
+### GreedyAnimator (`greedy`)
+- Activity selection / interval scheduling
+- Timeline visualization with activities
+- Current end marker tracking
+- Compatible vs overlapping activity detection
+- Selected activities summary
+
+### StringMatchAnimator (`string-match`)
+- Text and pattern character display
+- Character-by-character comparison
+- Match/mismatch highlighting
+- Pattern sliding visualization
+
+### BacktrackingAnimator (`backtracking`)
+- N-Queens chessboard visualization
+- Safe position checking
+- Queen placement and removal
+- Conflict detection highlighting
+
+### PermutationsAnimator (`permutations`)
+- Path and remaining elements display
+- Element selection visualization
+- Backtracking animation
+- Generated permutations list
+
+### IterativeDPAnimator (`iterative-dp`)
+- Bottom-up DP table filling
+- Base case initialization
+- Dependency highlighting
+- Formula visualization
+
+### RotatedArrayAnimator (`rotated-array`)
+- Rotated sorted array display
+- Pivot point identification
+- Sorted half detection
+- Binary search pointer tracking
+
+### MergeSortAnimator (`merge-sort`)
+- Divide phase tree visualization
+- Array splitting animation
+- Merge phase comparison
+- Sorted subarrays combining
+
+### SlidingWindowAnimator (`sliding-window`)
+- Array with window boundaries
+- Element add/remove animation
+- Window sum tracking
+- Maximum sum display
+
+### BinaryTreeAnimator (`binary-tree`)
+- SVG tree structure
+- Node traversal animation
+- Inorder result tracking
+- Current node highlighting
+
+### HeapAnimator (`heap`)
+- Tree and array representation
+- Bubble-up animation
+- Parent-child comparisons
+- Min-heap property visualization
+
+### KnapsackAnimator (`knapsack`)
+- 0/1 Knapsack dynamic programming
+- 2D DP table visualization
+- Item display with weight and value
+- Cell highlighting for current, lookup, and result states
+- Include vs exclude decision display
+- Final result with selected items traceback
 
 ## Adding a New Algorithm Animation
 
