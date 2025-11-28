@@ -16,6 +16,10 @@
       </div>
       <nav class="sidebar-nav" id="chapters"></nav>
       <div class="sidebar-footer">
+        <button id="sandbox-toggle" class="sidebar-btn" title="Sandbox Mode">
+          <span class="btn-icon">S</span>
+          <span class="btn-text">Sandbox</span>
+        </button>
         <button id="reload" class="sidebar-btn" title="Reload">
           <span class="btn-icon">R</span>
           <span class="btn-text">Reload</span>
@@ -30,6 +34,153 @@
         <div class="empty-icon">DSA</div>
         <h2>Select a Chapter</h2>
         <p>Choose a chapter from the sidebar to begin learning algorithms with interactive visualizations.</p>
+      </div>
+
+      <!-- Sandbox Mode -->
+      <div id="sandbox-mode" class="hidden">
+        <!-- Sandbox Header -->
+        <header class="content-header">
+          <div class="header-info">
+            <span class="chapter-badge sandbox-badge">SANDBOX</span>
+            <h1>Python Sandbox</h1>
+          </div>
+          <div class="header-controls">
+            <div class="control-group">
+              <button id="sandbox-run" class="btn-small primary">Run Code</button>
+              <button id="sandbox-clear" class="btn-small ghost">Clear</button>
+            </div>
+          </div>
+        </header>
+
+        <!-- Sandbox Workspace -->
+        <section class="workspace sandbox-workspace">
+          <!-- Animation Controls (same as chapter mode) -->
+          <div class="workspace-controls">
+            <div class="control-buttons">
+              <button id="sandbox-reset" class="ctrl-btn" title="Reset">Reset</button>
+              <button id="sandbox-step-back" class="ctrl-btn" title="Step Back">Back</button>
+              <button id="sandbox-play" class="ctrl-btn primary" title="Play/Pause">Play</button>
+              <button id="sandbox-step" class="ctrl-btn" title="Step Forward">Step</button>
+            </div>
+            <div class="control-meta">
+              <span id="sandbox-step-counter" class="step-counter">Step 0/0</span>
+              <label class="speed-slider">
+                <input type="range" id="sandbox-speed" min="1" max="10" value="5">
+                <span>Speed</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Sandbox Main Area -->
+          <div class="workspace-main sandbox-main">
+            <!-- Code Editor Panel -->
+            <div class="panel code-panel sandbox-code-panel">
+              <div class="panel-header">
+                <h3>Python Code</h3>
+                <span class="panel-meta">Write your algorithm here</span>
+              </div>
+              <div class="panel-body">
+                <textarea id="sandbox-code" class="sandbox-editor" placeholder="# Write your Python code here
+# Available helper classes:
+#   ListNode(val, next=None)  - for linked lists
+#   TreeNode(val, left=None, right=None)  - for binary trees
+#   GraphNode(val, neighbors=[])  - for graphs
+#
+# Available modules:
+#   math, random, heapq, itertools, functools
+#   deque, defaultdict, Counter from collections
+#
+# Example:
+def binary_search(arr, target):
+    low, high = 0, len(arr) - 1
+    while low <= high:
+        mid = (low + high) // 2
+        if arr[mid] == target:
+            return mid
+        elif arr[mid] < target:
+            low = mid + 1
+        else:
+            high = mid - 1
+    return -1
+
+arr = [1, 3, 5, 7, 9, 11, 13]
+result = binary_search(arr, 7)
+print(f'Found at index: {result}')
+"></textarea>
+              </div>
+            </div>
+
+            <!-- Visualization Panel -->
+            <div class="panel viz-panel">
+              <div class="panel-header">
+                <h3>Visualization</h3>
+                <span id="sandbox-viz-meta" class="panel-meta"></span>
+              </div>
+              <div class="panel-body">
+                <div id="sandbox-canvas" class="viz-canvas"></div>
+              </div>
+            </div>
+
+            <!-- Variables Panel -->
+            <div class="panel vars-panel">
+              <div class="panel-header">
+                <h3>Variables</h3>
+              </div>
+              <div class="panel-body">
+                <div id="sandbox-vars" class="vars-display"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- State Description -->
+          <div class="workspace-state">
+            <div id="sandbox-state" class="state-text">Click "Run Code" to execute your Python code and visualize the algorithm.</div>
+          </div>
+        </section>
+
+        <!-- Sandbox Output Section -->
+        <div class="info-sections">
+          <details class="info-section" open>
+            <summary>Output</summary>
+            <div class="info-content">
+              <pre id="sandbox-output" class="sandbox-output"></pre>
+            </div>
+          </details>
+
+          <details class="info-section">
+            <summary>Execution Info</summary>
+            <div class="info-content">
+              <div id="sandbox-info" class="sandbox-info">
+                <p><strong>Step Limit:</strong> 1000 steps maximum</p>
+                <p><strong>Timeout:</strong> 10 seconds maximum</p>
+                <p><strong>Detected Structures:</strong> <span id="sandbox-structures">None</span></p>
+              </div>
+            </div>
+          </details>
+
+          <details class="info-section">
+            <summary>Available Helpers</summary>
+            <div class="info-content">
+              <div class="helpers-grid">
+                <div>
+                  <h4>ListNode</h4>
+                  <code>ListNode(val, next=None)</code>
+                  <p>Create linked list nodes. Attributes: val, next</p>
+                </div>
+                <div>
+                  <h4>TreeNode</h4>
+                  <code>TreeNode(val, left=None, right=None)</code>
+                  <p>Create binary tree nodes. Attributes: val, left, right</p>
+                </div>
+                <div>
+                  <h4>GraphNode</h4>
+                  <code>GraphNode(val, neighbors=[])</code>
+                  <p>Create graph nodes. Attributes: val, neighbors</p>
+                </div>
+              </div>
+            </div>
+          </details>
+        </div>
       </div>
 
       <!-- Chapter Detail -->

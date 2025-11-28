@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"dsatutor/internal/chapter"
+	"dsatutor/internal/sandbox"
 )
 
 //go:embed static/*
@@ -49,6 +50,7 @@ func (s *Server) Listen(addr string) error {
 
 func (s *Server) routes() {
 	s.mux.HandleFunc("/api/chapters", s.handleChapters)
+	s.mux.HandleFunc("/api/sandbox/execute", s.handleSandboxExecute)
 	s.mux.HandleFunc("/", s.handleIndex)
 	s.mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticSub))))
 }
@@ -69,4 +71,42 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write(data)
+}
+
+func (s *Server) handleSandboxExecute(w http.ResponseWriter, r *http.Request) {
+	// Only allow POST
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Parse request
+	var req sandbox.ExecuteRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(sandbox.ExecuteResponse{
+			Success: false,
+			Steps:   []sandbox.Step{},
+			Error:   "Invalid request: " + err.Error(),
+		})
+		return
+	}
+
+	// Execute code
+	response, err := sandbox.Execute(req)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(sandbox.ExecuteResponse{
+			Success: false,
+			Steps:   []sandbox.Step{},
+			Error:   "Execution error: " + err.Error(),
+		})
+		return
+	}
+
+	// Return result
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }

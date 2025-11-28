@@ -4794,6 +4794,637 @@ class KnapsackAnimator extends AlgorithmAnimator {
   }
 }
 
+// Sandbox Animator - Dynamic visualization of user Python code
+class SandboxAnimator extends AlgorithmAnimator {
+  constructor(canvasEl, codeEl, stateEl, config) {
+    super(canvasEl, codeEl, stateEl, config);
+    this.executionTrace = null;
+    this.currentLocals = {};
+    this.currentStructures = [];
+    this.userCode = '';
+    this.varsEl = document.getElementById('sandbox-vars');
+    this.inputEl = null;
+  }
+
+  async executeCode(code) {
+    this.userCode = code;
+    this.setCode(code);
+
+    try {
+      const response = await fetch('/api/sandbox/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, timeout: 10000 })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        this.executionTrace = result;
+        this.buildStepsFromTrace();
+        this.updateStepCounter();
+        if (this.steps.length > 0) {
+          this.goToStep(0);
+        }
+        return { success: true, output: result.output, stepCount: this.steps.length };
+      } else {
+        return { success: false, error: result.error };
+      }
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  buildStepsFromTrace() {
+    if (!this.executionTrace || !this.executionTrace.steps) {
+      this.steps = [];
+      return;
+    }
+
+    this.steps = this.executionTrace.steps.map((traceStep, idx) => ({
+      lineNum: traceStep.lineNum,
+      state: traceStep.state || `Line ${traceStep.lineNum}`,
+      locals: traceStep.locals || {},
+      structures: traceStep.structures || [],
+      apply: () => {
+        this.currentLocals = traceStep.locals || {};
+        this.currentStructures = traceStep.structures || [];
+      }
+    }));
+  }
+
+  buildSteps() {
+    // Override - steps are built from trace
+    if (this.executionTrace) {
+      this.buildStepsFromTrace();
+    }
+  }
+
+  render() {
+    if (!this.canvas) return;
+
+    if (!this.currentStructures || this.currentStructures.length === 0) {
+      this.canvas.innerHTML = '<div class="sandbox-empty">No data structures detected in current step</div>';
+      return;
+    }
+
+    let html = '<div class="sandbox-viz">';
+
+    this.currentStructures.forEach(struct => {
+      html += `<div class="structure-section">`;
+      html += `<div class="structure-header"><span class="structure-name">${escapeHtml(struct.name)}</span><span class="structure-type">${struct.type}</span></div>`;
+
+      switch (struct.type) {
+        case 'array':
+          html += this.renderArray(struct.data, struct.highlights);
+          break;
+        case 'linked_list':
+          html += this.renderLinkedList(struct.data);
+          break;
+        case 'binary_tree':
+          html += this.renderBinaryTree(struct.data);
+          break;
+        case 'graph':
+          html += this.renderGraph(struct.data);
+          break;
+        case 'hash_table':
+          html += this.renderHashTable(struct.data);
+          break;
+        case 'set':
+          html += this.renderSet(struct.data);
+          break;
+        default:
+          html += `<div class="structure-data">${escapeHtml(JSON.stringify(struct.data))}</div>`;
+      }
+
+      html += '</div>';
+    });
+
+    html += '</div>';
+    this.canvas.innerHTML = html;
+  }
+
+  renderArray(data, highlights) {
+    if (!Array.isArray(data)) return '<div class="error">Invalid array data</div>';
+
+    let html = '<div class="array-viz">';
+    data.forEach((val, idx) => {
+      let classes = ['array-cell'];
+
+      if (highlights) {
+        Object.entries(highlights).forEach(([name, hIdx]) => {
+          if (hIdx === idx) {
+            classes.push('highlight');
+            classes.push(`ptr-${name}`);
+          }
+        });
+      }
+
+      html += `<div class="${classes.join(' ')}">`;
+      html += `<div class="cell-value">${escapeHtml(String(val))}</div>`;
+      html += `<div class="cell-index">${idx}</div>`;
+
+      // Show pointer labels
+      if (highlights) {
+        const pointers = Object.entries(highlights)
+          .filter(([_, hIdx]) => hIdx === idx)
+          .map(([name, _]) => name);
+        if (pointers.length > 0) {
+          html += `<div class="cell-pointers">${pointers.join(', ')}</div>`;
+        }
+      }
+
+      html += '</div>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  renderLinkedList(data) {
+    if (!data || !data.nodes) return '<div class="error">Invalid linked list data</div>';
+
+    let html = '<div class="linked-list-viz">';
+    data.nodes.forEach((node, idx) => {
+      html += `<div class="list-node">`;
+      html += `<div class="node-val">${escapeHtml(String(node.val))}</div>`;
+      html += '</div>';
+      if (idx < data.nodes.length - 1) {
+        html += '<div class="list-arrow">-&gt;</div>';
+      }
+    });
+    if (data.hasCycle) {
+      html += '<div class="cycle-indicator">(cycle detected)</div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  renderBinaryTree(data) {
+    if (!data) return '<div class="tree-empty">Empty tree</div>';
+
+    // Calculate tree dimensions
+    const getDepth = (node) => {
+      if (!node) return 0;
+      return 1 + Math.max(getDepth(node.left), getDepth(node.right));
+    };
+
+    const depth = getDepth(data);
+    const width = Math.pow(2, depth) * 60;
+    const height = depth * 80;
+
+    let html = `<div class="binary-tree-viz" style="min-width: ${width}px; min-height: ${height}px;">`;
+    html += '<svg class="tree-svg" width="100%" height="100%" viewBox="0 0 ' + width + ' ' + height + '">';
+
+    // Render nodes recursively
+    const renderNode = (node, x, y, spread) => {
+      if (!node) return '';
+
+      let svg = '';
+      const nodeRadius = 20;
+      const verticalGap = 70;
+
+      // Draw edges first
+      if (node.left) {
+        const childX = x - spread / 2;
+        const childY = y + verticalGap;
+        svg += `<line x1="${x}" y1="${y + nodeRadius}" x2="${childX}" y2="${childY - nodeRadius}" class="tree-edge"/>`;
+        svg += renderNode(node.left, childX, childY, spread / 2);
+      }
+      if (node.right) {
+        const childX = x + spread / 2;
+        const childY = y + verticalGap;
+        svg += `<line x1="${x}" y1="${y + nodeRadius}" x2="${childX}" y2="${childY - nodeRadius}" class="tree-edge"/>`;
+        svg += renderNode(node.right, childX, childY, spread / 2);
+      }
+
+      // Draw node
+      svg += `<circle cx="${x}" cy="${y}" r="${nodeRadius}" class="tree-node"/>`;
+      svg += `<text x="${x}" y="${y + 5}" class="tree-label">${escapeHtml(String(node.val))}</text>`;
+
+      return svg;
+    };
+
+    html += renderNode(data, width / 2, 30, width / 4);
+    html += '</svg></div>';
+    return html;
+  }
+
+  renderGraph(data) {
+    if (!data || !data.nodes) return '<div class="error">Invalid graph data</div>';
+
+    const nodes = data.nodes;
+    const edges = data.edges || [];
+
+    // Simple circular layout
+    const width = 400;
+    const height = 300;
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const radius = Math.min(width, height) / 3;
+
+    const positions = {};
+    nodes.forEach((node, idx) => {
+      const angle = (2 * Math.PI * idx) / nodes.length - Math.PI / 2;
+      positions[node] = {
+        x: centerX + radius * Math.cos(angle),
+        y: centerY + radius * Math.sin(angle)
+      };
+    });
+
+    let html = `<div class="graph-viz">`;
+    html += `<svg class="graph-svg" viewBox="0 0 ${width} ${height}">`;
+
+    // Draw edges
+    edges.forEach(edge => {
+      const from = positions[edge.from];
+      const to = positions[edge.to];
+      if (from && to) {
+        html += `<line x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}" class="graph-edge"/>`;
+      }
+    });
+
+    // Draw nodes
+    nodes.forEach(node => {
+      const pos = positions[node];
+      html += `<circle cx="${pos.x}" cy="${pos.y}" r="20" class="graph-node"/>`;
+      html += `<text x="${pos.x}" y="${pos.y + 5}" class="graph-label">${escapeHtml(String(node))}</text>`;
+    });
+
+    html += '</svg></div>';
+    return html;
+  }
+
+  renderHashTable(data) {
+    if (!data || typeof data !== 'object') return '<div class="error">Invalid hash table data</div>';
+
+    let html = '<div class="hash-table-viz">';
+    Object.entries(data).forEach(([key, value]) => {
+      html += `<div class="hash-entry">`;
+      html += `<span class="hash-key">${escapeHtml(key)}</span>`;
+      html += `<span class="hash-arrow">:</span>`;
+      html += `<span class="hash-value">${escapeHtml(JSON.stringify(value))}</span>`;
+      html += '</div>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  renderSet(data) {
+    if (!Array.isArray(data)) return '<div class="error">Invalid set data</div>';
+
+    let html = '<div class="set-viz">';
+    html += '<span class="set-brace">{</span>';
+    data.forEach((val, idx) => {
+      html += `<span class="set-item">${escapeHtml(String(val))}</span>`;
+      if (idx < data.length - 1) {
+        html += '<span class="set-comma">, </span>';
+      }
+    });
+    html += '<span class="set-brace">}</span>';
+    html += '</div>';
+    return html;
+  }
+
+  getVariables() {
+    return this.currentLocals || {};
+  }
+
+  updateStepCounter() {
+    const counter = document.getElementById('sandbox-step-counter');
+    if (counter) {
+      counter.textContent = `Step ${this.currentStep + 1}/${this.steps.length}`;
+    }
+  }
+
+  reset() {
+    this.pause();
+    this.currentStep = 0;
+    if (this.steps.length > 0) {
+      this.goToStep(0);
+    }
+  }
+}
+
+// Sandbox state
+const sandboxState = {
+  isActive: false,
+  animator: null,
+  isExecuting: false
+};
+
+// Toggle sandbox mode
+function toggleSandboxMode() {
+  sandboxState.isActive = !sandboxState.isActive;
+
+  const sandboxMode = document.getElementById('sandbox-mode');
+  const detailEmpty = document.getElementById('detail-empty');
+  const detail = document.getElementById('detail');
+  const toggleBtn = document.getElementById('sandbox-toggle');
+
+  if (sandboxState.isActive) {
+    // Activate sandbox mode
+    sandboxMode.classList.remove('hidden');
+    detailEmpty.classList.add('hidden');
+    detail.classList.add('hidden');
+
+    if (toggleBtn) {
+      toggleBtn.classList.add('active');
+    }
+
+    // Initialize sandbox animator if not already
+    if (!sandboxState.animator) {
+      initSandboxAnimator();
+    }
+
+    // Deselect any chapter
+    document.querySelectorAll('.chapter-item').forEach(el => el.classList.remove('active'));
+  } else {
+    // Deactivate sandbox mode
+    sandboxMode.classList.add('hidden');
+
+    if (toggleBtn) {
+      toggleBtn.classList.remove('active');
+    }
+
+    // Show empty state if no chapter selected
+    if (!state.current) {
+      detailEmpty.classList.remove('hidden');
+    } else {
+      detail.classList.remove('hidden');
+    }
+
+    // Cleanup animator
+    if (sandboxState.animator) {
+      sandboxState.animator.pause();
+    }
+  }
+}
+
+function initSandboxAnimator() {
+  const canvas = document.getElementById('sandbox-canvas');
+  const codeEl = document.getElementById('code-lines');
+  const stateEl = document.getElementById('sandbox-state');
+
+  sandboxState.animator = new SandboxAnimator(canvas, codeEl, stateEl, {});
+}
+
+async function runSandboxCode() {
+  if (sandboxState.isExecuting) return;
+
+  const codeTextarea = document.getElementById('sandbox-code');
+  const outputEl = document.getElementById('sandbox-output');
+  const stateEl = document.getElementById('sandbox-state');
+  const runBtn = document.getElementById('sandbox-run');
+  const structuresEl = document.getElementById('sandbox-structures');
+
+  const code = codeTextarea.value.trim();
+  if (!code) {
+    outputEl.textContent = 'Error: No code provided';
+    return;
+  }
+
+  // Update UI for execution
+  sandboxState.isExecuting = true;
+  runBtn.textContent = 'Running...';
+  runBtn.disabled = true;
+  stateEl.textContent = 'Executing code...';
+  outputEl.textContent = '';
+
+  try {
+    if (!sandboxState.animator) {
+      initSandboxAnimator();
+    }
+
+    const result = await sandboxState.animator.executeCode(code);
+
+    if (result.success) {
+      outputEl.textContent = result.output || '(no output)';
+      stateEl.textContent = `Execution complete. ${result.stepCount} steps captured. Use controls to step through.`;
+
+      // Update detected structures
+      const structures = sandboxState.animator.currentStructures;
+      if (structures && structures.length > 0) {
+        const types = [...new Set(structures.map(s => s.type))];
+        structuresEl.textContent = types.join(', ');
+      } else {
+        structuresEl.textContent = 'None detected';
+      }
+    } else {
+      outputEl.textContent = `Error: ${result.error}`;
+      stateEl.textContent = 'Execution failed. Check the error above.';
+      structuresEl.textContent = 'None';
+    }
+  } catch (err) {
+    outputEl.textContent = `Error: ${err.message}`;
+    stateEl.textContent = 'Execution failed.';
+  } finally {
+    sandboxState.isExecuting = false;
+    runBtn.textContent = 'Run Code';
+    runBtn.disabled = false;
+  }
+}
+
+function clearSandbox() {
+  const codeTextarea = document.getElementById('sandbox-code');
+  const outputEl = document.getElementById('sandbox-output');
+  const stateEl = document.getElementById('sandbox-state');
+  const canvas = document.getElementById('sandbox-canvas');
+  const varsEl = document.getElementById('sandbox-vars');
+  const structuresEl = document.getElementById('sandbox-structures');
+  const stepCounter = document.getElementById('sandbox-step-counter');
+
+  codeTextarea.value = '';
+  outputEl.textContent = '';
+  stateEl.textContent = 'Click "Run Code" to execute your Python code and visualize the algorithm.';
+  canvas.innerHTML = '';
+  varsEl.innerHTML = '<div class="vars-empty">No variables tracked</div>';
+  structuresEl.textContent = 'None';
+  stepCounter.textContent = 'Step 0/0';
+
+  if (sandboxState.animator) {
+    sandboxState.animator.steps = [];
+    sandboxState.animator.currentStep = 0;
+    sandboxState.animator.currentLocals = {};
+    sandboxState.animator.currentStructures = [];
+  }
+}
+
+// Handle Python-specific indentation in the code editor
+function handlePythonIndentation(e) {
+  const textarea = e.target;
+  const INDENT = '    '; // 4 spaces for Python
+  const INDENT_SIZE = 4;
+
+  // Get cursor position and text
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const value = textarea.value;
+
+  // Find the start of the current line
+  const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+  const lineEnd = value.indexOf('\n', start);
+  const currentLine = value.substring(lineStart, lineEnd === -1 ? value.length : lineEnd);
+
+  // Get current line's indentation
+  const currentIndent = currentLine.match(/^(\s*)/)[1];
+
+  if (e.key === 'Tab') {
+    e.preventDefault();
+
+    if (e.shiftKey) {
+      // Shift+Tab: Dedent
+      if (start === end) {
+        // No selection - dedent current line
+        if (currentIndent.length >= INDENT_SIZE) {
+          const newIndent = currentIndent.substring(INDENT_SIZE);
+          const newValue = value.substring(0, lineStart) + newIndent + currentLine.trimStart() + value.substring(lineEnd === -1 ? value.length : lineEnd);
+          textarea.value = newValue;
+          textarea.selectionStart = textarea.selectionEnd = start - INDENT_SIZE;
+        }
+      } else {
+        // Selection - dedent all selected lines
+        const selStart = value.lastIndexOf('\n', start - 1) + 1;
+        const selEnd = value.indexOf('\n', end - 1);
+        const selectedText = value.substring(selStart, selEnd === -1 ? value.length : selEnd);
+        const lines = selectedText.split('\n');
+        const dedentedLines = lines.map(line => {
+          if (line.startsWith(INDENT)) {
+            return line.substring(INDENT_SIZE);
+          } else if (line.match(/^\s+/)) {
+            return line.replace(/^\s{1,4}/, '');
+          }
+          return line;
+        });
+        const newText = dedentedLines.join('\n');
+        textarea.value = value.substring(0, selStart) + newText + value.substring(selEnd === -1 ? value.length : selEnd);
+        textarea.selectionStart = selStart;
+        textarea.selectionEnd = selStart + newText.length;
+      }
+    } else {
+      // Tab: Indent
+      if (start === end) {
+        // No selection - insert tab at cursor
+        textarea.value = value.substring(0, start) + INDENT + value.substring(end);
+        textarea.selectionStart = textarea.selectionEnd = start + INDENT_SIZE;
+      } else {
+        // Selection - indent all selected lines
+        const selStart = value.lastIndexOf('\n', start - 1) + 1;
+        const selEnd = value.indexOf('\n', end - 1);
+        const selectedText = value.substring(selStart, selEnd === -1 ? value.length : selEnd);
+        const lines = selectedText.split('\n');
+        const indentedLines = lines.map(line => INDENT + line);
+        const newText = indentedLines.join('\n');
+        textarea.value = value.substring(0, selStart) + newText + value.substring(selEnd === -1 ? value.length : selEnd);
+        textarea.selectionStart = selStart;
+        textarea.selectionEnd = selStart + newText.length;
+      }
+    }
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+
+    // Check if previous line ends with a colon (Python block start)
+    const trimmedLine = currentLine.trimEnd();
+    const endsWithColon = trimmedLine.endsWith(':');
+
+    // Calculate new indentation
+    let newIndent = currentIndent;
+    if (endsWithColon) {
+      // Increase indent after colon
+      newIndent = currentIndent + INDENT;
+    }
+
+    // Check for dedent keywords at start of line
+    const dedentKeywords = ['return', 'break', 'continue', 'pass', 'raise'];
+    const lineContent = currentLine.trim();
+    const shouldDedent = dedentKeywords.some(kw =>
+      lineContent === kw || lineContent.startsWith(kw + ' ')
+    );
+
+    // Insert newline with appropriate indentation
+    textarea.value = value.substring(0, start) + '\n' + newIndent + value.substring(end);
+    textarea.selectionStart = textarea.selectionEnd = start + 1 + newIndent.length;
+  } else if (e.key === 'Backspace' && start === end) {
+    // Smart backspace: delete entire indent if cursor is in leading whitespace
+    const beforeCursor = value.substring(lineStart, start);
+    if (beforeCursor.length > 0 && beforeCursor.trim() === '') {
+      // Cursor is in leading whitespace
+      const spacesToDelete = beforeCursor.length % INDENT_SIZE || INDENT_SIZE;
+      if (spacesToDelete > 0 && beforeCursor.length >= spacesToDelete) {
+        e.preventDefault();
+        textarea.value = value.substring(0, start - spacesToDelete) + value.substring(start);
+        textarea.selectionStart = textarea.selectionEnd = start - spacesToDelete;
+      }
+    }
+  }
+}
+
+function setupSandboxControls() {
+  const toggleBtn = document.getElementById('sandbox-toggle');
+  const runBtn = document.getElementById('sandbox-run');
+  const clearBtn = document.getElementById('sandbox-clear');
+  const stepBtn = document.getElementById('sandbox-step');
+  const stepBackBtn = document.getElementById('sandbox-step-back');
+  const playBtn = document.getElementById('sandbox-play');
+  const resetBtn = document.getElementById('sandbox-reset');
+  const speedSlider = document.getElementById('sandbox-speed');
+  const codeTextarea = document.getElementById('sandbox-code');
+
+  // Setup Python code editor indentation handling
+  if (codeTextarea) {
+    codeTextarea.addEventListener('keydown', handlePythonIndentation);
+  }
+
+  if (toggleBtn) {
+    toggleBtn.onclick = toggleSandboxMode;
+  }
+
+  if (runBtn) {
+    runBtn.onclick = runSandboxCode;
+  }
+
+  if (clearBtn) {
+    clearBtn.onclick = clearSandbox;
+  }
+
+  if (stepBtn) {
+    stepBtn.onclick = () => {
+      if (sandboxState.animator) sandboxState.animator.stepForward();
+    };
+  }
+
+  if (stepBackBtn) {
+    stepBackBtn.onclick = () => {
+      if (sandboxState.animator) sandboxState.animator.stepBack();
+    };
+  }
+
+  if (playBtn) {
+    playBtn.onclick = () => {
+      if (sandboxState.animator) {
+        const playing = sandboxState.animator.togglePlay();
+        playBtn.textContent = playing ? 'Pause' : 'Play';
+      }
+    };
+  }
+
+  if (resetBtn) {
+    resetBtn.onclick = () => {
+      if (sandboxState.animator) {
+        sandboxState.animator.reset();
+        if (playBtn) playBtn.textContent = 'Play';
+      }
+    };
+  }
+
+  if (speedSlider) {
+    speedSlider.oninput = (e) => {
+      if (sandboxState.animator) {
+        sandboxState.animator.setSpeed(parseInt(e.target.value, 10));
+      }
+    };
+  }
+}
+
 // Register animations
 animationRegistry['binary-search'] = BinarySearchAnimator;
 animationRegistry['selection-sort'] = SelectionSortAnimator;
@@ -5312,6 +5943,9 @@ el("download-json").onclick = downloadJSON;
 
 // Initialize animation controls
 setupAnimationControls();
+
+// Initialize sandbox controls
+setupSandboxControls();
 
 loadChapters().catch((err) => {
   console.error(err);

@@ -3176,3 +3176,455 @@ button.ghost:hover {
   font-weight: 600;
   color: var(--accent-2);
 }
+
+/* ============================================
+   SANDBOX MODE STYLES
+   ============================================ */
+
+/* Sandbox Badge */
+.sandbox-badge {
+  background: linear-gradient(135deg, var(--accent-3), var(--accent));
+  color: #000;
+}
+
+/* Sandbox Toggle Button Active State */
+.sidebar-btn.active {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.sidebar-btn.active .btn-icon {
+  color: var(--bg);
+}
+
+/* Sandbox Workspace */
+.sandbox-workspace {
+  padding: 16px 24px;
+}
+
+.sandbox-main {
+  display: grid;
+  grid-template-columns: 1fr 1fr 280px;
+  gap: 16px;
+  min-height: 400px;
+}
+
+/* Sandbox Code Editor */
+.sandbox-code-panel {
+  min-width: 0;
+}
+
+.sandbox-editor {
+  width: 100%;
+  height: 100%;
+  min-height: 350px;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+  resize: vertical;
+}
+
+.sandbox-editor:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.sandbox-editor::placeholder {
+  color: var(--text-dim);
+  opacity: 0.6;
+}
+
+/* Sandbox Output */
+.sandbox-output {
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* Sandbox Info */
+.sandbox-info {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.sandbox-info p {
+  margin: 8px 0;
+}
+
+.sandbox-info strong {
+  color: var(--text);
+}
+
+/* Helpers Grid */
+.helpers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.helpers-grid > div {
+  background: var(--panel-alt);
+  padding: 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.helpers-grid h4 {
+  font-size: 14px;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.helpers-grid code {
+  display: block;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--accent-2);
+  background: var(--bg);
+  padding: 6px 8px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.helpers-grid p {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+/* Sandbox Empty State */
+.sandbox-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+/* ============================================
+   SANDBOX VISUALIZATION STYLES
+   ============================================ */
+
+.sandbox-viz {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 8px;
+}
+
+/* Structure Section */
+.structure-section {
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+}
+
+.structure-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.structure-name {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.structure-type {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  background: var(--bg);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.structure-data {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-dim);
+  word-break: break-all;
+}
+
+/* Array Visualization (Sandbox) */
+.sandbox-viz .array-viz {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: flex-end;
+}
+
+.sandbox-viz .array-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 40px;
+  background: var(--panel);
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 4px;
+  transition: all 150ms ease;
+}
+
+.sandbox-viz .array-cell.highlight {
+  border-color: var(--accent);
+  background: rgba(56, 189, 248, 0.1);
+}
+
+.sandbox-viz .array-cell .cell-value {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.sandbox-viz .array-cell .cell-index {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+.sandbox-viz .array-cell .cell-pointers {
+  font-size: 9px;
+  color: var(--accent);
+  margin-top: 2px;
+  font-family: var(--mono);
+}
+
+/* Pointer-specific colors */
+.sandbox-viz .array-cell.ptr-low {
+  border-color: var(--accent-2);
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.sandbox-viz .array-cell.ptr-high {
+  border-color: var(--error);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.sandbox-viz .array-cell.ptr-mid,
+.sandbox-viz .array-cell.ptr-i,
+.sandbox-viz .array-cell.ptr-current {
+  border-color: var(--accent);
+  background: rgba(56, 189, 248, 0.15);
+}
+
+.sandbox-viz .array-cell.ptr-j {
+  border-color: var(--warning);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+/* Linked List Visualization */
+.linked-list-viz {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.list-node {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 40px;
+  background: var(--panel);
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  padding: 8px;
+}
+
+.list-node .node-val {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.list-arrow {
+  color: var(--text-dim);
+  font-size: 16px;
+  padding: 0 4px;
+}
+
+.cycle-indicator {
+  color: var(--warning);
+  font-size: 12px;
+  font-style: italic;
+  margin-left: 8px;
+}
+
+/* Binary Tree Visualization */
+.binary-tree-viz {
+  overflow-x: auto;
+  padding: 8px;
+}
+
+.tree-svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.tree-edge {
+  stroke: var(--border-light);
+  stroke-width: 2;
+}
+
+.tree-node {
+  fill: var(--panel);
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.tree-label {
+  font-family: var(--mono);
+  font-size: 12px;
+  fill: var(--text);
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+.tree-empty {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+/* Graph Visualization */
+.graph-viz {
+  overflow: hidden;
+}
+
+.graph-svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.graph-edge {
+  stroke: var(--border-light);
+  stroke-width: 2;
+}
+
+.graph-node {
+  fill: var(--panel);
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.graph-label {
+  font-family: var(--mono);
+  font-size: 12px;
+  fill: var(--text);
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+/* Hash Table Visualization */
+.hash-table-viz {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hash-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.hash-key {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.hash-arrow {
+  color: var(--text-dim);
+}
+
+.hash-value {
+  color: var(--text);
+}
+
+/* Set Visualization */
+.set-viz {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--mono);
+  font-size: 14px;
+}
+
+.set-brace {
+  color: var(--text-dim);
+  font-size: 18px;
+}
+
+.set-item {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: var(--text);
+}
+
+.set-comma {
+  color: var(--text-dim);
+}
+
+/* Error display */
+.sandbox-viz .error {
+  color: var(--error);
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* Responsive adjustments for sandbox */
+@media (max-width: 1200px) {
+  .sandbox-main {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .sandbox-main .vars-panel {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 900px) {
+  .sandbox-main {
+    grid-template-columns: 1fr;
+  }
+
+  .sandbox-main .vars-panel {
+    grid-column: span 1;
+  }
+
+  .sandbox-editor {
+    min-height: 250px;
+  }
+}
