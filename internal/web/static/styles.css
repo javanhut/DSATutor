@@ -3628,3 +3628,768 @@ button.ghost:hover {
     min-height: 250px;
   }
 }
+
+/* =============================================================================
+   PRACTICE MODE STYLES
+   ============================================================================= */
+
+/* Practice Badge */
+.practice-badge {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+/* Practice Filters */
+.practice-filters {
+  display: flex;
+  gap: 16px;
+  padding: 16px 24px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.practice-filters .filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.practice-filters .filter-group label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+}
+
+.practice-filters .filter-group select,
+.practice-filters .filter-group input {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 14px;
+  min-width: 150px;
+}
+
+.practice-filters .filter-group.search {
+  flex: 1;
+  min-width: 200px;
+}
+
+.practice-filters .filter-group.search input {
+  width: 100%;
+}
+
+/* Progress Summary */
+.progress-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--panel);
+  border-radius: 8px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* Problems Container */
+.problems-container {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Category Section */
+.category-section {
+  margin-bottom: 32px;
+}
+
+.category-section h2 {
+  font-size: 18px;
+  margin-bottom: 16px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.category-section h2::before {
+  content: '';
+  width: 4px;
+  height: 20px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+/* Problem Cards Grid */
+.problem-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+/* Problem Card */
+.problem-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.problem-card:hover {
+  border-color: var(--accent);
+  background: var(--bg);
+  transform: translateY(-1px);
+}
+
+.problem-card.solved {
+  border-left: 3px solid #10b981;
+}
+
+.problem-card.attempted {
+  border-left: 3px solid #f59e0b;
+}
+
+.problem-card .problem-number {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dim);
+  min-width: 32px;
+}
+
+.problem-card .problem-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.problem-card .problem-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.problem-card .problem-tags {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.problem-card .problem-tag {
+  font-size: 10px;
+  padding: 2px 6px;
+  background: var(--bg);
+  border-radius: 4px;
+  color: var(--text-dim);
+}
+
+.problem-card .difficulty-badge {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.difficulty-badge.easy {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.difficulty-badge.medium {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+.difficulty-badge.hard {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.problem-card .status-icon {
+  font-size: 16px;
+}
+
+.problem-card .status-icon.solved {
+  color: #10b981;
+}
+
+.problem-card .status-icon.attempted {
+  color: #f59e0b;
+}
+
+/* Practice Workspace - 2 Column Layout */
+.practice-workspace {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  height: calc(100vh - 80px);
+  overflow: hidden;
+}
+
+.practice-right-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.practice-right-panel .code-panel {
+  flex: 1;
+  min-height: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.practice-right-panel .results-panel {
+  flex: 0 0 280px;
+  min-height: 200px;
+}
+
+.practice-panel {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.practice-panel:last-child {
+  border-right: none;
+}
+
+.practice-right-panel .practice-panel {
+  border-right: none;
+}
+
+.practice-panel .panel-header {
+  padding: 12px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.practice-panel .panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+/* Panel Tabs */
+.panel-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.tab-btn {
+  padding: 6px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-dim);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.tab-btn.active {
+  background: var(--accent);
+  color: white;
+}
+
+.tab-content {
+  display: block;
+}
+
+.tab-content.hidden {
+  display: none;
+}
+
+/* Problem Description */
+.problem-statement {
+  line-height: 1.7;
+  color: var(--text);
+}
+
+.problem-statement code {
+  background: var(--panel);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-size: 13px;
+}
+
+.problem-statement strong {
+  color: var(--accent);
+}
+
+/* Problem Examples */
+.problem-examples {
+  margin-top: 24px;
+}
+
+.example-block {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.example-block h4 {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+.example-block .example-input,
+.example-block .example-output {
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.example-block .example-label {
+  color: var(--text-dim);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.example-block .example-explanation {
+  font-size: 13px;
+  color: var(--text-dim);
+  font-style: italic;
+  margin-top: 8px;
+}
+
+/* Problem Constraints */
+.problem-constraints {
+  margin-top: 24px;
+}
+
+.problem-constraints h4 {
+  font-size: 14px;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.problem-constraints ul {
+  list-style: none;
+  padding: 0;
+}
+
+.problem-constraints li {
+  padding: 4px 0;
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.problem-constraints li::before {
+  content: '-';
+  margin-right: 8px;
+  color: var(--text-dim);
+}
+
+/* Chapter Links */
+.chapter-links {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.chapter-links h4 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+.chapter-link {
+  display: inline-block;
+  padding: 4px 8px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--accent);
+  text-decoration: none;
+  margin-right: 8px;
+  margin-bottom: 4px;
+  cursor: pointer;
+}
+
+.chapter-link:hover {
+  background: var(--accent);
+  color: white;
+}
+
+/* Hints */
+.hints-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hint-item {
+  padding: 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.hint-item.locked {
+  opacity: 0.5;
+  cursor: pointer;
+}
+
+.hint-item .hint-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.hint-item .hint-level {
+  font-size: 11px;
+  padding: 2px 6px;
+  background: var(--accent);
+  color: white;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.hint-item .hint-type {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-transform: capitalize;
+}
+
+.hint-item .hint-content {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.hint-item .hint-chapter {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--accent);
+}
+
+/* Solution */
+.solution-locked {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.solution-locked p {
+  margin-bottom: 12px;
+}
+
+.solution-locked .warning {
+  color: var(--error);
+  font-size: 13px;
+}
+
+.solution-content {
+  line-height: 1.7;
+}
+
+.solution-code {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  overflow-x: auto;
+  margin-bottom: 16px;
+}
+
+.solution-code pre {
+  margin: 0;
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-size: 13px;
+}
+
+.solution-explanation {
+  margin-bottom: 24px;
+}
+
+.solution-complexity {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.complexity-item {
+  background: var(--panel);
+  padding: 12px 16px;
+  border-radius: 8px;
+}
+
+.complexity-item .complexity-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+
+.complexity-item .complexity-value {
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-size: 14px;
+  color: var(--accent);
+}
+
+.walkthrough-steps {
+  margin-top: 24px;
+}
+
+.walkthrough-step {
+  padding: 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.walkthrough-step h4 {
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.walkthrough-step p {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+.walkthrough-step code {
+  display: block;
+  background: var(--bg);
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+/* Practice Code Editor */
+.practice-editor {
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+  padding: 16px;
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  background: var(--bg);
+  color: var(--text);
+  border: none;
+  resize: none;
+  outline: none;
+}
+
+/* Test Cases */
+.test-case-selector {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.test-case-btn {
+  padding: 8px 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.test-case-btn:hover {
+  border-color: var(--accent);
+}
+
+.test-case-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.test-case-btn.passed {
+  border-color: #10b981;
+  color: #10b981;
+}
+
+.test-case-btn.failed {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.test-case-btn.hidden-test {
+  font-style: italic;
+}
+
+/* Test Results */
+.test-results {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.test-result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.test-result-status {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.test-result-status.accepted {
+  color: #10b981;
+}
+
+.test-result-status.wrong {
+  color: #ef4444;
+}
+
+.test-result-status.pending {
+  color: var(--text-dim);
+}
+
+.test-result-counts {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.test-result-detail {
+  margin-top: 16px;
+}
+
+.result-row {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 12px;
+}
+
+.result-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+
+.result-value {
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-size: 13px;
+  background: var(--bg);
+  padding: 8px 12px;
+  border-radius: 4px;
+}
+
+.result-value.expected {
+  border-left: 3px solid #10b981;
+}
+
+.result-value.actual {
+  border-left: 3px solid var(--accent);
+}
+
+.result-value.error {
+  border-left: 3px solid #ef4444;
+  color: #ef4444;
+}
+
+/* Complexity Analysis */
+.complexity-analysis {
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.complexity-analysis h4 {
+  font-size: 12px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+
+.complexity-analysis .meets-requirement {
+  color: #10b981;
+}
+
+.complexity-analysis .exceeds-requirement {
+  color: #f59e0b;
+}
+
+/* Practice Controls */
+.practice-controls {
+  padding: 8px;
+  background: var(--panel);
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+/* Responsive Practice Layout */
+@media (max-width: 1200px) {
+  .practice-workspace {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .practice-workspace .results-panel {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 900px) {
+  .practice-workspace {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .practice-panel {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    min-height: 300px;
+  }
+
+  .practice-panel:last-child {
+    border-bottom: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .practice-filters {
+    flex-direction: column;
+  }
+
+  .practice-filters .filter-group {
+    width: 100%;
+  }
+
+  .practice-filters .filter-group select,
+  .practice-filters .filter-group input {
+    width: 100%;
+  }
+}

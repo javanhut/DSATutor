@@ -16,6 +16,10 @@
       </div>
       <nav class="sidebar-nav" id="chapters"></nav>
       <div class="sidebar-footer">
+        <button id="practice-toggle" class="sidebar-btn" title="Practice Problems">
+          <span class="btn-icon">P</span>
+          <span class="btn-text">Practice</span>
+        </button>
         <button id="sandbox-toggle" class="sidebar-btn" title="Sandbox Mode">
           <span class="btn-icon">S</span>
           <span class="btn-text">Sandbox</span>
@@ -180,6 +184,170 @@ print(f'Found at index: {result}')
               </div>
             </div>
           </details>
+        </div>
+      </div>
+
+      <!-- Practice List View -->
+      <div id="practice-list" class="hidden">
+        <header class="content-header">
+          <div class="header-info">
+            <span class="chapter-badge practice-badge">PRACTICE</span>
+            <h1>Blind 75 Problems</h1>
+          </div>
+          <div class="header-controls">
+            <div class="progress-summary">
+              <span id="progress-count">0/75 Solved</span>
+            </div>
+            <div class="control-group">
+              <button id="export-progress" class="btn-small ghost">Export</button>
+              <button id="import-progress" class="btn-small ghost">Import</button>
+            </div>
+          </div>
+        </header>
+
+        <!-- Filters -->
+        <div class="practice-filters">
+          <div class="filter-group">
+            <label>Category</label>
+            <select id="filter-category">
+              <option value="">All Categories</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Difficulty</label>
+            <select id="filter-difficulty">
+              <option value="">All</option>
+              <option value="Easy">Easy</option>
+              <option value="Medium">Medium</option>
+              <option value="Hard">Hard</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Status</label>
+            <select id="filter-status">
+              <option value="">All</option>
+              <option value="solved">Solved</option>
+              <option value="attempted">Attempted</option>
+              <option value="not_started">Not Started</option>
+            </select>
+          </div>
+          <div class="filter-group search">
+            <input type="text" id="filter-search" placeholder="Search problems...">
+          </div>
+        </div>
+
+        <!-- Problem Grid by Category -->
+        <div id="problems-by-category" class="problems-container"></div>
+      </div>
+
+      <!-- Practice Problem View -->
+      <div id="practice-mode" class="hidden">
+        <header class="content-header practice-header">
+          <div class="header-info">
+            <button id="practice-back" class="btn-small ghost">Back</button>
+            <span class="chapter-badge practice-badge" id="practice-difficulty">EASY</span>
+            <h1 id="practice-title">Problem Title</h1>
+          </div>
+          <div class="header-controls">
+            <div class="control-group">
+              <button id="practice-run" class="btn-small">Run</button>
+              <button id="practice-submit" class="btn-small primary">Submit</button>
+            </div>
+          </div>
+        </header>
+
+        <!-- Problem Workspace - 2 Column Layout -->
+        <div class="practice-workspace">
+          <!-- Left Panel: Problem Description -->
+          <div class="practice-panel problem-panel">
+            <div class="panel-header">
+              <div class="panel-tabs">
+                <button class="tab-btn active" data-tab="description">Description</button>
+                <button class="tab-btn" data-tab="hints">Hints</button>
+                <button class="tab-btn" data-tab="solution">Solution</button>
+              </div>
+            </div>
+            <div class="panel-body">
+              <!-- Description Tab -->
+              <div id="problem-description" class="tab-content active">
+                <div id="problem-statement" class="problem-statement"></div>
+                <div id="problem-examples" class="problem-examples"></div>
+                <div id="problem-constraints" class="problem-constraints"></div>
+                <div class="chapter-links">
+                  <h4>Related Chapters</h4>
+                  <div id="related-chapters"></div>
+                </div>
+              </div>
+
+              <!-- Hints Tab -->
+              <div id="problem-hints" class="tab-content hidden">
+                <div class="hints-container">
+                  <div id="hints-list"></div>
+                  <button id="reveal-hint" class="btn-small">Reveal Next Hint</button>
+                </div>
+              </div>
+
+              <!-- Solution Tab -->
+              <div id="problem-solution" class="tab-content hidden">
+                <div class="solution-locked" id="solution-locked">
+                  <p>View the solution walkthrough?</p>
+                  <p class="warning">This will mark the problem as "solution viewed".</p>
+                  <button id="unlock-solution" class="btn-small">Show Solution</button>
+                </div>
+                <div class="solution-content hidden" id="solution-content">
+                  <div id="solution-walkthrough"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Panel: Code Editor + Test Cases stacked -->
+          <div class="practice-right-panel">
+            <!-- Code Editor -->
+            <div class="practice-panel code-panel">
+              <div class="panel-header">
+                <h3>Code</h3>
+                <button id="reset-code" class="btn-small ghost">Reset</button>
+              </div>
+              <div class="panel-body">
+                <textarea id="practice-code" class="practice-editor"></textarea>
+              </div>
+            </div>
+
+            <!-- Test Cases & Visualization -->
+            <div class="practice-panel results-panel">
+              <div class="panel-header">
+                <div class="panel-tabs">
+                  <button class="tab-btn active" data-tab="testcases">Test Cases</button>
+                  <button class="tab-btn" data-tab="visualization">Visualization</button>
+                </div>
+              </div>
+              <div class="panel-body">
+                <!-- Test Cases Tab -->
+                <div id="test-cases-tab" class="tab-content active">
+                  <div id="test-case-selector" class="test-case-selector"></div>
+                  <div id="test-results" class="test-results"></div>
+                  <div id="complexity-analysis" class="complexity-analysis"></div>
+                </div>
+
+                <!-- Visualization Tab -->
+                <div id="visualization-tab" class="tab-content hidden">
+                  <div class="workspace-controls practice-controls">
+                    <div class="control-buttons">
+                      <button id="practice-reset" class="ctrl-btn">Reset</button>
+                      <button id="practice-step-back" class="ctrl-btn">Back</button>
+                      <button id="practice-play" class="ctrl-btn primary">Play</button>
+                      <button id="practice-step" class="ctrl-btn">Step</button>
+                    </div>
+                    <span id="practice-step-counter" class="step-counter">Step 0/0</span>
+                  </div>
+                  <div id="practice-canvas" class="viz-canvas"></div>
+                  <div id="practice-vars" class="vars-display"></div>
+                  <div id="practice-state" class="state-text"></div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

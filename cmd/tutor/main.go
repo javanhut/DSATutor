@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"dsatutor/internal/chapter"
+	"dsatutor/internal/practice"
 	"dsatutor/internal/storage"
 	"dsatutor/internal/ui"
 	"dsatutor/internal/web"
@@ -45,7 +46,23 @@ func main() {
 	}
 
 	if *serve {
-		server := web.NewServer(registry.All())
+		// Initialize practice problem loader
+		problemLoader := practice.NewProblemLoader(practice.ProblemsFS, practice.ProblemsBasePath)
+		if err := problemLoader.Load(); err != nil {
+			log.Printf("Warning: Could not load practice problems: %v", err)
+			// Continue without practice problems
+			server := web.NewServer(registry.All())
+			if err := server.Listen(*addr); err != nil {
+				log.Fatalf("serve: %v", err)
+			}
+			return
+		}
+
+		stats := problemLoader.GetStats()
+		log.Printf("Loaded %d practice problems (Easy: %d, Medium: %d, Hard: %d)",
+			stats["total"], stats["easy"], stats["medium"], stats["hard"])
+
+		server := web.NewServerWithPractice(registry.All(), problemLoader)
 		if err := server.Listen(*addr); err != nil {
 			log.Fatalf("serve: %v", err)
 		}

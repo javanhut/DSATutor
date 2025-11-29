@@ -1,0 +1,19 @@
+# This directory is for additional custom problems in JSON format.
+# The core Blind 75 problems are embedded directly in Go code (embedded_problems.go).
+#
+# To add a custom problem, create a JSON file with this structure:
+# {
+#   "id": "unique-problem-id",
+#   "number": 100,
+#   "title": "Problem Title",
+#   "difficulty": "Easy|Medium|Hard",
+#   "category": "arrays-hashing",
+#   "tags": ["array", "hash-table"],
+#   "description": "Problem description...",
+#   "constraints": ["constraint 1", "constraint 2"],
+#   "examples": [...],
+#   "testCases": [...],
+#   "starterCode": "def solve():\n    pass",
+#   "hints": [...],
+#   "solution": {...}
+# }

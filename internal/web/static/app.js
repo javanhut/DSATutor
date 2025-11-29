@@ -5951,3 +5951,952 @@ loadChapters().catch((err) => {
   console.error(err);
   alert("Failed to load chapters");
 });
+
+// Practice Mode State and Functions
+const practiceState = {
+  problems: [],
+  categories: [],
+  currentProblem: null,
+  progress: {},
+  hintsRevealed: 0,
+  currentTestCase: 0,
+  practiceAnimator: null,
+};
+
+function loadProgress() {
+  try {
+    const saved = localStorage.getItem('dsatutor_practice_progress');
+    if (saved) {
+      practiceState.progress = JSON.parse(saved);
+    }
+  } catch (e) {
+    console.error('Failed to load progress:', e);
+  }
+}
+
+function saveProgress() {
+  try {
+    localStorage.setItem('dsatutor_practice_progress', JSON.stringify(practiceState.progress));
+  } catch (e) {
+    console.error('Failed to save progress:', e);
+  }
+}
+
+function updateProblemProgress(problemId, data) {
+  if (!practiceState.progress[problemId]) {
+    practiceState.progress[problemId] = {
+      attempts: 0,
+      solved: false,
+      hintsUsed: 0,
+      lastAttempt: null,
+    };
+  }
+  Object.assign(practiceState.progress[problemId], data);
+  saveProgress();
+}
+
+async function loadProblems() {
+  try {
+    const response = await fetch('/api/practice/problems');
+    if (!response.ok) throw new Error('Failed to load problems');
+    const data = await response.json();
+    // API returns {problems: [...], total: N, stats: {...}}
+    practiceState.problems = data.problems || [];
+    practiceState.stats = data.stats || {};
+    return practiceState.problems;
+  } catch (e) {
+    console.error('Failed to load problems:', e);
+    return [];
+  }
+}
+
+async function loadCategories() {
+  try {
+    const response = await fetch('/api/practice/categories');
+    if (!response.ok) throw new Error('Failed to load categories');
+    practiceState.categories = await response.json();
+    return practiceState.categories;
+  } catch (e) {
+    console.error('Failed to load categories:', e);
+    return [];
+  }
+}
+
+async function loadProblem(id) {
+  try {
+    const response = await fetch(`/api/practice/problems/${id}`);
+    if (!response.ok) throw new Error('Failed to load problem');
+    return await response.json();
+  } catch (e) {
+    console.error('Failed to load problem:', e);
+    return null;
+  }
+}
+
+function showPracticeList() {
+  el('practice-list').classList.remove('hidden');
+  el('practice-mode').classList.add('hidden');
+}
+
+function showProblem() {
+  el('practice-list').classList.add('hidden');
+  el('practice-mode').classList.remove('hidden');
+}
+
+function renderProblemsList() {
+  const container = el('problems-by-category');
+  if (!container) return;
+
+  const problems = practiceState.problems;
+  const categories = practiceState.categories;
+  const progress = practiceState.progress;
+
+  // Group problems by category
+  const byCategory = {};
+  problems.forEach(p => {
+    if (!byCategory[p.category]) {
+      byCategory[p.category] = [];
+    }
+    byCategory[p.category].push(p);
+  });
+
+  let html = '';
+  categories.forEach(cat => {
+    const catProblems = byCategory[cat.id] || [];
+    if (catProblems.length === 0) return;
+
+    const solved = catProblems.filter(p => progress[p.id]?.solved).length;
+
+    html += `
+      <div class="category-section">
+        <div class="category-header">
+          <h3>${escapeHtml(cat.name)}</h3>
+          <span class="category-progress">${solved}/${catProblems.length}</span>
+        </div>
+        <div class="category-problems">
+    `;
+
+    catProblems.forEach(p => {
+      const prog = progress[p.id] || {};
+      const statusClass = prog.solved ? 'solved' : (prog.attempts > 0 ? 'attempted' : '');
+      const diffClass = `difficulty-${p.difficulty.toLowerCase()}`;
+
+      html += `
+        <div class="problem-card ${statusClass}" data-problem-id="${p.id}">
+          <div class="problem-card-header">
+            <span class="problem-number">${p.number}.</span>
+            <span class="problem-title">${escapeHtml(p.title)}</span>
+          </div>
+          <div class="problem-card-meta">
+            <span class="difficulty-badge ${diffClass}">${p.difficulty}</span>
+            ${prog.solved ? '<span class="solved-badge">Solved</span>' : ''}
+          </div>
+        </div>
+      `;
+    });
+
+    html += '</div></div>';
+  });
+
+  container.innerHTML = html;
+
+  // Add click handlers
+  container.querySelectorAll('.problem-card').forEach(card => {
+    card.onclick = () => {
+      const problemId = card.dataset.problemId;
+      openProblem(problemId);
+    };
+  });
+}
+
+async function openProblem(problemId) {
+  const problem = await loadProblem(problemId);
+  if (!problem) {
+    alert('Failed to load problem');
+    return;
+  }
+
+  practiceState.currentProblem = problem;
+  practiceState.hintsRevealed = 0;
+  practiceState.currentTestCase = 0;
+
+  renderProblemDescription();
+  renderTestCases();
+  renderHints();
+  renderStarterCode();
+
+  showProblem();
+}
+
+function renderProblemDescription() {
+  const problem = practiceState.currentProblem;
+  if (!problem) return;
+
+  // Update header
+  const titleEl = el('practice-title');
+  const diffBadge = el('practice-difficulty');
+
+  if (titleEl) {
+    titleEl.textContent = `${problem.number}. ${problem.title}`;
+  }
+
+  if (diffBadge) {
+    diffBadge.textContent = problem.difficulty.toUpperCase();
+    diffBadge.className = `chapter-badge practice-badge difficulty-${problem.difficulty.toLowerCase()}`;
+  }
+
+  // Update problem statement
+  const statementEl = el('problem-statement');
+  if (statementEl) {
+    statementEl.innerHTML = `<div class="problem-text">${problem.description}</div>`;
+  }
+
+  // Update examples
+  const examplesEl = el('problem-examples');
+  if (examplesEl && problem.examples && problem.examples.length > 0) {
+    let html = '<h4>Examples:</h4>';
+    problem.examples.forEach((ex, i) => {
+      html += `
+        <div class="example">
+          <div class="example-header">Example ${i + 1}:</div>
+          <div class="example-io">
+            <div><strong>Input:</strong> <code>${escapeHtml(ex.input)}</code></div>
+            <div><strong>Output:</strong> <code>${escapeHtml(ex.output)}</code></div>
+          </div>
+          ${ex.explanation ? `<div class="example-explanation"><strong>Explanation:</strong> ${escapeHtml(ex.explanation)}</div>` : ''}
+        </div>
+      `;
+    });
+    examplesEl.innerHTML = html;
+  }
+
+  // Update constraints
+  const constraintsEl = el('problem-constraints');
+  if (constraintsEl && problem.constraints && problem.constraints.length > 0) {
+    let html = '<h4>Constraints:</h4><ul>';
+    problem.constraints.forEach(c => {
+      html += `<li><code>${escapeHtml(c)}</code></li>`;
+    });
+    html += '</ul>';
+    constraintsEl.innerHTML = html;
+  }
+
+  // Update related chapters
+  const relatedEl = el('related-chapters');
+  if (relatedEl && problem.relatedChapters && problem.relatedChapters.length > 0) {
+    let html = '';
+    problem.relatedChapters.forEach(chNum => {
+      const ch = state.chapters.find(c => c.number === chNum);
+      if (ch) {
+        html += `<a href="#" class="chapter-link" data-chapter="${chNum}">${ch.title}</a>`;
+      }
+    });
+    relatedEl.innerHTML = html;
+
+    // Add click handlers
+    relatedEl.querySelectorAll('.chapter-link').forEach(link => {
+      link.onclick = (e) => {
+        e.preventDefault();
+        const chNum = parseInt(link.dataset.chapter);
+        const ch = state.chapters.find(c => c.number === chNum);
+        if (ch) {
+          el('practice-toggle').classList.remove('active');
+          el('practice-list').classList.add('hidden');
+          el('practice-mode').classList.add('hidden');
+          el('detail').classList.remove('hidden');
+          el('detail-empty').classList.add('hidden');
+          selectChapter(ch);
+        }
+      };
+    });
+  }
+}
+
+// Format a value for display - handles strings, objects, arrays
+function formatTestValue(value) {
+  if (value === null || value === undefined) return 'null';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object') {
+    // For objects like {nums: [1,2,3], target: 5}, format nicely
+    if (Array.isArray(value)) {
+      return JSON.stringify(value);
+    }
+    // Format as key=value pairs
+    return Object.entries(value)
+      .map(([k, v]) => `${k} = ${JSON.stringify(v)}`)
+      .join(', ');
+  }
+  return String(value);
+}
+
+function renderTestCases() {
+  const problem = practiceState.currentProblem;
+  const selectorEl = el('test-case-selector');
+  const resultsEl = el('test-results');
+  if (!selectorEl || !problem) return;
+
+  // Render test case selector buttons
+  let selectorHtml = '';
+  problem.testCases?.forEach((tc, i) => {
+    if (!tc.hidden) {
+      const isActive = i === practiceState.currentTestCase;
+      selectorHtml += `<button class="test-case-btn ${isActive ? 'active' : ''}" data-index="${i}">Case ${i + 1}</button>`;
+    }
+  });
+  selectorEl.innerHTML = selectorHtml;
+
+  // Render current test case details
+  const currentTC = problem.testCases?.[practiceState.currentTestCase];
+  if (resultsEl && currentTC) {
+    const inputDisplay = escapeHtml(formatTestValue(currentTC.input));
+    const expectedDisplay = escapeHtml(formatTestValue(currentTC.expected));
+    resultsEl.innerHTML = `
+      <div class="test-case-detail">
+        <div class="test-io">
+          <div class="test-input">
+            <strong>Input:</strong>
+            <pre><code>${inputDisplay}</code></pre>
+          </div>
+          <div class="test-expected">
+            <strong>Expected Output:</strong>
+            <pre><code>${expectedDisplay}</code></pre>
+          </div>
+        </div>
+        <div class="test-output" id="current-test-output"></div>
+      </div>
+    `;
+  }
+
+  // Add click handlers to test case buttons
+  selectorEl.querySelectorAll('.test-case-btn').forEach(btn => {
+    btn.onclick = () => {
+      practiceState.currentTestCase = parseInt(btn.dataset.index);
+      selectorEl.querySelectorAll('.test-case-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderTestCases();
+    };
+  });
+}
+
+function renderHints() {
+  const problem = practiceState.currentProblem;
+  const hintsListEl = el('hints-list');
+  const revealBtn = el('reveal-hint');
+  if (!hintsListEl || !problem) return;
+
+  let html = '';
+  problem.hints?.forEach((hint, i) => {
+    const revealed = i < practiceState.hintsRevealed;
+    if (revealed) {
+      html += `
+        <div class="hint revealed">
+          <div class="hint-header">
+            <span class="hint-type">${escapeHtml(hint.type || 'Hint')} ${i + 1}</span>
+          </div>
+          <div class="hint-content">${escapeHtml(hint.content)}</div>
+        </div>
+      `;
+    }
+  });
+
+  if (practiceState.hintsRevealed === 0) {
+    html = '<p class="no-hints">No hints revealed yet. Click "Reveal Next Hint" to get started.</p>';
+  }
+
+  hintsListEl.innerHTML = html;
+
+  // Update reveal button
+  if (revealBtn) {
+    const remainingHints = (problem.hints?.length || 0) - practiceState.hintsRevealed;
+    if (remainingHints > 0) {
+      revealBtn.textContent = `Reveal Next Hint (${remainingHints} remaining)`;
+      revealBtn.disabled = false;
+      revealBtn.onclick = () => {
+        practiceState.hintsRevealed++;
+        updateProblemProgress(problem.id, { hintsUsed: practiceState.hintsRevealed });
+        renderHints();
+      };
+    } else {
+      revealBtn.textContent = 'All hints revealed';
+      revealBtn.disabled = true;
+    }
+  }
+}
+
+function renderStarterCode() {
+  const problem = practiceState.currentProblem;
+  const editor = el('practice-code');
+  if (!editor || !problem) return;
+
+  editor.value = problem.starterCode || '# Write your solution here\n';
+}
+
+async function runPracticeCode() {
+  const problem = practiceState.currentProblem;
+  const editor = el('practice-code');
+  const outputEl = el('current-test-output');
+  if (!problem || !editor) return;
+
+  const code = editor.value;
+  const testCase = problem.testCases?.[practiceState.currentTestCase];
+  if (!testCase) return;
+
+  if (outputEl) {
+    outputEl.innerHTML = '<div class="running">Running...</div>';
+  }
+
+  try {
+    const response = await fetch('/api/practice/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        problemId: problem.id,
+        code: code,
+        testCaseIndex: practiceState.currentTestCase,
+      }),
+    });
+
+    const result = await response.json();
+
+    let html = '';
+    if (result.error) {
+      html = `<div class="test-error">${escapeHtml(result.error)}</div>`;
+    } else {
+      html = `
+        <div class="test-result-detail ${result.passed ? 'passed' : 'failed'}">
+          <div class="result-status">${result.passed ? 'Passed' : 'Failed'}</div>
+          <div class="result-output"><strong>Your Output:</strong> <pre><code>${escapeHtml(result.output || 'None')}</code></pre></div>
+        </div>
+      `;
+
+      // Update test case button status
+      const btn = el('test-case-selector')?.querySelector(`[data-index="${practiceState.currentTestCase}"]`);
+      if (btn) {
+        btn.classList.remove('passed', 'failed');
+        btn.classList.add(result.passed ? 'passed' : 'failed');
+      }
+
+      // Handle visualization steps
+      if (result.steps && result.steps.length > 0) {
+        renderPracticeVisualization(result.steps);
+      }
+    }
+
+    if (outputEl) {
+      outputEl.innerHTML = html;
+    }
+  } catch (e) {
+    if (outputEl) {
+      outputEl.innerHTML = `<div class="test-error">Error: ${escapeHtml(e.message)}</div>`;
+    }
+  }
+}
+
+async function submitPracticeCode() {
+  const problem = practiceState.currentProblem;
+  const editor = el('practice-code');
+  const outputEl = el('test-results');
+  if (!problem || !editor) return;
+
+  const code = editor.value;
+
+  if (outputEl) {
+    outputEl.innerHTML = '<div class="running">Submitting all test cases...</div>';
+  }
+
+  try {
+    const response = await fetch('/api/practice/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        problemId: problem.id,
+        code: code,
+      }),
+    });
+
+    const result = await response.json();
+
+    let html = '';
+    if (result.error) {
+      html = `<div class="test-error">${escapeHtml(result.error)}</div>`;
+    } else {
+      const allPassed = result.results?.every(r => r.passed);
+
+      html = `
+        <div class="submit-result ${allPassed ? 'all-passed' : 'some-failed'}">
+          <div class="submit-status">${allPassed ? 'All Tests Passed!' : 'Some Tests Failed'}</div>
+          <div class="submit-summary">Passed: ${result.passed}/${result.total}</div>
+          <div class="submit-details">
+      `;
+
+      result.results?.forEach((r, i) => {
+        html += `
+          <div class="submit-test ${r.passed ? 'passed' : 'failed'}">
+            <span class="test-num">Test ${i + 1}</span>
+            <span class="test-status">${r.passed ? 'Passed' : 'Failed'}</span>
+            ${!r.passed && r.output ? `<div class="test-output">Got: <code>${escapeHtml(r.output)}</code></div>` : ''}
+          </div>
+        `;
+      });
+
+      html += '</div></div>';
+
+      // Update progress
+      updateProblemProgress(problem.id, {
+        attempts: (practiceState.progress[problem.id]?.attempts || 0) + 1,
+        solved: allPassed || practiceState.progress[problem.id]?.solved,
+        lastAttempt: new Date().toISOString(),
+      });
+
+      // Refresh problems list to show updated status
+      if (allPassed) {
+        await loadProblems();
+        renderProblemsList();
+        updateProgressCount();
+      }
+    }
+
+    if (outputEl) {
+      outputEl.innerHTML = html;
+    }
+  } catch (e) {
+    if (outputEl) {
+      outputEl.innerHTML = `<div class="test-error">Error: ${escapeHtml(e.message)}</div>`;
+    }
+  }
+}
+
+function updateProgressCount() {
+  const countEl = el('progress-count');
+  if (!countEl) return;
+
+  const solved = Object.values(practiceState.progress).filter(p => p.solved).length;
+  const total = practiceState.problems.length;
+  countEl.textContent = `${solved}/${total} Solved`;
+}
+
+function renderPracticeVisualization(steps) {
+  const vizContainer = el('practice-canvas');
+  if (!vizContainer || !steps || steps.length === 0) return;
+
+  practiceState.vizSteps = steps;
+  practiceState.currentVizStep = 0;
+
+  renderCurrentVizStep();
+}
+
+function renderCurrentVizStep() {
+  const vizContainer = el('practice-canvas');
+  const varsContainer = el('practice-vars');
+  const stateContainer = el('practice-state');
+  const stepCounter = el('practice-step-counter');
+
+  if (!vizContainer || !practiceState.vizSteps) return;
+
+  const steps = practiceState.vizSteps;
+  const step = steps[practiceState.currentVizStep];
+
+  if (!step) return;
+
+  // Update step counter
+  if (stepCounter) {
+    stepCounter.textContent = `Step ${practiceState.currentVizStep + 1}/${steps.length}`;
+  }
+
+  // Render variables
+  if (varsContainer && step.locals) {
+    let varsHtml = '<div class="vars-list">';
+    Object.entries(step.locals).forEach(([name, value]) => {
+      const displayValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
+      varsHtml += `
+        <div class="var-item">
+          <span class="var-name">${escapeHtml(name)}</span>
+          <span class="var-value">${escapeHtml(displayValue)}</span>
+        </div>
+      `;
+    });
+    varsHtml += '</div>';
+    varsContainer.innerHTML = varsHtml;
+  }
+
+  // Update state text
+  if (stateContainer) {
+    stateContainer.textContent = `Line ${step.line}: ${step.function || 'main'}`;
+  }
+
+  // Render visualization based on detected structures
+  if (step.structures && step.structures.length > 0) {
+    let vizHtml = '';
+    step.structures.forEach(struct => {
+      vizHtml += renderStructure(struct);
+    });
+    vizContainer.innerHTML = vizHtml;
+  } else {
+    // Simple variable display
+    vizContainer.innerHTML = '<div class="simple-viz">See variables panel for current state</div>';
+  }
+}
+
+function renderStructure(struct) {
+  switch (struct.type) {
+    case 'array':
+      return renderArrayViz(struct);
+    case 'linked_list':
+      return renderLinkedListViz(struct);
+    case 'tree':
+      return renderTreeViz(struct);
+    default:
+      return `<div class="struct-unknown">${struct.name}: ${JSON.stringify(struct.data)}</div>`;
+  }
+}
+
+function renderArrayViz(struct) {
+  const data = struct.data || [];
+  const highlights = struct.highlights || {};
+
+  let html = `<div class="array-viz"><div class="struct-name">${escapeHtml(struct.name)}</div><div class="array-cells">`;
+  data.forEach((val, i) => {
+    let cellClass = 'array-cell';
+    if (highlights.current === i) cellClass += ' current';
+    if (highlights.comparing?.includes(i)) cellClass += ' comparing';
+    if (highlights.found === i) cellClass += ' found';
+    html += `<div class="${cellClass}"><span class="cell-value">${val}</span><span class="cell-index">${i}</span></div>`;
+  });
+  html += '</div></div>';
+  return html;
+}
+
+function renderLinkedListViz(struct) {
+  const nodes = struct.data || [];
+  let html = `<div class="linked-list-viz"><div class="struct-name">${escapeHtml(struct.name)}</div><div class="list-nodes">`;
+  nodes.forEach((val, i) => {
+    html += `<div class="list-node"><span class="node-value">${val}</span></div>`;
+    if (i < nodes.length - 1) {
+      html += '<div class="list-arrow">-></div>';
+    }
+  });
+  html += '</div></div>';
+  return html;
+}
+
+function renderTreeViz(struct) {
+  // Simple tree rendering - could be enhanced
+  return `<div class="tree-viz"><div class="struct-name">${escapeHtml(struct.name)}</div><pre>${JSON.stringify(struct.data, null, 2)}</pre></div>`;
+}
+
+function showSolution() {
+  const problem = practiceState.currentProblem;
+  if (!problem || !problem.solution) return;
+
+  const lockedEl = el('solution-locked');
+  const contentEl = el('solution-content');
+  const walkthroughEl = el('solution-walkthrough');
+
+  if (lockedEl) {
+    lockedEl.classList.add('hidden');
+  }
+
+  if (contentEl) {
+    let html = `
+      <h4>Solution</h4>
+      <div class="solution-approach"><strong>Approach:</strong> ${escapeHtml(problem.solution.approach || '')}</div>
+      <div class="solution-complexity">
+        <span><strong>Time:</strong> ${escapeHtml(problem.timeComplexity || 'N/A')}</span>
+        <span><strong>Space:</strong> ${escapeHtml(problem.spaceComplexity || 'N/A')}</span>
+      </div>
+      <pre class="solution-code"><code>${escapeHtml(problem.solution.code || '')}</code></pre>
+    `;
+    contentEl.innerHTML = html;
+    contentEl.classList.remove('hidden');
+  }
+
+  if (walkthroughEl && problem.solution.walkthrough && problem.solution.walkthrough.length > 0) {
+    let html = '<h4>Walkthrough</h4>';
+    problem.solution.walkthrough.forEach((step, i) => {
+      html += `
+        <div class="walkthrough-step">
+          <div class="walkthrough-header">Step ${i + 1}: ${escapeHtml(step.title || '')}</div>
+          <div class="walkthrough-explanation">${escapeHtml(step.explanation || '')}</div>
+          ${step.code ? `<pre class="walkthrough-code"><code>${escapeHtml(step.code)}</code></pre>` : ''}
+        </div>
+      `;
+    });
+    walkthroughEl.innerHTML = html;
+  }
+}
+
+function setupPracticeControls() {
+  // Practice toggle button
+  const toggleBtn = el('practice-toggle');
+  if (toggleBtn) {
+    toggleBtn.onclick = async () => {
+      const isActive = toggleBtn.classList.toggle('active');
+      const chaptersEl = el('chapters');
+      const detailEl = el('detail');
+      const detailEmptyEl = el('detail-empty');
+      const sandboxEl = el('sandbox-mode');
+      const practiceListEl = el('practice-list');
+      const practiceModeEl = el('practice-mode');
+
+      if (isActive) {
+        // Entering practice mode - hide chapter content, show practice
+        if (chaptersEl) chaptersEl.classList.add('hidden');
+        if (detailEl) detailEl.classList.add('hidden');
+        if (detailEmptyEl) detailEmptyEl.classList.add('hidden');
+        if (sandboxEl) sandboxEl.classList.add('hidden');
+
+        if (practiceState.problems.length === 0) {
+          await loadProblems();
+          await loadCategories();
+        }
+        renderProblemsList();
+        updateProgressCount();
+        showPracticeList();
+      } else {
+        // Exiting practice mode - show chapter content, hide practice
+        if (practiceListEl) practiceListEl.classList.add('hidden');
+        if (practiceModeEl) practiceModeEl.classList.add('hidden');
+
+        if (chaptersEl) chaptersEl.classList.remove('hidden');
+        // Show detail-empty or detail depending on whether a chapter is selected
+        if (state.currentChapter) {
+          if (detailEl) detailEl.classList.remove('hidden');
+          if (detailEmptyEl) detailEmptyEl.classList.add('hidden');
+        } else {
+          if (detailEmptyEl) detailEmptyEl.classList.remove('hidden');
+          if (detailEl) detailEl.classList.add('hidden');
+        }
+      }
+    };
+  }
+
+  // Back button
+  const backBtn = el('practice-back');
+  if (backBtn) {
+    backBtn.onclick = () => {
+      showPracticeList();
+    };
+  }
+
+  // Run button
+  const runBtn = el('practice-run');
+  if (runBtn) {
+    runBtn.onclick = runPracticeCode;
+  }
+
+  // Submit button
+  const submitBtn = el('practice-submit');
+  if (submitBtn) {
+    submitBtn.onclick = submitPracticeCode;
+  }
+
+  // Solution button
+  const solutionBtn = el('unlock-solution');
+  if (solutionBtn) {
+    solutionBtn.onclick = showSolution;
+  }
+
+  // Panel tabs (Description/Hints/Solution and TestCases/Visualization)
+  const panelTabs = document.querySelectorAll('#practice-mode .tab-btn');
+  panelTabs.forEach(tab => {
+    tab.onclick = () => {
+      const tabContainer = tab.closest('.panel-tabs');
+      const panelBody = tab.closest('.panel-header')?.nextElementSibling;
+      if (!tabContainer || !panelBody) return;
+
+      // Update active tab button
+      tabContainer.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+
+      // Show/hide tab content based on data-tab attribute
+      const targetTab = tab.dataset.tab;
+      panelBody.querySelectorAll('.tab-content').forEach(content => {
+        // Map content IDs to tab names:
+        // test-cases-tab -> testcases, visualization-tab -> visualization
+        // problem-description -> description, problem-hints -> hints, problem-solution -> solution
+        const contentId = content.id;
+        let contentTab = contentId
+          .replace('-tab', '')
+          .replace('problem-', '')
+          .replace(/-/g, ''); // Remove all hyphens: test-cases -> testcases
+
+        const isMatch = contentTab === targetTab;
+        content.classList.toggle('hidden', !isMatch);
+        content.classList.toggle('active', isMatch);
+      });
+    };
+  });
+
+  // Filter controls
+  const difficultyFilter = el('filter-difficulty');
+  if (difficultyFilter) {
+    difficultyFilter.onchange = () => filterProblems();
+  }
+
+  const categoryFilter = el('filter-category');
+  if (categoryFilter) {
+    categoryFilter.onchange = () => filterProblems();
+  }
+
+  const statusFilter = el('filter-status');
+  if (statusFilter) {
+    statusFilter.onchange = () => filterProblems();
+  }
+
+  // Search filter
+  const searchFilter = el('filter-search');
+  if (searchFilter) {
+    searchFilter.oninput = () => filterProblems();
+  }
+
+  // Practice code editor - add Python indentation handling
+  const practiceCodeEditor = el('practice-code');
+  if (practiceCodeEditor) {
+    practiceCodeEditor.addEventListener('keydown', handlePythonIndentation);
+  }
+
+  // Visualization controls
+  setupPracticeVizControls();
+}
+
+function filterProblems() {
+  const difficulty = el('filter-difficulty')?.value || 'all';
+  const category = el('filter-category')?.value || 'all';
+  const status = el('filter-status')?.value || 'all';
+  const search = el('filter-search')?.value?.toLowerCase() || '';
+
+  const cards = document.querySelectorAll('.problem-card');
+  cards.forEach(card => {
+    const problem = practiceState.problems.find(p => p.id === card.dataset.problemId);
+    if (!problem) return;
+
+    const progress = practiceState.progress[problem.id] || {};
+
+    let show = true;
+
+    if (difficulty !== 'all' && problem.difficulty.toLowerCase() !== difficulty.toLowerCase()) {
+      show = false;
+    }
+
+    if (category !== 'all' && problem.category !== category) {
+      show = false;
+    }
+
+    if (status === 'solved' && !progress.solved) {
+      show = false;
+    } else if (status === 'unsolved' && progress.solved) {
+      show = false;
+    } else if (status === 'attempted' && (!progress.attempts || progress.solved)) {
+      show = false;
+    }
+
+    // Search filter
+    if (search && !problem.title.toLowerCase().includes(search) &&
+        !problem.id.toLowerCase().includes(search)) {
+      show = false;
+    }
+
+    card.style.display = show ? '' : 'none';
+  });
+
+  // Hide empty categories
+  document.querySelectorAll('.category-section').forEach(section => {
+    const visibleCards = section.querySelectorAll('.problem-card:not([style*="display: none"])');
+    section.style.display = visibleCards.length > 0 ? '' : 'none';
+  });
+}
+
+function exportProgress() {
+  const data = JSON.stringify(practiceState.progress, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'dsatutor_progress.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importProgress(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      practiceState.progress = data;
+      saveProgress();
+      renderProblemsList();
+    } catch (err) {
+      alert('Failed to import progress: Invalid file format');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function setupPracticeVizControls() {
+  // Practice visualization controls
+  const resetBtn = el('practice-reset');
+  const stepBackBtn = el('practice-step-back');
+  const playBtn = el('practice-play');
+  const stepBtn = el('practice-step');
+
+  if (resetBtn) {
+    resetBtn.onclick = () => {
+      if (practiceState.vizSteps && practiceState.vizSteps.length > 0) {
+        practiceState.currentVizStep = 0;
+        renderCurrentVizStep();
+      }
+    };
+  }
+
+  if (stepBackBtn) {
+    stepBackBtn.onclick = () => {
+      if (practiceState.vizSteps && practiceState.currentVizStep > 0) {
+        practiceState.currentVizStep--;
+        renderCurrentVizStep();
+      }
+    };
+  }
+
+  if (stepBtn) {
+    stepBtn.onclick = () => {
+      if (practiceState.vizSteps && practiceState.currentVizStep < practiceState.vizSteps.length - 1) {
+        practiceState.currentVizStep++;
+        renderCurrentVizStep();
+      }
+    };
+  }
+
+  if (playBtn) {
+    playBtn.onclick = () => {
+      if (practiceState.vizPlaying) {
+        // Stop playback
+        practiceState.vizPlaying = false;
+        playBtn.textContent = 'Play';
+        if (practiceState.vizTimer) {
+          clearInterval(practiceState.vizTimer);
+          practiceState.vizTimer = null;
+        }
+      } else {
+        // Start playback
+        practiceState.vizPlaying = true;
+        playBtn.textContent = 'Pause';
+        practiceState.vizTimer = setInterval(() => {
+          if (practiceState.currentVizStep < practiceState.vizSteps.length - 1) {
+            practiceState.currentVizStep++;
+            renderCurrentVizStep();
+          } else {
+            // Reached the end
+            practiceState.vizPlaying = false;
+            playBtn.textContent = 'Play';
+            clearInterval(practiceState.vizTimer);
+            practiceState.vizTimer = null;
+          }
+        }, 500);
+      }
+    };
+  }
+}
+
+// Initialize practice mode
+loadProgress();
+setupPracticeControls();

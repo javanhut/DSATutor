@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"dsatutor/internal/chapter"
+	"dsatutor/internal/practice"
 	"dsatutor/internal/sandbox"
 )
 
@@ -18,8 +19,9 @@ var staticSub, _ = fs.Sub(staticFiles, "static")
 
 // Server hosts a minimal web UI to browse chapters and play storyboards.
 type Server struct {
-	chapters []chapter.Chapter
-	mux      *http.ServeMux
+	chapters       []chapter.Chapter
+	mux            *http.ServeMux
+	practiceServer *PracticeServer
 }
 
 // NewServer wires handlers for static content and chapter data.
@@ -27,6 +29,17 @@ func NewServer(chapters []chapter.Chapter) *Server {
 	s := &Server{
 		chapters: chapters,
 		mux:      http.NewServeMux(),
+	}
+	s.routes()
+	return s
+}
+
+// NewServerWithPractice creates a server with practice problem support.
+func NewServerWithPractice(chapters []chapter.Chapter, problemLoader *practice.ProblemLoader) *Server {
+	s := &Server{
+		chapters:       chapters,
+		mux:            http.NewServeMux(),
+		practiceServer: NewPracticeServer(problemLoader),
 	}
 	s.routes()
 	return s
@@ -51,6 +64,12 @@ func (s *Server) Listen(addr string) error {
 func (s *Server) routes() {
 	s.mux.HandleFunc("/api/chapters", s.handleChapters)
 	s.mux.HandleFunc("/api/sandbox/execute", s.handleSandboxExecute)
+
+	// Register practice routes if practice server is initialized
+	if s.practiceServer != nil {
+		s.practiceServer.RegisterRoutes(s.mux)
+	}
+
 	s.mux.HandleFunc("/", s.handleIndex)
 	s.mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticSub))))
 }
