@@ -18,14 +18,34 @@ Practice mode provides a LeetCode-style problem-solving experience with integrat
 
 ```
 internal/practice/
-  problem.go           - Core data structures (Problem, TestCase, Hint, Solution)
-  embedded_problems.go - Core Blind 75 problems defined in pure Go
-  submission.go        - Submission handling (RunRequest, SubmitRequest, Results)
-  category.go          - Problem categories (Blind75Categories)
-  loader.go            - Problem loading (embedded Go + optional JSON files)
-  embed.go             - Embedded filesystem for custom problems
-  problems/            - Directory for custom JSON problems (optional)
+  problem.go              - Core data structures (Problem, TestCase, Hint, Solution)
+  embedded_problems.go    - Aggregator slice for all problems
+  problems_*.go           - Category-specific problem files:
+    problems_arrays_hashing.go    - Arrays & Hashing (9 problems)
+    problems_two_pointers.go      - Two Pointers (5 problems)
+    problems_sliding_window.go    - Sliding Window (6 problems)
+    problems_stack.go             - Stack (7 problems)
+    problems_binary_search.go     - Binary Search (7 problems)
+    problems_linked_list.go       - Linked List (9 problems)
+    problems_trees.go             - Trees (11 problems)
+    problems_tries.go             - Tries (3 problems)
+    problems_heap.go              - Heap / Priority Queue (6 problems)
+    problems_backtracking.go      - Backtracking (7 problems)
+    problems_graphs.go            - Graphs (18 problems)
+    problems_1d_dp.go             - 1D Dynamic Programming (11 problems)
+    problems_2d_dp.go             - 2D Dynamic Programming (10 problems)
+    problems_greedy.go            - Greedy (7 problems)
+    problems_intervals.go         - Intervals (5 problems)
+    problems_math.go              - Math & Geometry (8 problems)
+    problems_bit_manipulation.go  - Bit Manipulation (6 problems)
+  submission.go           - Submission handling (RunRequest, SubmitRequest, Results)
+  category.go             - Problem categories (Blind75Categories)
+  loader.go               - Problem loading (embedded Go + optional JSON files)
+  embed.go                - Embedded filesystem for custom problems
+  problems/               - Directory for custom JSON problems (optional)
 ```
+
+Each category file defines its own slice (e.g., `ArraysHashingProblems`) and uses an `init()` function to append problems to the main `EmbeddedProblems` slice. This organization makes it easy to add, update, or fix problems within a specific category without navigating a large monolithic file.
 
 ### Problem Loading Strategy
 
@@ -56,6 +76,7 @@ The practice UI is integrated into the main `app.js` with:
 | `/api/practice/submit` | POST | Run code against all test cases |
 | `/api/practice/hint/{id}/{index}` | GET | Get specific hint |
 | `/api/practice/solution/{id}` | GET | Get full solution |
+| `/api/practice/solution-viz/{id}` | POST | Run solution through sandbox for visualization |
 | `/api/practice/progress/export` | GET | Export progress JSON |
 | `/api/practice/progress/import` | POST | Import progress JSON |
 
@@ -244,18 +265,45 @@ The loader supports two input formats:
 
 ### Problem Workspace
 
-Three-column layout:
+Two-column layout:
 
-1. **Left Panel**: Problem description, examples, constraints
-2. **Center Panel**: Code editor with run/submit buttons
-3. **Right Panel**: Tabs for test cases, output, hints, visualization, solution
+1. **Left Panel**: Problem description, examples, constraints, hints, solution, and visualization tabs
+2. **Right Panel**: Code editor with run/submit buttons and test case results
 
-### Visualization
+### Code Editor
 
-Code execution visualization reuses the existing sandbox visualization system:
-- Step-by-step execution trace
-- Variable state at each step
-- Data structure visualizations (arrays, linked lists, trees)
+The practice mode uses the same CodeMirror-based editor as the sandbox with full Python support:
+
+- **Syntax Highlighting**: Full Python syntax highlighting with One Dark theme
+- **IntelliSense/Autocomplete**: Built-in functions, keywords, methods, and DSA helper classes
+- **Smart Indentation**: Automatic Python-style indentation
+- **Line Numbers**: Displayed in the gutter for easy reference
+
+See the [Sandbox documentation](sandbox.md#code-editor-features) for full editor feature details.
+
+### Visualization Tab
+
+The Visualization tab provides a dedicated full-panel view for understanding algorithm execution:
+
+- **Code Panel**: Shows the solution code with line-by-line highlighting synchronized with execution
+- **Variables Panel**: Displays variable state at each step
+- **Data Structure Canvas**: Visual representations of arrays, linked lists, trees, and graphs
+- **Playback Controls**: Reset, Back, Play/Pause, Step, and speed slider
+
+### Solution Visualization
+
+Users can visualize the built-in solution's execution step-by-step:
+
+1. Open a problem and click the "Solution" tab
+2. Click "Show Solution" to reveal the solution code
+3. Click "Visualize Solution" to run the solution through the sandbox
+4. The Visualize tab will open automatically, showing:
+   - The solution code with current line highlighted
+   - Variable state changes at each step
+   - Data structure visualizations (arrays with pointer highlights, linked lists, trees, graphs)
+   - Playback controls with adjustable speed
+
+This helps users understand not just what the solution does, but how it works step-by-step.
 
 ## Usage
 

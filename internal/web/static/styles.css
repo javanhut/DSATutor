@@ -3239,6 +3239,64 @@ button.ghost:hover {
   opacity: 0.6;
 }
 
+/* CodeMirror 5 Editor Container */
+.cm-editor-container {
+  width: 100%;
+  height: 100%;
+  min-height: 300px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+/* CodeMirror 5 uses .CodeMirror class */
+.cm-editor-container .CodeMirror {
+  height: 100%;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.editor-body {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.editor-body .cm-editor-container {
+  flex: 1;
+}
+
+/* CodeMirror autocomplete hints styling */
+.CodeMirror-hints {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  font-family: var(--mono);
+  font-size: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.CodeMirror-hint {
+  padding: 4px 8px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.CodeMirror-hint-active {
+  background: var(--accent);
+  color: #000;
+}
+
+/* Hide textarea when using CodeMirror */
+.sandbox-editor.hidden,
+.practice-editor.hidden {
+  display: none;
+}
+
 /* Sandbox Output */
 .sandbox-output {
   background: var(--panel-alt);
@@ -4109,6 +4167,33 @@ button.ghost:hover {
   line-height: 1.7;
 }
 
+.solution-actions {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover, #4a9eff);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .solution-code {
   background: var(--panel);
   border: 1px solid var(--border);
@@ -4705,4 +4790,587 @@ button.ghost:hover {
   .practice-filters .filter-group input {
     width: 100%;
   }
+}
+
+/* Practice Visualization Tab (in left panel) */
+#visualization-tab {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 16px;
+}
+
+#visualization-tab.hidden {
+  display: none;
+}
+
+.visualization-header {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.visualization-header h4 {
+  margin: 0 0 4px 0;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.viz-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+#visualization-tab .practice-controls {
+  padding: 12px;
+  background: var(--panel-alt);
+  border-radius: var(--radius);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+#visualization-tab .control-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.practice-viz-canvas {
+  flex: 1;
+  min-height: 200px;
+  max-height: 300px;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  overflow: auto;
+}
+
+.viz-state-panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  min-height: 150px;
+}
+
+.viz-code-panel,
+.viz-vars-panel {
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.viz-code-panel h5,
+.viz-vars-panel h5 {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.code-lines {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  max-height: 200px;
+}
+
+.code-line {
+  display: flex;
+  padding: 2px 12px;
+  transition: background 0.15s ease;
+}
+
+.code-line.active {
+  background: rgba(56, 189, 248, 0.15);
+  border-left: 3px solid var(--accent);
+  padding-left: 9px;
+}
+
+.code-line .line-number {
+  width: 30px;
+  color: var(--text-dim);
+  text-align: right;
+  margin-right: 12px;
+  user-select: none;
+}
+
+.code-line .line-content {
+  color: var(--text);
+  white-space: pre;
+}
+
+.code-line.active .line-number {
+  color: var(--accent);
+}
+
+#visualization-tab .vars-display {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px;
+  max-height: 200px;
+}
+
+#visualization-tab .state-text {
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--text-dim);
+  background: var(--panel-alt);
+  border-radius: var(--radius);
+}
+
+.simple-viz {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+/* ============================================
+   Data Structure Visualizations
+   ============================================ */
+
+/* Common structure styling */
+.struct-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+  font-family: var(--mono);
+}
+
+.struct-type {
+  font-weight: 400;
+  color: var(--accent);
+  font-size: 11px;
+}
+
+.empty-structure {
+  color: var(--text-dim);
+  font-style: italic;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+/* Array Visualization - Horizontal */
+.array-viz {
+  margin-bottom: 16px;
+}
+
+.array-container {
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.array-cells-horizontal {
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.array-cell-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 40px;
+}
+
+.array-cell {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel);
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.array-cell .cell-value {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.array-cell-wrapper .cell-index {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 4px;
+  font-family: var(--mono);
+}
+
+.array-cell-wrapper .cell-pointers {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+.pointer-label {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: var(--mono);
+}
+
+/* Pointer color coding */
+.array-cell.highlight-low,
+.pointer-label.pointer-low,
+.pointer-label.pointer-left,
+.pointer-label.pointer-start {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+
+.array-cell.highlight-high,
+.pointer-label.pointer-high,
+.pointer-label.pointer-right,
+.pointer-label.pointer-end {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.array-cell.highlight-mid,
+.pointer-label.pointer-mid,
+.pointer-label.pointer-pivot {
+  border-color: #a855f7;
+  background: rgba(168, 85, 247, 0.15);
+  color: #a855f7;
+}
+
+.array-cell.highlight-i,
+.pointer-label.pointer-i,
+.pointer-label.pointer-current,
+.pointer-label.pointer-slow {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+}
+
+.array-cell.highlight-j,
+.pointer-label.pointer-j,
+.pointer-label.pointer-fast {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+.array-cell.highlight-other {
+  border-color: var(--accent);
+  background: rgba(56, 189, 248, 0.1);
+}
+
+/* Linked List Visualization */
+.linked-list-viz {
+  margin-bottom: 16px;
+}
+
+.list-nodes-horizontal {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0;
+  overflow-x: auto;
+  padding: 8px 0;
+}
+
+.list-node-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.list-node {
+  width: 50px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel);
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+}
+
+.list-node .node-value {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.list-arrow {
+  width: 30px;
+  height: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+}
+
+.arrow-svg {
+  width: 24px;
+  height: 12px;
+}
+
+.cycle-indicator {
+  color: var(--warning);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+/* Binary Tree Visualization */
+.tree-viz {
+  margin-bottom: 16px;
+}
+
+.tree-container {
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+  padding: 16px 0;
+}
+
+.tree-node-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.tree-node {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel);
+  border: 2px solid var(--accent-2);
+  border-radius: 50%;
+  position: relative;
+}
+
+.tree-node .node-value {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.tree-children {
+  display: flex;
+  gap: 16px;
+  margin-top: 20px;
+  position: relative;
+}
+
+.tree-children::before {
+  content: '';
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  width: 2px;
+  height: 10px;
+  background: var(--border);
+  transform: translateX(-50%);
+}
+
+.tree-child {
+  position: relative;
+}
+
+.tree-child::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  width: 2px;
+  height: 10px;
+  background: var(--border);
+  transform: translateX(-50%);
+}
+
+.tree-null {
+  width: 20px;
+  height: 20px;
+  border: 1px dashed var(--border);
+  border-radius: 50%;
+  opacity: 0.3;
+}
+
+/* Adjust spacing based on tree depth */
+.tree-container.depth-1 .tree-children { gap: 8px; }
+.tree-container.depth-2 .tree-children { gap: 16px; }
+.tree-container.depth-3 .tree-children { gap: 24px; }
+.tree-container.depth-4 .tree-children { gap: 32px; }
+.tree-container.depth-5 .tree-children { gap: 40px; }
+
+/* Hash Table / Dictionary Visualization */
+.hash-table-viz {
+  margin-bottom: 16px;
+}
+
+.hash-table-container {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.hash-entries {
+  display: flex;
+  flex-direction: column;
+}
+
+.hash-entry {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.hash-entry:last-child {
+  border-bottom: none;
+}
+
+.hash-entry.truncated {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.hash-key {
+  color: var(--accent);
+  font-weight: 600;
+  min-width: 80px;
+}
+
+.hash-arrow {
+  color: var(--text-dim);
+  margin: 0 8px;
+}
+
+.hash-value {
+  color: var(--text);
+  word-break: break-all;
+}
+
+/* Set Visualization */
+.set-viz {
+  margin-bottom: 16px;
+}
+
+.set-container {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.set-elements {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.set-element {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  background: rgba(168, 85, 247, 0.15);
+  border: 1px solid var(--accent-3);
+  border-radius: 20px;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent-3);
+}
+
+/* Graph Visualization */
+.graph-viz {
+  margin-bottom: 16px;
+}
+
+.graph-container {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.graph-adjacency {
+  display: flex;
+  flex-direction: column;
+}
+
+.graph-node-row {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.graph-node-row:last-child {
+  border-bottom: none;
+}
+
+.graph-node-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: rgba(34, 197, 94, 0.15);
+  border: 2px solid var(--accent-2);
+  border-radius: 50%;
+  font-weight: 600;
+  color: var(--accent-2);
+}
+
+.graph-arrow {
+  color: var(--text-dim);
+  margin: 0 12px;
+}
+
+.graph-neighbors {
+  color: var(--text);
+}
+
+/* Unknown structure fallback */
+.struct-unknown {
+  margin-bottom: 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.struct-unknown pre {
+  margin: 8px 0 0 0;
+  font-size: 11px;
+  color: var(--text-dim);
+  overflow-x: auto;
 }

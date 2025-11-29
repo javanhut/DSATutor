@@ -20,20 +20,41 @@ The sandbox provides:
 
 ## Code Editor Features
 
-The sandbox code editor includes Python-specific features to make writing code easier:
+The sandbox uses a CodeMirror-based editor with full Python support:
+
+### Syntax Highlighting
+
+- Full Python syntax highlighting with the One Dark theme
+- Keywords, strings, numbers, comments, and operators are color-coded
+- Matching brackets and parentheses are highlighted
+
+### IntelliSense / Autocomplete
+
+- **Trigger**: Start typing or press Ctrl+Space
+- **Built-in functions**: `print`, `len`, `range`, `enumerate`, `zip`, `map`, `filter`, `sorted`, `sum`, `min`, `max`, and more
+- **Keywords**: `def`, `class`, `if`, `for`, `while`, `return`, `import`, `try`, `except`, etc.
+- **Data structure methods**: `append`, `pop`, `get`, `keys`, `values`, `items`, `split`, `join`, etc.
+- **DSA modules**: `collections`, `heapq`, `bisect`, `itertools`, `functools`
+- **Helper classes**: `ListNode`, `TreeNode`, `GraphNode`, `MinHeap`, `MaxHeap`
+
+Each completion shows:
+- The symbol name
+- Symbol type (function, keyword, method, class)
+- Brief description/usage info
 
 ### Automatic Indentation
 
-- **Tab**: Inserts 4 spaces (Python standard indentation)
-- **Shift+Tab**: Removes 4 spaces (dedent)
+- **Tab**: Inserts proper indentation
+- **Shift+Tab**: Dedents the current line
 - **Enter after colon**: Automatically increases indentation after lines ending with `:` (for `def`, `if`, `for`, `while`, `class`, etc.)
-- **Enter**: Maintains current indentation level on new lines
-- **Smart Backspace**: In leading whitespace, deletes entire indent units (4 spaces at a time)
+- **Smart indentation**: Maintains proper Python indentation levels
 
-### Multi-line Selection
+### Other Features
 
-- Select multiple lines and press **Tab** to indent all selected lines
-- Select multiple lines and press **Shift+Tab** to dedent all selected lines
+- **Line numbers**: Displayed in the gutter
+- **Active line highlighting**: Current line is subtly highlighted
+- **Bracket matching**: Matching brackets are highlighted when cursor is adjacent
+- **Undo/Redo**: Standard keyboard shortcuts (Ctrl+Z / Ctrl+Shift+Z)
 
 ## Available Helper Classes
 
@@ -110,13 +131,27 @@ The sandbox automatically detects and visualizes these data structures:
 
 | Python Type | Visualization |
 |-------------|---------------|
-| `list` (primitives) | Array with index/pointer highlights |
-| `dict` (scalar values) | Hash table with key-value pairs |
-| `dict` (list values) | Graph (adjacency list representation) |
-| `set` | Set visualization |
-| Object with `val`/`next` | Linked list |
-| Object with `val`/`left`/`right` | Binary tree |
-| Object with `val`/`neighbors` | Graph |
+| `list` (primitives) | Horizontal array with index labels and pointer highlights |
+| `dict` (scalar values) | Key-value table with styled entries |
+| `dict` (list values) | Graph as adjacency list |
+| `set` | Pill-shaped elements in a flex container |
+| Object with `val`/`next` | Horizontal linked list with arrow connectors |
+| Object with `val`/`left`/`right` | Binary tree with visual hierarchy |
+| Object with `val`/`neighbors` | Graph as adjacency list |
+
+### Array Pointer Highlighting
+
+When iterating through arrays, the visualization automatically highlights elements based on variable names:
+
+| Variable Names | Highlight Color |
+|---------------|-----------------|
+| `low`, `left`, `start` | Green (start boundary) |
+| `high`, `right`, `end` | Red (end boundary) |
+| `mid`, `pivot` | Purple (midpoint) |
+| `i`, `current`, `slow` | Blue (primary iterator) |
+| `j`, `fast` | Orange (secondary iterator) |
+
+Each highlighted cell shows both the index and the variable name(s) pointing to it.
 
 ## Pointer Highlighting
 

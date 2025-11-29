@@ -30,6 +30,7 @@ func (ps *PracticeServer) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/practice/submit", ps.handleSubmitCode)
 	mux.HandleFunc("/api/practice/hints/", ps.handleGetHint)
 	mux.HandleFunc("/api/practice/solution/", ps.handleGetSolution)
+	mux.HandleFunc("/api/practice/solution-viz/", ps.handleVisualizeSolution)
 	mux.HandleFunc("/api/practice/progress/export", ps.handleExportProgress)
 	mux.HandleFunc("/api/practice/progress/import", ps.handleImportProgress)
 }
@@ -434,6 +435,121 @@ func (ps *PracticeServer) handleGetSolution(w http.ResponseWriter, r *http.Reque
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(problem.Solution)
+}
+
+// handleVisualizeSolution runs the solution code through the sandbox for visualization.
+func (ps *PracticeServer) handleVisualizeSolution(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extract problem ID from path: /api/practice/solution-viz/{problemId}
+	path := strings.TrimPrefix(r.URL.Path, "/api/practice/solution-viz/")
+	problemID := strings.TrimSuffix(path, "/")
+
+	if problemID == "" {
+		http.Error(w, "Problem ID required", http.StatusBadRequest)
+		return
+	}
+
+	// Parse request body for optional test case selection
+	var req struct {
+		TestCaseIndex int `json:"testCaseIndex"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+
+	problem, err := ps.loader.GetProblem(problemID)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(practice.RunResponse{
+			Success: false,
+			Error:   "Problem not found: " + err.Error(),
+		})
+		return
+	}
+
+	// Check if solution code exists
+	if problem.Solution.Code == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(practice.RunResponse{
+			Success: false,
+			Error:   "No solution code available for this problem",
+		})
+		return
+	}
+
+	// Find test case
+	var testCase *practice.TestCase
+	if req.TestCaseIndex >= 0 && req.TestCaseIndex < len(problem.TestCases) {
+		testCase = &problem.TestCases[req.TestCaseIndex]
+	} else if len(problem.TestCases) > 0 {
+		// Use first visible test case by default
+		for _, tc := range problem.TestCases {
+			if !tc.Hidden {
+				testCase = &tc
+				break
+			}
+		}
+		if testCase == nil {
+			testCase = &problem.TestCases[0]
+		}
+	}
+
+	if testCase == nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(practice.RunResponse{
+			Success: false,
+			Error:   "No test case found",
+		})
+		return
+	}
+
+	// Generate code that runs the solution with test input
+	fullCode := generateTestWrapper(problem.Solution.Code, problem, testCase)
+
+	// Execute in sandbox
+	execReq := sandbox.ExecuteRequest{
+		Code:    fullCode,
+		Timeout: testCase.Timeout,
+	}
+
+	execResp, err := sandbox.Execute(execReq)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(practice.RunResponse{
+			Success: false,
+			Error:   "Execution error: " + err.Error(),
+		})
+		return
+	}
+
+	// Build response with visualization steps
+	response := practice.RunResponse{
+		Success:    execResp.Success,
+		Output:     execResp.Output,
+		Error:      execResp.Error,
+		Steps:      execResp.Steps,
+		Structures: nil,
+	}
+
+	// Compare output with expected value
+	if execResp.Success && testCase.Expected != nil {
+		response.Passed = compareOutput(execResp.Output, testCase.Expected)
+	}
+
+	// Extract structures from last step if available
+	if len(execResp.Steps) > 0 {
+		lastStep := execResp.Steps[len(execResp.Steps)-1]
+		response.Structures = lastStep.Structures
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 // handleExportProgress exports user progress as JSON.

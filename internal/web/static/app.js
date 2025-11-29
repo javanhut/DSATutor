@@ -5943,6 +5943,46 @@ class SandboxAnimator extends AlgorithmAnimator {
   }
 }
 
+// Editor helper functions (work with CodeMirror or fallback to textarea)
+function getEditorCode(editorId) {
+  // Try CodeMirror first
+  if (window.getEditorContent) {
+    const content = window.getEditorContent(editorId + '-container');
+    if (content !== undefined && content !== '') {
+      return content;
+    }
+  }
+  // Fallback to textarea
+  const textarea = document.getElementById(editorId);
+  return textarea ? textarea.value : '';
+}
+
+function setEditorCode(editorId, code) {
+  // Try CodeMirror first
+  if (window.setEditorContent) {
+    window.setEditorContent(editorId + '-container', code);
+  }
+  // Also set textarea for compatibility
+  const textarea = document.getElementById(editorId);
+  if (textarea) {
+    textarea.value = code;
+  }
+}
+
+// Initialize CodeMirror editor with content
+function initEditor(containerId, content, options = {}) {
+  if (window.createPythonEditor) {
+    // Check if editor already exists
+    if (window.dsaEditors && window.dsaEditors[containerId]) {
+      // Just update content
+      window.setEditorContent(containerId, content);
+      return window.dsaEditors[containerId];
+    }
+    return window.createPythonEditor(containerId, { content, ...options });
+  }
+  return null;
+}
+
 // Sandbox state
 const sandboxState = {
   isActive: false,
@@ -6004,18 +6044,48 @@ function initSandboxAnimator() {
   const stateEl = document.getElementById('sandbox-state');
 
   sandboxState.animator = new SandboxAnimator(canvas, codeEl, stateEl, {});
+
+  // Initialize CodeMirror editor with sample code
+  const sampleCode = `# Write your Python code here
+# Available helper classes:
+#   ListNode(val, next=None)  - for linked lists
+#   TreeNode(val, left=None, right=None)  - for binary trees
+#   GraphNode(val, neighbors=[])  - for graphs
+#
+# Example: Binary Search
+def binary_search(arr, target):
+    low, high = 0, len(arr) - 1
+    while low <= high:
+        mid = (low + high) // 2
+        if arr[mid] == target:
+            return mid
+        elif arr[mid] < target:
+            low = mid + 1
+        else:
+            high = mid - 1
+    return -1
+
+arr = [1, 3, 5, 7, 9, 11, 13]
+result = binary_search(arr, 7)
+print(f'Found at index: {result}')`;
+
+  initEditor('sandbox-editor-container', sampleCode, {
+    onChange: (content) => {
+      const textarea = document.getElementById('sandbox-code');
+      if (textarea) textarea.value = content;
+    },
+  });
 }
 
 async function runSandboxCode() {
   if (sandboxState.isExecuting) return;
 
-  const codeTextarea = document.getElementById('sandbox-code');
   const outputEl = document.getElementById('sandbox-output');
   const stateEl = document.getElementById('sandbox-state');
   const runBtn = document.getElementById('sandbox-run');
   const structuresEl = document.getElementById('sandbox-structures');
 
-  const code = codeTextarea.value.trim();
+  const code = getEditorCode('sandbox-code').trim();
   if (!code) {
     outputEl.textContent = 'Error: No code provided';
     return;
@@ -6063,7 +6133,6 @@ async function runSandboxCode() {
 }
 
 function clearSandbox() {
-  const codeTextarea = document.getElementById('sandbox-code');
   const outputEl = document.getElementById('sandbox-output');
   const stateEl = document.getElementById('sandbox-state');
   const canvas = document.getElementById('sandbox-canvas');
@@ -6071,7 +6140,7 @@ function clearSandbox() {
   const structuresEl = document.getElementById('sandbox-structures');
   const stepCounter = document.getElementById('sandbox-step-counter');
 
-  codeTextarea.value = '';
+  setEditorCode('sandbox-code', '');
   outputEl.textContent = '';
   stateEl.textContent = 'Click "Run Code" to execute your Python code and visualize the algorithm.';
   canvas.innerHTML = '';
@@ -7170,19 +7239,26 @@ function renderHints() {
 
 function renderStarterCode() {
   const problem = practiceState.currentProblem;
-  const editor = el('practice-code');
-  if (!editor || !problem) return;
+  if (!problem) return;
 
-  editor.value = problem.starterCode || '# Write your solution here\n';
+  const starterCode = problem.starterCode || '# Write your solution here\n';
+  setEditorCode('practice-code', starterCode);
+
+  // Initialize CodeMirror editor if available
+  initEditor('practice-editor-container', starterCode, {
+    onChange: (content) => {
+      const textarea = document.getElementById('practice-code');
+      if (textarea) textarea.value = content;
+    },
+  });
 }
 
 async function runPracticeCode() {
   const problem = practiceState.currentProblem;
-  const editor = el('practice-code');
   const outputEl = el('current-test-output');
-  if (!problem || !editor) return;
+  if (!problem) return;
 
-  const code = editor.value;
+  const code = getEditorCode('practice-code');
   const testCase = problem.testCases?.[practiceState.currentTestCase];
   if (!testCase) return;
 
@@ -7221,9 +7297,15 @@ async function runPracticeCode() {
         btn.classList.add(result.passed ? 'passed' : 'failed');
       }
 
-      // Handle visualization steps
+      // Handle visualization steps - pass user's code for display
       if (result.steps && result.steps.length > 0) {
-        renderPracticeVisualization(result.steps);
+        renderPracticeVisualization(result.steps, code);
+
+        // Auto-switch to visualization tab
+        const vizTab = document.querySelector('#practice-mode .problem-panel .tab-btn[data-tab="visualization"]');
+        if (vizTab) {
+          vizTab.click();
+        }
       }
     }
 
@@ -7239,11 +7321,10 @@ async function runPracticeCode() {
 
 async function submitPracticeCode() {
   const problem = practiceState.currentProblem;
-  const editor = el('practice-code');
   const outputEl = el('test-results');
-  if (!problem || !editor) return;
+  if (!problem) return;
 
-  const code = editor.value;
+  const code = getEditorCode('practice-code');
 
   if (outputEl) {
     outputEl.innerHTML = '<div class="running">Submitting all test cases...</div>';
@@ -7320,12 +7401,27 @@ function updateProgressCount() {
   countEl.textContent = `${solved}/${total} Solved`;
 }
 
-function renderPracticeVisualization(steps) {
+function renderPracticeVisualization(steps, codeToDisplay) {
   const vizContainer = el('practice-canvas');
   if (!vizContainer || !steps || steps.length === 0) return;
 
   practiceState.vizSteps = steps;
   practiceState.currentVizStep = 0;
+  practiceState.vizCode = codeToDisplay || '';
+
+  // Render code lines if we have code
+  const codeLinesEl = el('practice-code-lines');
+  if (codeLinesEl && practiceState.vizCode) {
+    const lines = practiceState.vizCode.split('\n');
+    let html = '';
+    lines.forEach((line, idx) => {
+      html += `<div class="code-line" data-line="${idx + 1}">
+        <span class="line-number">${idx + 1}</span>
+        <span class="line-content">${escapeHtml(line) || ' '}</span>
+      </div>`;
+    });
+    codeLinesEl.innerHTML = html;
+  }
 
   renderCurrentVizStep();
 }
@@ -7335,6 +7431,7 @@ function renderCurrentVizStep() {
   const varsContainer = el('practice-vars');
   const stateContainer = el('practice-state');
   const stepCounter = el('practice-step-counter');
+  const codeLinesEl = el('practice-code-lines');
 
   if (!vizContainer || !practiceState.vizSteps) return;
 
@@ -7343,9 +7440,26 @@ function renderCurrentVizStep() {
 
   if (!step) return;
 
+  // Get line number (tracer sends lineNum, normalize to line)
+  const currentLine = step.line || step.lineNum;
+
   // Update step counter
   if (stepCounter) {
     stepCounter.textContent = `Step ${practiceState.currentVizStep + 1}/${steps.length}`;
+  }
+
+  // Highlight current line in code
+  if (codeLinesEl && currentLine) {
+    codeLinesEl.querySelectorAll('.code-line').forEach(lineEl => {
+      const lineNum = parseInt(lineEl.dataset.line, 10);
+      lineEl.classList.toggle('active', lineNum === currentLine);
+    });
+
+    // Scroll to current line
+    const activeLine = codeLinesEl.querySelector('.code-line.active');
+    if (activeLine) {
+      activeLine.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
   }
 
   // Render variables
@@ -7366,7 +7480,7 @@ function renderCurrentVizStep() {
 
   // Update state text
   if (stateContainer) {
-    stateContainer.textContent = `Line ${step.line}: ${step.function || 'main'}`;
+    stateContainer.textContent = `Line ${currentLine}: ${step.function || 'main'}`;
   }
 
   // Render visualization based on detected structures
@@ -7388,10 +7502,17 @@ function renderStructure(struct) {
       return renderArrayViz(struct);
     case 'linked_list':
       return renderLinkedListViz(struct);
+    case 'binary_tree':
     case 'tree':
       return renderTreeViz(struct);
+    case 'hash_table':
+      return renderHashTableViz(struct);
+    case 'set':
+      return renderSetViz(struct);
+    case 'graph':
+      return renderGraphViz(struct);
     default:
-      return `<div class="struct-unknown">${struct.name}: ${JSON.stringify(struct.data)}</div>`;
+      return `<div class="struct-unknown"><span class="struct-name">${escapeHtml(struct.name)}</span><pre>${JSON.stringify(struct.data, null, 2)}</pre></div>`;
   }
 }
 
@@ -7399,39 +7520,231 @@ function renderArrayViz(struct) {
   const data = struct.data || [];
   const highlights = struct.highlights || {};
 
-  let html = `<div class="array-viz"><div class="struct-name">${escapeHtml(struct.name)}</div><div class="array-cells">`;
-  data.forEach((val, i) => {
-    let cellClass = 'array-cell';
-    if (highlights.current === i) cellClass += ' current';
-    if (highlights.comparing?.includes(i)) cellClass += ' comparing';
-    if (highlights.found === i) cellClass += ' found';
-    html += `<div class="${cellClass}"><span class="cell-value">${val}</span><span class="cell-index">${i}</span></div>`;
+  // Build pointer labels for each index
+  const pointersByIndex = {};
+  Object.entries(highlights).forEach(([name, idx]) => {
+    if (typeof idx === 'number' && idx >= 0 && idx < data.length) {
+      if (!pointersByIndex[idx]) pointersByIndex[idx] = [];
+      pointersByIndex[idx].push(name);
+    }
   });
-  html += '</div></div>';
+
+  let html = `<div class="array-viz">
+    <div class="struct-label">${escapeHtml(struct.name)}</div>
+    <div class="array-container">
+      <div class="array-cells-horizontal">`;
+
+  data.forEach((val, i) => {
+    const pointers = pointersByIndex[i] || [];
+    const hasPointer = pointers.length > 0;
+    const pointerClasses = pointers.map(p => `pointer-${p}`).join(' ');
+
+    // Determine cell highlight class based on pointer type
+    let highlightClass = '';
+    if (pointers.includes('low') || pointers.includes('left') || pointers.includes('start')) {
+      highlightClass = 'highlight-low';
+    } else if (pointers.includes('high') || pointers.includes('right') || pointers.includes('end')) {
+      highlightClass = 'highlight-high';
+    } else if (pointers.includes('mid') || pointers.includes('pivot')) {
+      highlightClass = 'highlight-mid';
+    } else if (pointers.includes('i') || pointers.includes('current') || pointers.includes('slow')) {
+      highlightClass = 'highlight-i';
+    } else if (pointers.includes('j') || pointers.includes('fast')) {
+      highlightClass = 'highlight-j';
+    } else if (hasPointer) {
+      highlightClass = 'highlight-other';
+    }
+
+    html += `<div class="array-cell-wrapper">
+      <div class="array-cell ${highlightClass} ${pointerClasses}">
+        <span class="cell-value">${escapeHtml(String(val))}</span>
+      </div>
+      <div class="cell-index">${i}</div>
+      ${hasPointer ? `<div class="cell-pointers">${pointers.map(p => `<span class="pointer-label pointer-${p}">${p}</span>`).join('')}</div>` : ''}
+    </div>`;
+  });
+
+  html += `</div></div></div>`;
   return html;
 }
 
 function renderLinkedListViz(struct) {
-  const nodes = struct.data || [];
-  let html = `<div class="linked-list-viz"><div class="struct-name">${escapeHtml(struct.name)}</div><div class="list-nodes">`;
-  nodes.forEach((val, i) => {
-    html += `<div class="list-node"><span class="node-value">${val}</span></div>`;
-    if (i < nodes.length - 1) {
-      html += '<div class="list-arrow">-></div>';
-    }
+  const data = struct.data || {};
+  const nodes = data.nodes || [];
+  const hasCycle = data.hasCycle || false;
+
+  let html = `<div class="linked-list-viz">
+    <div class="struct-label">${escapeHtml(struct.name)}${hasCycle ? ' <span class="cycle-indicator">(cycle detected)</span>' : ''}</div>
+    <div class="list-nodes-horizontal">`;
+
+  nodes.forEach((node, i) => {
+    const val = typeof node === 'object' ? node.val : node;
+    html += `<div class="list-node-wrapper">
+      <div class="list-node">
+        <span class="node-value">${escapeHtml(String(val))}</span>
+      </div>
+      ${i < nodes.length - 1 ? '<div class="list-arrow"><svg viewBox="0 0 24 12" class="arrow-svg"><path d="M0 6 L18 6 M14 2 L18 6 L14 10" stroke="currentColor" fill="none" stroke-width="2"/></svg></div>' : ''}
+    </div>`;
   });
-  html += '</div></div>';
+
+  if (nodes.length === 0) {
+    html += '<div class="empty-structure">null</div>';
+  }
+
+  html += `</div></div>`;
   return html;
 }
 
 function renderTreeViz(struct) {
-  // Simple tree rendering - could be enhanced
-  return `<div class="tree-viz"><div class="struct-name">${escapeHtml(struct.name)}</div><pre>${JSON.stringify(struct.data, null, 2)}</pre></div>`;
+  const data = struct.data;
+  if (!data) {
+    return `<div class="tree-viz"><div class="struct-label">${escapeHtml(struct.name)}</div><div class="empty-structure">null</div></div>`;
+  }
+
+  // Calculate tree depth for spacing
+  function getDepth(node) {
+    if (!node) return 0;
+    return 1 + Math.max(getDepth(node.left), getDepth(node.right));
+  }
+  const depth = getDepth(data);
+
+  function renderNode(node, level) {
+    if (!node) return '';
+
+    const hasLeft = node.left !== null;
+    const hasRight = node.right !== null;
+
+    let html = `<div class="tree-node-container">
+      <div class="tree-node">
+        <span class="node-value">${escapeHtml(String(node.val))}</span>
+      </div>`;
+
+    if (hasLeft || hasRight) {
+      html += `<div class="tree-children">`;
+      html += `<div class="tree-child left">${hasLeft ? renderNode(node.left, level + 1) : '<div class="tree-null"></div>'}</div>`;
+      html += `<div class="tree-child right">${hasRight ? renderNode(node.right, level + 1) : '<div class="tree-null"></div>'}</div>`;
+      html += `</div>`;
+    }
+
+    html += `</div>`;
+    return html;
+  }
+
+  return `<div class="tree-viz">
+    <div class="struct-label">${escapeHtml(struct.name)}</div>
+    <div class="tree-container depth-${Math.min(depth, 5)}">
+      ${renderNode(data, 0)}
+    </div>
+  </div>`;
 }
 
-function showSolution() {
+function renderHashTableViz(struct) {
+  const data = struct.data || {};
+  const entries = Object.entries(data).filter(([k]) => k !== '__truncated__');
+  const truncated = data.__truncated__ || 0;
+
+  let html = `<div class="hash-table-viz">
+    <div class="struct-label">${escapeHtml(struct.name)} <span class="struct-type">dict</span></div>
+    <div class="hash-table-container">`;
+
+  if (entries.length === 0) {
+    html += '<div class="empty-structure">{}</div>';
+  } else {
+    html += '<div class="hash-entries">';
+    entries.forEach(([key, value]) => {
+      const displayValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
+      html += `<div class="hash-entry">
+        <span class="hash-key">${escapeHtml(String(key))}</span>
+        <span class="hash-arrow">:</span>
+        <span class="hash-value">${escapeHtml(displayValue)}</span>
+      </div>`;
+    });
+    if (truncated > 0) {
+      html += `<div class="hash-entry truncated">... ${truncated} more entries</div>`;
+    }
+    html += '</div>';
+  }
+
+  html += `</div></div>`;
+  return html;
+}
+
+function renderSetViz(struct) {
+  const data = struct.data || [];
+
+  let html = `<div class="set-viz">
+    <div class="struct-label">${escapeHtml(struct.name)} <span class="struct-type">set</span></div>
+    <div class="set-container">`;
+
+  if (data.length === 0) {
+    html += '<div class="empty-structure">set()</div>';
+  } else {
+    html += '<div class="set-elements">';
+    data.forEach((val) => {
+      html += `<span class="set-element">${escapeHtml(String(val))}</span>`;
+    });
+    html += '</div>';
+  }
+
+  html += `</div></div>`;
+  return html;
+}
+
+function renderGraphViz(struct) {
+  const data = struct.data || {};
+  const nodes = data.nodes || [];
+  const edges = data.edges || [];
+
+  let html = `<div class="graph-viz">
+    <div class="struct-label">${escapeHtml(struct.name)} <span class="struct-type">graph</span></div>
+    <div class="graph-container">`;
+
+  if (nodes.length === 0) {
+    html += '<div class="empty-structure">Empty graph</div>';
+  } else {
+    // Simple adjacency list display
+    html += '<div class="graph-adjacency">';
+
+    // Group edges by source
+    const adjList = {};
+    nodes.forEach(n => adjList[n] = []);
+    edges.forEach(e => {
+      if (adjList[e.from]) {
+        adjList[e.from].push(e.to);
+      }
+    });
+
+    Object.entries(adjList).forEach(([node, neighbors]) => {
+      html += `<div class="graph-node-row">
+        <span class="graph-node-label">${escapeHtml(node)}</span>
+        <span class="graph-arrow">:</span>
+        <span class="graph-neighbors">[${neighbors.map(n => escapeHtml(n)).join(', ')}]</span>
+      </div>`;
+    });
+
+    html += '</div>';
+  }
+
+  html += `</div></div>`;
+  return html;
+}
+
+async function showSolution() {
   const problem = practiceState.currentProblem;
-  if (!problem || !problem.solution) return;
+  if (!problem) return;
+
+  // Fetch solution if not already loaded
+  if (!problem.solution) {
+    try {
+      const response = await fetch(`/api/practice/solution/${problem.id}`);
+      if (!response.ok) throw new Error('Failed to load solution');
+      problem.solution = await response.json();
+    } catch (e) {
+      console.error('Failed to load solution:', e);
+      alert('Failed to load solution');
+      return;
+    }
+  }
 
   const lockedEl = el('solution-locked');
   const contentEl = el('solution-content');
@@ -7443,16 +7756,25 @@ function showSolution() {
 
   if (contentEl) {
     let html = `
+      <div class="solution-actions">
+        <button id="visualize-solution" class="btn-small btn-primary">Visualize Solution</button>
+      </div>
       <h4>Solution</h4>
-      <div class="solution-approach"><strong>Approach:</strong> ${escapeHtml(problem.solution.approach || '')}</div>
+      <div class="solution-approach"><strong>Approach:</strong> ${escapeHtml(problem.solution.explanation || '')}</div>
       <div class="solution-complexity">
-        <span><strong>Time:</strong> ${escapeHtml(problem.timeComplexity || 'N/A')}</span>
-        <span><strong>Space:</strong> ${escapeHtml(problem.spaceComplexity || 'N/A')}</span>
+        <span><strong>Time:</strong> ${escapeHtml(problem.solution.timeComplexity || problem.timeComplexity || 'N/A')}</span>
+        <span><strong>Space:</strong> ${escapeHtml(problem.solution.spaceComplexity || problem.spaceComplexity || 'N/A')}</span>
       </div>
       <pre class="solution-code"><code>${escapeHtml(problem.solution.code || '')}</code></pre>
     `;
     contentEl.innerHTML = html;
     contentEl.classList.remove('hidden');
+
+    // Re-bind visualize button since we regenerated the content
+    const vizBtn = el('visualize-solution');
+    if (vizBtn) {
+      vizBtn.onclick = visualizeSolution;
+    }
   }
 
   if (walkthroughEl && problem.solution.walkthrough && problem.solution.walkthrough.length > 0) {
@@ -7462,11 +7784,69 @@ function showSolution() {
         <div class="walkthrough-step">
           <div class="walkthrough-header">Step ${i + 1}: ${escapeHtml(step.title || '')}</div>
           <div class="walkthrough-explanation">${escapeHtml(step.explanation || '')}</div>
-          ${step.code ? `<pre class="walkthrough-code"><code>${escapeHtml(step.code)}</code></pre>` : ''}
+          ${step.codeSnippet ? `<pre class="walkthrough-code"><code>${escapeHtml(step.codeSnippet)}</code></pre>` : ''}
         </div>
       `;
     });
     walkthroughEl.innerHTML = html;
+  }
+}
+
+async function visualizeSolution() {
+  const problem = practiceState.currentProblem;
+  if (!problem) return;
+
+  const vizBtn = el('visualize-solution');
+  if (vizBtn) {
+    vizBtn.disabled = true;
+    vizBtn.textContent = 'Loading...';
+  }
+
+  try {
+    // Fetch solution if not already loaded
+    if (!problem.solution) {
+      const solResponse = await fetch(`/api/practice/solution/${problem.id}`);
+      if (!solResponse.ok) throw new Error('Failed to load solution');
+      problem.solution = await solResponse.json();
+    }
+
+    const response = await fetch(`/api/practice/solution-viz/${problem.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        testCaseIndex: practiceState.currentTestCase || 0,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (result.error) {
+      alert('Error visualizing solution: ' + result.error);
+      return;
+    }
+
+    if (result.steps && result.steps.length > 0) {
+      // Get solution code for display
+      const solutionCode = problem.solution?.code || '';
+
+      // Switch to visualization tab
+      const vizTab = document.querySelector('#practice-mode .tab-btn[data-tab="visualization"]');
+      if (vizTab) {
+        vizTab.click();
+      }
+
+      // Render the visualization with code
+      renderPracticeVisualization(result.steps, solutionCode);
+    } else {
+      alert('No visualization steps available for this solution.');
+    }
+  } catch (e) {
+    alert('Error visualizing solution: ' + e.message);
+  } finally {
+    if (vizBtn) {
+      vizBtn.disabled = false;
+      vizBtn.textContent = 'Visualize Solution';
+    }
   }
 }
 
@@ -7541,7 +7921,13 @@ function setupPracticeControls() {
     solutionBtn.onclick = showSolution;
   }
 
-  // Panel tabs (Description/Hints/Solution and TestCases/Visualization)
+  // Visualize Solution button
+  const vizSolutionBtn = el('visualize-solution');
+  if (vizSolutionBtn) {
+    vizSolutionBtn.onclick = visualizeSolution;
+  }
+
+  // Panel tabs (Description/Hints/Solution/Visualize in left panel)
   const panelTabs = document.querySelectorAll('#practice-mode .tab-btn');
   panelTabs.forEach(tab => {
     tab.onclick = () => {
@@ -7722,7 +8108,11 @@ function setupPracticeVizControls() {
           practiceState.vizTimer = null;
         }
       } else {
-        // Start playback
+        // Start playback - get speed from slider
+        const speedSlider = el('practice-speed');
+        const speed = speedSlider ? parseInt(speedSlider.value, 10) : 5;
+        const interval = 1100 - (speed * 100); // speed 1 = 1000ms, speed 10 = 100ms
+
         practiceState.vizPlaying = true;
         playBtn.textContent = 'Pause';
         practiceState.vizTimer = setInterval(() => {
@@ -7736,7 +8126,7 @@ function setupPracticeVizControls() {
             clearInterval(practiceState.vizTimer);
             practiceState.vizTimer = null;
           }
-        }, 500);
+        }, interval);
       }
     };
   }
