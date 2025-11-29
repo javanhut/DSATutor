@@ -1,17 +1,26 @@
 # Practice Backlog (Blind 75 Gaps)
 
-This file tracks problems that are still missing from the Blind 75 / NeetCode-style coverage in `internal/practice/embedded_problems.go`.
+This file tracks problems implemented in `internal/practice/embedded_problems.go`.
 
-**Status Update**: Major progress made - 67 new problems added with full hints, visualizations, and linked tutorials.
+**Status Update**: ALL Blind 75 problems are now complete. Extended coverage includes NeetCode 150 and additional problems.
 
-- Current embedded problems: **96** (was 29)
-- Remaining in this backlog: ~45
+- Current embedded problems: **144**
+- Blind 75: COMPLETE
+- NeetCode 150: Nearly Complete
 - All problems include 3-level hints, solutions with walkthroughs, and chapter links
 
-## Implemented Categories (Complete or Nearly Complete)
+## Category Completion Status
+
+### Arrays & Hashing - COMPLETE
+All core problems implemented with hints, solutions, and chapter links.
+
+### Two Pointers - COMPLETE
+All core problems implemented.
+
+### Sliding Window - COMPLETE
+All core problems implemented.
 
 ### Stack (6/6) - COMPLETE
-All implemented with hints, solutions, and chapter links:
 - [x] Min Stack
 - [x] Evaluate Reverse Polish Notation
 - [x] Generate Parentheses
@@ -36,7 +45,7 @@ All implemented with hints, solutions, and chapter links:
 - [x] Merge K Sorted Lists
 - [x] LRU Cache
 
-### Trees (9/10) - NEARLY COMPLETE
+### Trees (10/10) - COMPLETE
 - [x] Same Tree
 - [x] Subtree of Another Tree
 - [x] Lowest Common Ancestor of a BST
@@ -46,137 +55,115 @@ All implemented with hints, solutions, and chapter links:
 - [x] Construct Binary Tree from Preorder and Inorder Traversal
 - [x] Binary Tree Maximum Path Sum
 - [x] Serialize and Deserialize Binary Tree
-- [ ] Word Search II (moved to Tries)
+- [x] Word Search II (in Tries category)
 
 ### Tries (3/3) - COMPLETE
 - [x] Implement Trie
 - [x] Design Add and Search Words
 - [x] Word Search II
 
-### Heap / Priority Queue (5/6) - NEARLY COMPLETE
+### Heap / Priority Queue (6/6) - COMPLETE
 - [x] Kth Largest Element in a Stream
 - [x] Last Stone Weight
 - [x] K Closest Points to Origin
 - [x] Task Scheduler
 - [x] Find Median from Data Stream
-- [ ] Design Twitter
+- [x] Design Twitter
 
-### Backtracking (5/9) - PARTIAL
-Implemented:
+### Backtracking (9/9) - COMPLETE
 - [x] Subsets
+- [x] Subsets II
 - [x] Word Search
 - [x] N-Queens
-- [x] Combination Sum (was in original)
-- [x] Permutations (was in original)
+- [x] Combination Sum
+- [x] Combination Sum II
+- [x] Permutations
+- [x] Palindrome Partitioning
+- [x] Letter Combinations of a Phone Number
 
-Remaining:
-- [ ] Subsets II
-- [ ] Combination Sum II
-- [ ] Palindrome Partitioning
-- [ ] Letter Combinations of a Phone Number
-
-### Graphs (6/11) - PARTIAL
-Implemented:
+### Graphs - COMPLETE
+Basic Graphs:
 - [x] Clone Graph
 - [x] Pacific Atlantic Water Flow
 - [x] Rotting Oranges
+- [x] Course Schedule
 - [x] Course Schedule II
-- [x] Number of Islands (was in original)
-- [x] Course Schedule (was in original)
+- [x] Number of Islands
+- [x] Surrounded Regions
+- [x] Walls and Gates
+- [x] Redundant Connection
+- [x] Word Ladder
+- [x] Graph Valid Tree
+- [x] Number of Connected Components
+- [x] Alien Dictionary
 
-Remaining:
-- [ ] Surrounded Regions
-- [ ] Walls and Gates
-- [ ] Redundant Connection
-- [ ] Word Ladder
-- [ ] Graph Valid Tree
-- [ ] Number of Connected Components
-- [ ] Alien Dictionary
+Advanced Graphs:
+- [x] Reconstruct Itinerary
+- [x] Min Cost to Connect All Points
+- [x] Network Delay Time
+- [x] Swim in Rising Water
+- [x] Cheapest Flights Within K Stops
 
-### 1D DP (6/9) - PARTIAL
-Implemented:
+### 1D DP (10/10) - COMPLETE
+- [x] Climbing Stairs
+- [x] House Robber
 - [x] House Robber II
 - [x] Longest Palindromic Substring
+- [x] Palindromic Substrings
 - [x] Coin Change
 - [x] Longest Increasing Subsequence
 - [x] Word Break
-- [x] Climbing Stairs (was in original)
+- [x] Decode Ways
+- [x] Maximum Product Subarray
+- [x] Partition Equal Subset Sum
 
-Remaining:
-- [ ] Palindromic Substrings
-- [ ] Decode Ways
-- [ ] Maximum Product Subarray
-- [ ] Partition Equal Subset Sum
+### 2D DP (11/11) - COMPLETE
+- [x] Unique Paths
+- [x] Longest Common Subsequence
+- [x] Best Time to Buy and Sell Stock with Cooldown
+- [x] Coin Change II
+- [x] Target Sum
+- [x] Interleaving String
+- [x] Longest Increasing Path in Matrix
+- [x] Distinct Subsequences
+- [x] Edit Distance
+- [x] Burst Balloons
+- [x] Regular Expression Matching
 
-### 2D DP (1/11) - NEEDS WORK
-Implemented:
-- [x] Unique Paths (was in original)
-
-Remaining:
-- [ ] Longest Common Subsequence
-- [ ] Best Time to Buy and Sell Stock with Cooldown
-- [ ] Coin Change II
-- [ ] Target Sum
-- [ ] Interleaving String
-- [ ] Longest Increasing Path in Matrix
-- [ ] Distinct Subsequences
-- [ ] Edit Distance
-- [ ] Burst Balloons
-- [ ] Regular Expression Matching
-
-### Greedy (3/8) - PARTIAL
-Implemented:
+### Greedy (8/8) - COMPLETE
 - [x] Maximum Subarray
-- [x] Jump Game (was in original)
+- [x] Jump Game
 - [x] Jump Game II
+- [x] Gas Station
+- [x] Hand of Straights
+- [x] Merge Triplets to Form Target
+- [x] Partition Labels
+- [x] Valid Parenthesis String
 
-Remaining:
-- [ ] Gas Station
-- [ ] Hand of Straights
-- [ ] Merge Triplets to Form Target
-- [ ] Partition Labels
-- [ ] Valid Parenthesis String
-
-### Intervals (2/5) - PARTIAL
-Implemented:
+### Intervals (5/5) - COMPLETE
 - [x] Merge Intervals
 - [x] Non-overlapping Intervals
+- [x] Insert Interval
+- [x] Meeting Rooms
+- [x] Meeting Rooms II
 
-Remaining:
-- [ ] Insert Interval
-- [ ] Meeting Rooms
-- [ ] Meeting Rooms II
-
-### Math & Geometry (2/8) - PARTIAL
-Implemented:
+### Math & Geometry (8/8) - COMPLETE
 - [x] Rotate Image
 - [x] Spiral Matrix
+- [x] Set Matrix Zeroes
+- [x] Happy Number
+- [x] Plus One
+- [x] Pow(x, n)
+- [x] Multiply Strings
+- [x] Detect Squares
 
-Remaining:
-- [ ] Set Matrix Zeroes
-- [ ] Happy Number
-- [ ] Plus One
-- [ ] Pow(x, n)
-- [ ] Multiply Strings
-- [ ] Detect Squares
-
-### Bit Manipulation (3/6) - PARTIAL
-Implemented:
+### Bit Manipulation (6/6) - COMPLETE
 - [x] Single Number
 - [x] Counting Bits
 - [x] Missing Number
-
-Remaining:
-- [ ] Number of 1 Bits
-- [ ] Reverse Bits
-- [ ] Sum of Two Integers
-
-## Advanced Graphs (0/5) - NOT STARTED
-- [ ] Reconstruct Itinerary
-- [ ] Min Cost to Connect All Points
-- [ ] Network Delay Time
-- [ ] Swim in Rising Water
-- [ ] Cheapest Flights Within K Stops
+- [x] Number of 1 Bits
+- [x] Reverse Bits
+- [x] Sum of Two Integers
 
 ---
 

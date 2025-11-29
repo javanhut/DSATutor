@@ -5202,6 +5202,3031 @@ You must implement a solution with a linear runtime complexity and use only cons
 			},
 		},
 	},
+	// Bit Manipulation (continued) - Blind 75
+	{
+		ID:              "number-of-1-bits",
+		Number:          97,
+		Title:           "Number of 1 Bits",
+		Difficulty:      "Easy",
+		Category:        "bit-manipulation",
+		Tags:            []string{"Divide and Conquer", "Bit Manipulation"},
+		RelatedChapters: []int{1},
+		Description: `Write a function that takes the binary representation of an unsigned integer and returns the number of '1' bits it has (also known as the Hamming weight).`,
+		Constraints: []string{
+			"The input must be a binary string of length 32",
+		},
+		Examples: []Example{
+			{Input: "n = 00000000000000000000000000001011", Output: "3"},
+			{Input: "n = 00000000000000000000000010000000", Output: "1"},
+			{Input: "n = 11111111111111111111111111111101", Output: "31"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"n": 11}, Expected: 3},
+			{Input: map[string]interface{}{"n": 128}, Expected: 1},
+		},
+		TimeComplexity:  "O(1)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def hammingWeight(n):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Count bits by checking each bit position, or use n & (n-1) trick to clear rightmost 1 bit."},
+			{Level: 2, Type: "algorithm", Content: "n & (n-1) clears the least significant 1 bit. Count how many times until n becomes 0."},
+			{Level: 3, Type: "code", Content: "count = 0. while n: n &= (n - 1); count += 1. return count."},
+		},
+		Solution: Solution{
+			Code: `def hammingWeight(n):
+    count = 0
+    while n:
+        n &= (n - 1)  # Clear rightmost 1 bit
+        count += 1
+    return count`,
+			Explanation:     "n & (n-1) clears the least significant 1 bit. Count iterations until n becomes 0.",
+			TimeComplexity:  "O(1) - at most 32 iterations",
+			SpaceComplexity: "O(1)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Clear rightmost 1", Explanation: "n & (n-1) removes least significant 1 bit", CodeSnippet: "n &= (n - 1)", LineStart: 4, LineEnd: 4},
+				{Title: "Count iterations", Explanation: "Each iteration removes one 1 bit", CodeSnippet: "count += 1", LineStart: 5, LineEnd: 5},
+			},
+		},
+	},
+	{
+		ID:              "reverse-bits",
+		Number:          98,
+		Title:           "Reverse Bits",
+		Difficulty:      "Easy",
+		Category:        "bit-manipulation",
+		Tags:            []string{"Divide and Conquer", "Bit Manipulation"},
+		RelatedChapters: []int{1},
+		Description: `Reverse bits of a given 32 bits unsigned integer.`,
+		Constraints: []string{
+			"The input must be a binary string of length 32",
+		},
+		Examples: []Example{
+			{Input: "n = 00000010100101000001111010011100", Output: "964176192 (00111001011110000010100101000000)"},
+			{Input: "n = 11111111111111111111111111111101", Output: "3221225471 (10111111111111111111111111111111)"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"n": 43261596}, Expected: 964176192},
+		},
+		TimeComplexity:  "O(1)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def reverseBits(n):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Process each bit from right to left, building result from left to right."},
+			{Level: 2, Type: "algorithm", Content: "For each of 32 bits: shift result left, add current bit (n & 1), shift n right."},
+			{Level: 3, Type: "code", Content: "result = 0. for i in range(32): result = (result << 1) | (n & 1); n >>= 1. return result."},
+		},
+		Solution: Solution{
+			Code: `def reverseBits(n):
+    result = 0
+    for i in range(32):
+        result = (result << 1) | (n & 1)
+        n >>= 1
+    return result`,
+			Explanation:     "Extract rightmost bit of n, add to result (shifted left). Repeat 32 times.",
+			TimeComplexity:  "O(1) - always 32 iterations",
+			SpaceComplexity: "O(1)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Extract and add bit", Explanation: "Get rightmost bit, add to result", CodeSnippet: "result = (result << 1) | (n & 1)", LineStart: 4, LineEnd: 4},
+				{Title: "Move to next bit", Explanation: "Shift n right to process next bit", CodeSnippet: "n >>= 1", LineStart: 5, LineEnd: 5},
+			},
+		},
+	},
+	{
+		ID:              "sum-of-two-integers",
+		Number:          99,
+		Title:           "Sum of Two Integers",
+		Difficulty:      "Medium",
+		Category:        "bit-manipulation",
+		Tags:            []string{"Math", "Bit Manipulation"},
+		RelatedChapters: []int{1},
+		Description: `Given two integers a and b, return the sum of the two integers without using the operators + and -.`,
+		Constraints: []string{
+			"-1000 <= a, b <= 1000",
+		},
+		Examples: []Example{
+			{Input: "a = 1, b = 2", Output: "3"},
+			{Input: "a = 2, b = 3", Output: "5"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"a": 1, "b": 2}, Expected: 3},
+			{Input: map[string]interface{}{"a": 2, "b": 3}, Expected: 5},
+		},
+		TimeComplexity:  "O(1)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def getSum(a, b):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "XOR gives sum without carry. AND shifted left gives carry. Repeat until no carry."},
+			{Level: 2, Type: "algorithm", Content: "sum = a ^ b (no carry). carry = (a & b) << 1. Repeat with sum and carry until carry is 0."},
+			{Level: 3, Type: "code", Content: "while b: a, b = a ^ b, (a & b) << 1. Handle negative numbers with mask in Python."},
+		},
+		Solution: Solution{
+			Code: `def getSum(a, b):
+    # 32-bit mask for handling negative numbers in Python
+    MASK = 0xFFFFFFFF
+    MAX_INT = 0x7FFFFFFF
+
+    while b != 0:
+        carry = ((a & b) << 1) & MASK
+        a = (a ^ b) & MASK
+        b = carry
+
+    # Handle negative result
+    return a if a <= MAX_INT else ~(a ^ MASK)`,
+			Explanation:     "XOR gives sum without carry, AND gives carry positions. Repeat until no carry. Handle Python's arbitrary precision integers.",
+			TimeComplexity:  "O(1) - at most 32 iterations",
+			SpaceComplexity: "O(1)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Calculate carry", Explanation: "AND finds carry bits, shift left for position", CodeSnippet: "carry = ((a & b) << 1) & MASK", LineStart: 7, LineEnd: 7},
+				{Title: "Calculate sum", Explanation: "XOR gives sum without considering carry", CodeSnippet: "a = (a ^ b) & MASK", LineStart: 8, LineEnd: 8},
+				{Title: "Handle negative", Explanation: "Convert back to signed if needed", CodeSnippet: "return a if a <= MAX_INT else ~(a ^ MASK)", LineStart: 12, LineEnd: 12},
+			},
+		},
+	},
+	// String - Blind 75
+	{
+		ID:              "palindromic-substrings",
+		Number:          100,
+		Title:           "Palindromic Substrings",
+		Difficulty:      "Medium",
+		Category:        "1d-dp",
+		Tags:            []string{"String", "Dynamic Programming"},
+		RelatedChapters: []int{9, 12},
+		Description: `Given a string s, return the number of palindromic substrings in it.
+
+A string is a palindrome when it reads the same backward as forward.
+
+A substring is a contiguous sequence of characters within the string.`,
+		Constraints: []string{
+			"1 <= s.length <= 1000",
+			"s consists of lowercase English letters",
+		},
+		Examples: []Example{
+			{Input: `s = "abc"`, Output: "3", Explanation: "Three palindromic strings: 'a', 'b', 'c'."},
+			{Input: `s = "aaa"`, Output: "6", Explanation: "Six palindromic strings: 'a', 'a', 'a', 'aa', 'aa', 'aaa'."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"s": "abc"}, Expected: 3},
+			{Input: map[string]interface{}{"s": "aaa"}, Expected: 6},
+		},
+		TimeComplexity:  "O(n^2)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def countSubstrings(s):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Expand around center like longest palindromic substring. Count all palindromes found during expansion."},
+			{Level: 2, Type: "algorithm", Content: "For each center (single char and between chars), expand outward counting palindromes."},
+			{Level: 3, Type: "code", Content: "def expand(l, r): count = 0. while valid and s[l] == s[r]: count += 1, expand. Return count."},
+		},
+		Solution: Solution{
+			Code: `def countSubstrings(s):
+    n = len(s)
+    count = 0
+
+    def expand(l, r):
+        nonlocal count
+        while l >= 0 and r < n and s[l] == s[r]:
+            count += 1
+            l -= 1
+            r += 1
+
+    for i in range(n):
+        expand(i, i)      # Odd length
+        expand(i, i + 1)  # Even length
+
+    return count`,
+			Explanation:     "Expand around each center, counting palindromes. Try both odd (single center) and even (double center) palindromes.",
+			TimeComplexity:  "O(n^2)",
+			SpaceComplexity: "O(1)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Expand and count", Explanation: "Each valid expansion is a palindrome", CodeSnippet: "while l >= 0 and r < n and s[l] == s[r]:\n    count += 1", LineStart: 7, LineEnd: 8},
+				{Title: "Two center types", Explanation: "Odd (single) and even (pair) centers", CodeSnippet: "expand(i, i)\nexpand(i, i + 1)", LineStart: 13, LineEnd: 14},
+			},
+		},
+	},
+	// Matrix - Blind 75
+	{
+		ID:              "set-matrix-zeroes",
+		Number:          101,
+		Title:           "Set Matrix Zeroes",
+		Difficulty:      "Medium",
+		Category:        "math-geometry",
+		Tags:            []string{"Array", "Hash Table", "Matrix"},
+		RelatedChapters: []int{1, 5},
+		Description: `Given an m x n integer matrix, if an element is 0, set its entire row and column to 0's.
+
+You must do it in place.`,
+		Constraints: []string{
+			"m == matrix.length",
+			"n == matrix[0].length",
+			"1 <= m, n <= 200",
+			"-2^31 <= matrix[i][j] <= 2^31 - 1",
+		},
+		Examples: []Example{
+			{Input: "matrix = [[1,1,1],[1,0,1],[1,1,1]]", Output: "[[1,0,1],[0,0,0],[1,0,1]]"},
+			{Input: "matrix = [[0,1,2,0],[3,4,5,2],[1,3,1,5]]", Output: "[[0,0,0,0],[0,4,5,0],[0,3,1,0]]"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"matrix": [][]int{{1, 1, 1}, {1, 0, 1}, {1, 1, 1}}}, Expected: [][]int{{1, 0, 1}, {0, 0, 0}, {1, 0, 1}}},
+		},
+		TimeComplexity:  "O(m * n)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def setZeroes(matrix):\n    # Write your solution here (modify in place)\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Use first row and column as markers. Track if first row/col themselves need zeroing."},
+			{Level: 2, Type: "algorithm", Content: "Mark zeros in first row/col. Then iterate and zero based on markers. Finally handle first row/col."},
+			{Level: 3, Type: "code", Content: "first_row_zero, first_col_zero = check first row/col. Mark in first row/col. Zero inner. Zero first row/col if needed."},
+		},
+		Solution: Solution{
+			Code: `def setZeroes(matrix):
+    m, n = len(matrix), len(matrix[0])
+    first_row_zero = any(matrix[0][j] == 0 for j in range(n))
+    first_col_zero = any(matrix[i][0] == 0 for i in range(m))
+
+    # Mark zeros in first row/column
+    for i in range(1, m):
+        for j in range(1, n):
+            if matrix[i][j] == 0:
+                matrix[i][0] = 0
+                matrix[0][j] = 0
+
+    # Zero cells based on markers
+    for i in range(1, m):
+        for j in range(1, n):
+            if matrix[i][0] == 0 or matrix[0][j] == 0:
+                matrix[i][j] = 0
+
+    # Zero first row if needed
+    if first_row_zero:
+        for j in range(n):
+            matrix[0][j] = 0
+
+    # Zero first column if needed
+    if first_col_zero:
+        for i in range(m):
+            matrix[i][0] = 0`,
+			Explanation:     "Use first row/column as markers. Track if they need zeroing separately. Zero inner cells, then first row/col.",
+			TimeComplexity:  "O(m * n)",
+			SpaceComplexity: "O(1)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Check first row/col", Explanation: "Track if they have zeros before using as markers", CodeSnippet: "first_row_zero = any(matrix[0][j] == 0 for j in range(n))", LineStart: 3, LineEnd: 4},
+				{Title: "Mark zeros", Explanation: "Use first row/col as markers", CodeSnippet: "matrix[i][0] = 0\nmatrix[0][j] = 0", LineStart: 10, LineEnd: 11},
+				{Title: "Zero based on markers", Explanation: "Check row and column markers", CodeSnippet: "if matrix[i][0] == 0 or matrix[0][j] == 0:", LineStart: 15, LineEnd: 16},
+			},
+		},
+	},
+	// 2D DP - Blind 75 and common problems
+	{
+		ID:              "longest-common-subsequence",
+		Number:          102,
+		Title:           "Longest Common Subsequence",
+		Difficulty:      "Medium",
+		Category:        "2d-dp",
+		Tags:            []string{"String", "Dynamic Programming"},
+		RelatedChapters: []int{9, 12},
+		Description: `Given two strings text1 and text2, return the length of their longest common subsequence. If there is no common subsequence, return 0.
+
+A subsequence of a string is a new string generated from the original string with some characters (can be none) deleted without changing the relative order of the remaining characters.
+
+A common subsequence of two strings is a subsequence that is common to both strings.`,
+		Constraints: []string{
+			"1 <= text1.length, text2.length <= 1000",
+			"text1 and text2 consist of only lowercase English characters",
+		},
+		Examples: []Example{
+			{Input: `text1 = "abcde", text2 = "ace"`, Output: "3", Explanation: "The longest common subsequence is 'ace'."},
+			{Input: `text1 = "abc", text2 = "abc"`, Output: "3"},
+			{Input: `text1 = "abc", text2 = "def"`, Output: "0"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"text1": "abcde", "text2": "ace"}, Expected: 3},
+			{Input: map[string]interface{}{"text1": "abc", "text2": "def"}, Expected: 0},
+		},
+		TimeComplexity:  "O(m * n)",
+		SpaceComplexity: "O(m * n)",
+		StarterCode:     "def longestCommonSubsequence(text1, text2):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "2D DP where dp[i][j] = LCS of text1[0:i] and text2[0:j].", ChapterRef: 9},
+			{Level: 2, Type: "algorithm", Content: "If chars match: dp[i][j] = dp[i-1][j-1] + 1. Else: dp[i][j] = max(dp[i-1][j], dp[i][j-1])."},
+			{Level: 3, Type: "code", Content: "dp = (m+1) x (n+1) zeros. for i, j: if match, diagonal + 1. else max of left, up."},
+		},
+		Solution: Solution{
+			Code: `def longestCommonSubsequence(text1, text2):
+    m, n = len(text1), len(text2)
+    dp = [[0] * (n + 1) for _ in range(m + 1)]
+
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if text1[i - 1] == text2[j - 1]:
+                dp[i][j] = dp[i - 1][j - 1] + 1
+            else:
+                dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
+
+    return dp[m][n]`,
+			Explanation:     "2D DP: if characters match, extend LCS from diagonal. Otherwise, take max from excluding either character.",
+			TimeComplexity:  "O(m * n)",
+			SpaceComplexity: "O(m * n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Characters match", Explanation: "Extend LCS by 1 from diagonal", CodeSnippet: "dp[i][j] = dp[i - 1][j - 1] + 1", LineStart: 8, LineEnd: 8},
+				{Title: "Characters differ", Explanation: "Take max of excluding either char", CodeSnippet: "dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])", LineStart: 10, LineEnd: 10},
+			},
+		},
+	},
+	{
+		ID:              "edit-distance",
+		Number:          103,
+		Title:           "Edit Distance",
+		Difficulty:      "Hard",
+		Category:        "2d-dp",
+		Tags:            []string{"String", "Dynamic Programming"},
+		RelatedChapters: []int{9, 12},
+		Description: `Given two strings word1 and word2, return the minimum number of operations required to convert word1 to word2.
+
+You have the following three operations permitted on a word:
+- Insert a character
+- Delete a character
+- Replace a character`,
+		Constraints: []string{
+			"0 <= word1.length, word2.length <= 500",
+			"word1 and word2 consist of lowercase English letters",
+		},
+		Examples: []Example{
+			{Input: `word1 = "horse", word2 = "ros"`, Output: "3", Explanation: "horse -> rorse -> rose -> ros"},
+			{Input: `word1 = "intention", word2 = "execution"`, Output: "5"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"word1": "horse", "word2": "ros"}, Expected: 3},
+			{Input: map[string]interface{}{"word1": "intention", "word2": "execution"}, Expected: 5},
+		},
+		TimeComplexity:  "O(m * n)",
+		SpaceComplexity: "O(m * n)",
+		StarterCode:     "def minDistance(word1, word2):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "2D DP where dp[i][j] = min ops to convert word1[0:i] to word2[0:j].", ChapterRef: 9},
+			{Level: 2, Type: "algorithm", Content: "If chars match: dp[i][j] = dp[i-1][j-1]. Else: 1 + min(insert, delete, replace)."},
+			{Level: 3, Type: "code", Content: "Base: dp[i][0] = i, dp[0][j] = j. If match, diagonal. Else 1 + min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1])."},
+		},
+		Solution: Solution{
+			Code: `def minDistance(word1, word2):
+    m, n = len(word1), len(word2)
+    dp = [[0] * (n + 1) for _ in range(m + 1)]
+
+    # Base cases
+    for i in range(m + 1):
+        dp[i][0] = i
+    for j in range(n + 1):
+        dp[0][j] = j
+
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if word1[i - 1] == word2[j - 1]:
+                dp[i][j] = dp[i - 1][j - 1]
+            else:
+                dp[i][j] = 1 + min(
+                    dp[i - 1][j],      # Delete
+                    dp[i][j - 1],      # Insert
+                    dp[i - 1][j - 1]   # Replace
+                )
+
+    return dp[m][n]`,
+			Explanation:     "2D DP: if match, no operation needed. Otherwise, try all three operations and take minimum.",
+			TimeComplexity:  "O(m * n)",
+			SpaceComplexity: "O(m * n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Base cases", Explanation: "Converting to/from empty string", CodeSnippet: "dp[i][0] = i\ndp[0][j] = j", LineStart: 6, LineEnd: 9},
+				{Title: "Characters match", Explanation: "No operation needed", CodeSnippet: "dp[i][j] = dp[i - 1][j - 1]", LineStart: 14, LineEnd: 14},
+				{Title: "Try all operations", Explanation: "Delete, insert, or replace", CodeSnippet: "dp[i][j] = 1 + min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1])", LineStart: 16, LineEnd: 20},
+			},
+		},
+	},
+	{
+		ID:              "target-sum",
+		Number:          104,
+		Title:           "Target Sum",
+		Difficulty:      "Medium",
+		Category:        "2d-dp",
+		Tags:            []string{"Array", "Dynamic Programming", "Backtracking"},
+		RelatedChapters: []int{4, 9, 12},
+		Description: `You are given an integer array nums and an integer target.
+
+You want to build an expression out of nums by adding one of the symbols '+' and '-' before each integer in nums and then concatenate all the integers.
+
+Return the number of different expressions that you can build, which evaluates to target.`,
+		Constraints: []string{
+			"1 <= nums.length <= 20",
+			"0 <= nums[i] <= 1000",
+			"0 <= sum(nums[i]) <= 1000",
+			"-1000 <= target <= 1000",
+		},
+		Examples: []Example{
+			{Input: "nums = [1,1,1,1,1], target = 3", Output: "5", Explanation: "5 ways: -1+1+1+1+1, +1-1+1+1+1, +1+1-1+1+1, +1+1+1-1+1, +1+1+1+1-1"},
+			{Input: "nums = [1], target = 1", Output: "1"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"nums": []int{1, 1, 1, 1, 1}, "target": 3}, Expected: 5},
+			{Input: map[string]interface{}{"nums": []int{1}, "target": 1}, Expected: 1},
+		},
+		TimeComplexity:  "O(n * sum)",
+		SpaceComplexity: "O(sum)",
+		StarterCode:     "def findTargetSumWays(nums, target):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Convert to subset sum: find subset P such that sum(P) - sum(rest) = target. This means sum(P) = (total + target) / 2.", ChapterRef: 9},
+			{Level: 2, Type: "algorithm", Content: "DP: count ways to reach each sum. dp[s] = number of ways to achieve sum s."},
+			{Level: 3, Type: "code", Content: "target_sum = (total + target) // 2. dp[0] = 1. for num: for s from target_sum down to num: dp[s] += dp[s - num]."},
+		},
+		Solution: Solution{
+			Code: `def findTargetSumWays(nums, target):
+    total = sum(nums)
+
+    # Check if solution is possible
+    if (total + target) % 2 != 0 or abs(target) > total:
+        return 0
+
+    target_sum = (total + target) // 2
+    dp = [0] * (target_sum + 1)
+    dp[0] = 1
+
+    for num in nums:
+        for s in range(target_sum, num - 1, -1):
+            dp[s] += dp[s - num]
+
+    return dp[target_sum]`,
+			Explanation:     "Convert to subset sum problem. Find subsets that sum to (total + target) / 2. Use 1D DP counting ways.",
+			TimeComplexity:  "O(n * sum)",
+			SpaceComplexity: "O(sum)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Convert problem", Explanation: "Find subset summing to (total + target) / 2", CodeSnippet: "target_sum = (total + target) // 2", LineStart: 8, LineEnd: 8},
+				{Title: "Count ways", Explanation: "Each number can be included or not", CodeSnippet: "dp[s] += dp[s - num]", LineStart: 14, LineEnd: 14},
+			},
+		},
+	},
+	{
+		ID:              "coin-change-ii",
+		Number:          105,
+		Title:           "Coin Change II",
+		Difficulty:      "Medium",
+		Category:        "2d-dp",
+		Tags:            []string{"Array", "Dynamic Programming"},
+		RelatedChapters: []int{9, 12},
+		Description: `You are given an integer array coins representing coins of different denominations and an integer amount representing a total amount of money.
+
+Return the number of combinations that make up that amount. If that amount of money cannot be made up by any combination of the coins, return 0.
+
+You may assume that you have an infinite number of each kind of coin.`,
+		Constraints: []string{
+			"1 <= coins.length <= 300",
+			"1 <= coins[i] <= 5000",
+			"All the values of coins are unique",
+			"0 <= amount <= 5000",
+		},
+		Examples: []Example{
+			{Input: "amount = 5, coins = [1,2,5]", Output: "4", Explanation: "4 ways: 5, 2+2+1, 2+1+1+1, 1+1+1+1+1"},
+			{Input: "amount = 3, coins = [2]", Output: "0"},
+			{Input: "amount = 10, coins = [10]", Output: "1"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"amount": 5, "coins": []int{1, 2, 5}}, Expected: 4},
+			{Input: map[string]interface{}{"amount": 3, "coins": []int{2}}, Expected: 0},
+		},
+		TimeComplexity:  "O(n * amount)",
+		SpaceComplexity: "O(amount)",
+		StarterCode:     "def change(amount, coins):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "DP where dp[i] = number of ways to make amount i. Process coins one by one to avoid counting permutations.", ChapterRef: 9},
+			{Level: 2, Type: "algorithm", Content: "For each coin, update dp[amount] by adding dp[amount - coin]. Order of loops matters for combinations vs permutations."},
+			{Level: 3, Type: "code", Content: "dp[0] = 1. for coin in coins: for amount from coin to target: dp[amount] += dp[amount - coin]."},
+		},
+		Solution: Solution{
+			Code: `def change(amount, coins):
+    dp = [0] * (amount + 1)
+    dp[0] = 1  # One way to make amount 0
+
+    for coin in coins:
+        for a in range(coin, amount + 1):
+            dp[a] += dp[a - coin]
+
+    return dp[amount]`,
+			Explanation:     "DP counts combinations (not permutations) by processing one coin at a time. dp[a] = ways to make amount a.",
+			TimeComplexity:  "O(n * amount)",
+			SpaceComplexity: "O(amount)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Base case", Explanation: "One way to make amount 0 (use no coins)", CodeSnippet: "dp[0] = 1", LineStart: 3, LineEnd: 3},
+				{Title: "Process each coin", Explanation: "Outer loop on coins avoids counting permutations", CodeSnippet: "for coin in coins:", LineStart: 5, LineEnd: 5},
+				{Title: "Count ways", Explanation: "Add ways using this coin", CodeSnippet: "dp[a] += dp[a - coin]", LineStart: 7, LineEnd: 7},
+			},
+		},
+	},
+	// Greedy - remaining Blind 75
+	{
+		ID:              "gas-station",
+		Number:          106,
+		Title:           "Gas Station",
+		Difficulty:      "Medium",
+		Category:        "greedy",
+		Tags:            []string{"Array", "Greedy"},
+		RelatedChapters: []int{8},
+		Description: `There are n gas stations along a circular route, where the amount of gas at the ith station is gas[i].
+
+You have a car with an unlimited gas tank and it costs cost[i] of gas to travel from the ith station to its next (i + 1)th station. You begin the journey with an empty tank at one of the gas stations.
+
+Given two integer arrays gas and cost, return the starting gas station's index if you can travel around the circuit once in the clockwise direction, otherwise return -1. If there exists a solution, it is guaranteed to be unique.`,
+		Constraints: []string{
+			"n == gas.length == cost.length",
+			"1 <= n <= 10^5",
+			"0 <= gas[i], cost[i] <= 10^4",
+		},
+		Examples: []Example{
+			{Input: "gas = [1,2,3,4,5], cost = [3,4,5,1,2]", Output: "3"},
+			{Input: "gas = [2,3,4], cost = [3,4,3]", Output: "-1"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"gas": []int{1, 2, 3, 4, 5}, "cost": []int{3, 4, 5, 1, 2}}, Expected: 3},
+			{Input: map[string]interface{}{"gas": []int{2, 3, 4}, "cost": []int{3, 4, 3}}, Expected: -1},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def canCompleteCircuit(gas, cost):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "If total gas >= total cost, solution exists. Find starting point where tank never goes negative.", ChapterRef: 8},
+			{Level: 2, Type: "algorithm", Content: "Track current tank. If it goes negative, start from next station. If total >= 0, answer is the last starting point."},
+			{Level: 3, Type: "code", Content: "total = 0, tank = 0, start = 0. for i: diff = gas[i] - cost[i]. total += diff, tank += diff. if tank < 0: start = i + 1, tank = 0."},
+		},
+		Solution: Solution{
+			Code: `def canCompleteCircuit(gas, cost):
+    total = 0
+    tank = 0
+    start = 0
+
+    for i in range(len(gas)):
+        diff = gas[i] - cost[i]
+        total += diff
+        tank += diff
+
+        if tank < 0:
+            start = i + 1
+            tank = 0
+
+    return start if total >= 0 else -1`,
+			Explanation:     "If total gas >= total cost, solution exists. Start from station after any point where tank would go negative.",
+			TimeComplexity:  "O(n)",
+			SpaceComplexity: "O(1)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Track total and current", Explanation: "Total determines if solution exists", CodeSnippet: "total += diff\ntank += diff", LineStart: 8, LineEnd: 9},
+				{Title: "Reset on negative", Explanation: "Can't start from any previous station", CodeSnippet: "if tank < 0:\n    start = i + 1\n    tank = 0", LineStart: 11, LineEnd: 13},
+			},
+		},
+	},
+	{
+		ID:              "partition-labels",
+		Number:          107,
+		Title:           "Partition Labels",
+		Difficulty:      "Medium",
+		Category:        "greedy",
+		Tags:            []string{"Hash Table", "Two Pointers", "String", "Greedy"},
+		RelatedChapters: []int{5, 8},
+		Description: `You are given a string s. We want to partition the string into as many parts as possible so that each letter appears in at most one part.
+
+Note that the partition is done so that after concatenating all the parts in order, the resultant string should be s.
+
+Return a list of integers representing the size of these parts.`,
+		Constraints: []string{
+			"1 <= s.length <= 500",
+			"s consists of lowercase English letters",
+		},
+		Examples: []Example{
+			{Input: `s = "ababcbacadefegdehijhklij"`, Output: "[9,7,8]"},
+			{Input: `s = "eccbbbbdec"`, Output: "[10]"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"s": "ababcbacadefegdehijhklij"}, Expected: []int{9, 7, 8}},
+			{Input: map[string]interface{}{"s": "eccbbbbdec"}, Expected: []int{10}},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def partitionLabels(s):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Find last occurrence of each character. Extend partition to include all last occurrences of characters seen so far.", ChapterRef: 8},
+			{Level: 2, Type: "algorithm", Content: "Track end = max last index of chars seen. When i reaches end, we found a partition."},
+			{Level: 3, Type: "code", Content: "last = {c: i for each char}. start = end = 0. for i, c: end = max(end, last[c]). if i == end: add partition, start = i + 1."},
+		},
+		Solution: Solution{
+			Code: `def partitionLabels(s):
+    last = {c: i for i, c in enumerate(s)}
+    result = []
+    start = end = 0
+
+    for i, c in enumerate(s):
+        end = max(end, last[c])
+        if i == end:
+            result.append(end - start + 1)
+            start = i + 1
+
+    return result`,
+			Explanation:     "Extend partition to include last occurrence of each character seen. Create partition when current index reaches end.",
+			TimeComplexity:  "O(n)",
+			SpaceComplexity: "O(1) - 26 letters max",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Find last occurrences", Explanation: "Map each char to its last index", CodeSnippet: "last = {c: i for i, c in enumerate(s)}", LineStart: 2, LineEnd: 2},
+				{Title: "Extend partition", Explanation: "Must include all chars' last occurrences", CodeSnippet: "end = max(end, last[c])", LineStart: 7, LineEnd: 7},
+				{Title: "Create partition", Explanation: "When we reach end, partition is complete", CodeSnippet: "if i == end:\n    result.append(end - start + 1)", LineStart: 8, LineEnd: 9},
+			},
+		},
+	},
+	{
+		ID:              "valid-parenthesis-string",
+		Number:          108,
+		Title:           "Valid Parenthesis String",
+		Difficulty:      "Medium",
+		Category:        "greedy",
+		Tags:            []string{"String", "Dynamic Programming", "Stack", "Greedy"},
+		RelatedChapters: []int{3, 8},
+		Description: `Given a string s containing only three types of characters: '(', ')' and '*', return true if s is valid.
+
+The following rules define a valid string:
+- Any left parenthesis '(' must have a corresponding right parenthesis ')'.
+- Any right parenthesis ')' must have a corresponding left parenthesis '('.
+- Left parenthesis '(' must go before the corresponding right parenthesis ')'.
+- '*' could be treated as a single right parenthesis ')' or a single left parenthesis '(' or an empty string "".`,
+		Constraints: []string{
+			"1 <= s.length <= 100",
+			"s[i] is '(', ')' or '*'",
+		},
+		Examples: []Example{
+			{Input: `s = "()"`, Output: "true"},
+			{Input: `s = "(*)"`, Output: "true"},
+			{Input: `s = "(*))"`, Output: "true"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"s": "()"}, Expected: true},
+			{Input: map[string]interface{}{"s": "(*)"}, Expected: true},
+			{Input: map[string]interface{}{"s": "(*))"}, Expected: true},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def checkValidString(s):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Track range of possible open parentheses [low, high]. '*' can be '(', ')', or empty.", ChapterRef: 8},
+			{Level: 2, Type: "algorithm", Content: "'(' increases both. ')' decreases both. '*' decreases low (as ')') and increases high (as '(')."},
+			{Level: 3, Type: "code", Content: "low = high = 0. for c: update low, high. if high < 0: return False. low = max(0, low). return low == 0."},
+		},
+		Solution: Solution{
+			Code: `def checkValidString(s):
+    low = high = 0
+
+    for c in s:
+        if c == '(':
+            low += 1
+            high += 1
+        elif c == ')':
+            low -= 1
+            high -= 1
+        else:  # '*'
+            low -= 1   # Treat as ')'
+            high += 1  # Treat as '('
+
+        if high < 0:
+            return False
+        low = max(0, low)  # Can't have negative open count
+
+    return low == 0`,
+			Explanation:     "Track range [low, high] of possible open parentheses. Valid if 0 is in range at end.",
+			TimeComplexity:  "O(n)",
+			SpaceComplexity: "O(1)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Track range", Explanation: "low = min opens possible, high = max opens possible", CodeSnippet: "low = high = 0", LineStart: 2, LineEnd: 2},
+				{Title: "Handle '*'", Explanation: "Could be '(', ')', or empty", CodeSnippet: "low -= 1\nhigh += 1", LineStart: 12, LineEnd: 13},
+				{Title: "Validate", Explanation: "High < 0 means too many ')'. Low must be 0 at end.", CodeSnippet: "return low == 0", LineStart: 19, LineEnd: 19},
+			},
+		},
+	},
+	// Intervals - remaining
+	{
+		ID:              "insert-interval",
+		Number:          109,
+		Title:           "Insert Interval",
+		Difficulty:      "Medium",
+		Category:        "intervals",
+		Tags:            []string{"Array"},
+		RelatedChapters: []int{8},
+		Description: `You are given an array of non-overlapping intervals intervals where intervals[i] = [starti, endi] represent the start and the end of the ith interval and intervals is sorted in ascending order by starti. You are also given an interval newInterval = [start, end] that represents the start and end of another interval.
+
+Insert newInterval into intervals such that intervals is still sorted in ascending order by starti and intervals still does not have any overlapping intervals (merge overlapping intervals if necessary).
+
+Return intervals after the insertion.`,
+		Constraints: []string{
+			"0 <= intervals.length <= 10^4",
+			"intervals[i].length == 2",
+			"0 <= starti <= endi <= 10^5",
+			"intervals is sorted by starti in ascending order",
+			"newInterval.length == 2",
+			"0 <= start <= end <= 10^5",
+		},
+		Examples: []Example{
+			{Input: "intervals = [[1,3],[6,9]], newInterval = [2,5]", Output: "[[1,5],[6,9]]"},
+			{Input: "intervals = [[1,2],[3,5],[6,7],[8,10],[12,16]], newInterval = [4,8]", Output: "[[1,2],[3,10],[12,16]]"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"intervals": [][]int{{1, 3}, {6, 9}}, "newInterval": []int{2, 5}}, Expected: [][]int{{1, 5}, {6, 9}}},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def insert(intervals, newInterval):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Three phases: add intervals before newInterval, merge overlapping intervals, add intervals after.", ChapterRef: 8},
+			{Level: 2, Type: "algorithm", Content: "Add all intervals ending before newInterval starts. Merge overlapping. Add remaining intervals."},
+			{Level: 3, Type: "code", Content: "while end < new_start: add. while start <= new_end: merge. add merged. add remaining."},
+		},
+		Solution: Solution{
+			Code: `def insert(intervals, newInterval):
+    result = []
+    i = 0
+    n = len(intervals)
+
+    # Add all intervals before newInterval
+    while i < n and intervals[i][1] < newInterval[0]:
+        result.append(intervals[i])
+        i += 1
+
+    # Merge overlapping intervals
+    while i < n and intervals[i][0] <= newInterval[1]:
+        newInterval[0] = min(newInterval[0], intervals[i][0])
+        newInterval[1] = max(newInterval[1], intervals[i][1])
+        i += 1
+
+    result.append(newInterval)
+
+    # Add remaining intervals
+    while i < n:
+        result.append(intervals[i])
+        i += 1
+
+    return result`,
+			Explanation:     "Three phases: add non-overlapping before, merge overlapping, add non-overlapping after.",
+			TimeComplexity:  "O(n)",
+			SpaceComplexity: "O(n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Before new interval", Explanation: "Intervals ending before new starts", CodeSnippet: "while i < n and intervals[i][1] < newInterval[0]:", LineStart: 7, LineEnd: 9},
+				{Title: "Merge overlapping", Explanation: "Expand newInterval to cover all overlapping", CodeSnippet: "newInterval[0] = min(newInterval[0], intervals[i][0])\nnewInterval[1] = max(newInterval[1], intervals[i][1])", LineStart: 13, LineEnd: 14},
+				{Title: "Add remaining", Explanation: "Intervals starting after new ends", CodeSnippet: "while i < n:", LineStart: 20, LineEnd: 22},
+			},
+		},
+	},
+	{
+		ID:              "meeting-rooms-ii",
+		Number:          110,
+		Title:           "Meeting Rooms II",
+		Difficulty:      "Medium",
+		Category:        "intervals",
+		Tags:            []string{"Array", "Two Pointers", "Greedy", "Sorting", "Heap"},
+		RelatedChapters: []int{7, 8},
+		Description: `Given an array of meeting time intervals intervals where intervals[i] = [starti, endi], return the minimum number of conference rooms required.`,
+		Constraints: []string{
+			"1 <= intervals.length <= 10^4",
+			"0 <= starti < endi <= 10^6",
+		},
+		Examples: []Example{
+			{Input: "intervals = [[0,30],[5,10],[15,20]]", Output: "2"},
+			{Input: "intervals = [[7,10],[2,4]]", Output: "1"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"intervals": [][]int{{0, 30}, {5, 10}, {15, 20}}}, Expected: 2},
+			{Input: map[string]interface{}{"intervals": [][]int{{7, 10}, {2, 4}}}, Expected: 1},
+		},
+		TimeComplexity:  "O(n log n)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def minMeetingRooms(intervals):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Sort starts and ends separately. Count concurrent meetings using two pointers.", ChapterRef: 8},
+			{Level: 2, Type: "algorithm", Content: "When a meeting starts, need a room. When one ends, free a room. Track max concurrent."},
+			{Level: 3, Type: "code", Content: "Sort starts, ends. Two pointers. If start < end: rooms++, move start. else: rooms--, move end. Track max."},
+		},
+		Solution: Solution{
+			Code: `def minMeetingRooms(intervals):
+    starts = sorted(i[0] for i in intervals)
+    ends = sorted(i[1] for i in intervals)
+
+    rooms = 0
+    max_rooms = 0
+    s = e = 0
+
+    while s < len(intervals):
+        if starts[s] < ends[e]:
+            rooms += 1
+            s += 1
+        else:
+            rooms -= 1
+            e += 1
+        max_rooms = max(max_rooms, rooms)
+
+    return max_rooms`,
+			Explanation:     "Sort starts and ends separately. Track concurrent meetings using two pointers.",
+			TimeComplexity:  "O(n log n) for sorting",
+			SpaceComplexity: "O(n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Sort separately", Explanation: "We only care about when meetings start/end, not which meeting", CodeSnippet: "starts = sorted(i[0] for i in intervals)\nends = sorted(i[1] for i in intervals)", LineStart: 2, LineEnd: 3},
+				{Title: "Track concurrent", Explanation: "Start before end means new room needed", CodeSnippet: "if starts[s] < ends[e]:\n    rooms += 1", LineStart: 10, LineEnd: 12},
+			},
+		},
+	},
+	// Graphs - remaining
+	{
+		ID:              "surrounded-regions",
+		Number:          111,
+		Title:           "Surrounded Regions",
+		Difficulty:      "Medium",
+		Category:        "graphs",
+		Tags:            []string{"Array", "DFS", "BFS", "Union Find", "Matrix"},
+		RelatedChapters: []int{6, 10},
+		Description: `Given an m x n matrix board containing 'X' and 'O', capture all regions that are 4-directionally surrounded by 'X'.
+
+A region is captured by flipping all 'O's into 'X's in that surrounded region.`,
+		Constraints: []string{
+			"m == board.length",
+			"n == board[i].length",
+			"1 <= m, n <= 200",
+			"board[i][j] is 'X' or 'O'",
+		},
+		Examples: []Example{
+			{Input: `board = [["X","X","X","X"],["X","O","O","X"],["X","X","O","X"],["X","O","X","X"]]`, Output: `[["X","X","X","X"],["X","X","X","X"],["X","X","X","X"],["X","O","X","X"]]`},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"board": [][]string{{"X", "X", "X", "X"}, {"X", "O", "O", "X"}, {"X", "X", "O", "X"}, {"X", "O", "X", "X"}}}, Expected: [][]string{{"X", "X", "X", "X"}, {"X", "X", "X", "X"}, {"X", "X", "X", "X"}, {"X", "O", "X", "X"}}},
+		},
+		TimeComplexity:  "O(m * n)",
+		SpaceComplexity: "O(m * n)",
+		StarterCode:     "def solve(board):\n    # Write your solution here (modify in place)\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "O's on border can't be captured. DFS from border O's to mark safe cells. Flip remaining O's.", ChapterRef: 6},
+			{Level: 2, Type: "algorithm", Content: "Mark border-connected O's as 'S' (safe). Then flip all 'O' to 'X', all 'S' to 'O'."},
+			{Level: 3, Type: "code", Content: "DFS from border O's, mark as 'S'. Loop through board: O->X, S->O."},
+		},
+		Solution: Solution{
+			Code: `def solve(board):
+    if not board:
+        return
+
+    m, n = len(board), len(board[0])
+
+    def dfs(r, c):
+        if r < 0 or r >= m or c < 0 or c >= n or board[r][c] != 'O':
+            return
+        board[r][c] = 'S'  # Mark as safe
+        dfs(r + 1, c)
+        dfs(r - 1, c)
+        dfs(r, c + 1)
+        dfs(r, c - 1)
+
+    # Mark border-connected O's as safe
+    for r in range(m):
+        dfs(r, 0)
+        dfs(r, n - 1)
+    for c in range(n):
+        dfs(0, c)
+        dfs(m - 1, c)
+
+    # Flip: O -> X (surrounded), S -> O (safe)
+    for r in range(m):
+        for c in range(n):
+            if board[r][c] == 'O':
+                board[r][c] = 'X'
+            elif board[r][c] == 'S':
+                board[r][c] = 'O'`,
+			Explanation:     "Mark border-connected O's as safe. Then flip remaining O's to X, restore safe cells to O.",
+			TimeComplexity:  "O(m * n)",
+			SpaceComplexity: "O(m * n) for recursion stack",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Mark safe", Explanation: "DFS from border, mark connected O's", CodeSnippet: "board[r][c] = 'S'", LineStart: 10, LineEnd: 10},
+				{Title: "Process borders", Explanation: "DFS from all border cells", CodeSnippet: "dfs(r, 0)\ndfs(r, n - 1)", LineStart: 18, LineEnd: 19},
+				{Title: "Final flip", Explanation: "O->X (captured), S->O (safe)", CodeSnippet: "if board[r][c] == 'O':\n    board[r][c] = 'X'", LineStart: 27, LineEnd: 30},
+			},
+		},
+	},
+	{
+		ID:              "word-ladder",
+		Number:          112,
+		Title:           "Word Ladder",
+		Difficulty:      "Hard",
+		Category:        "graphs",
+		Tags:            []string{"Hash Table", "String", "BFS"},
+		RelatedChapters: []int{5, 6},
+		Description: `A transformation sequence from word beginWord to word endWord using a dictionary wordList is a sequence of words beginWord -> s1 -> s2 -> ... -> sk such that:
+
+- Every adjacent pair of words differs by a single letter.
+- Every si for 1 <= i <= k is in wordList. Note that beginWord does not need to be in wordList.
+- sk == endWord
+
+Given two words, beginWord and endWord, and a dictionary wordList, return the number of words in the shortest transformation sequence from beginWord to endWord, or 0 if no such sequence exists.`,
+		Constraints: []string{
+			"1 <= beginWord.length <= 10",
+			"endWord.length == beginWord.length",
+			"1 <= wordList.length <= 5000",
+			"wordList[i].length == beginWord.length",
+			"beginWord, endWord, and wordList[i] consist of lowercase English letters",
+			"beginWord != endWord",
+			"All the words in wordList are unique",
+		},
+		Examples: []Example{
+			{Input: `beginWord = "hit", endWord = "cog", wordList = ["hot","dot","dog","lot","log","cog"]`, Output: "5", Explanation: "hit -> hot -> dot -> dog -> cog"},
+			{Input: `beginWord = "hit", endWord = "cog", wordList = ["hot","dot","dog","lot","log"]`, Output: "0"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"beginWord": "hit", "endWord": "cog", "wordList": []string{"hot", "dot", "dog", "lot", "log", "cog"}}, Expected: 5},
+		},
+		TimeComplexity:  "O(M^2 * N)",
+		SpaceComplexity: "O(M^2 * N)",
+		StarterCode:     "def ladderLength(beginWord, endWord, wordList):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "BFS finds shortest path. Build graph where edges connect words differing by one letter.", ChapterRef: 6},
+			{Level: 2, Type: "algorithm", Content: "Use pattern matching: 'hot' -> '*ot', 'h*t', 'ho*'. Words with same pattern are neighbors."},
+			{Level: 3, Type: "code", Content: "Build pattern -> words map. BFS from beginWord. For each word, try all patterns to find neighbors."},
+		},
+		Solution: Solution{
+			Code: `from collections import defaultdict, deque
+
+def ladderLength(beginWord, endWord, wordList):
+    if endWord not in wordList:
+        return 0
+
+    word_set = set(wordList)
+    queue = deque([(beginWord, 1)])
+    visited = {beginWord}
+
+    while queue:
+        word, length = queue.popleft()
+
+        if word == endWord:
+            return length
+
+        for i in range(len(word)):
+            for c in 'abcdefghijklmnopqrstuvwxyz':
+                next_word = word[:i] + c + word[i+1:]
+                if next_word in word_set and next_word not in visited:
+                    visited.add(next_word)
+                    queue.append((next_word, length + 1))
+
+    return 0`,
+			Explanation:     "BFS from beginWord. Try changing each position to each letter. Track visited to avoid cycles.",
+			TimeComplexity:  "O(M^2 * N) where M is word length, N is word count",
+			SpaceComplexity: "O(M * N)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "BFS for shortest path", Explanation: "Queue stores (word, path_length)", CodeSnippet: "queue = deque([(beginWord, 1)])", LineStart: 8, LineEnd: 8},
+				{Title: "Generate neighbors", Explanation: "Try all single-letter changes", CodeSnippet: "next_word = word[:i] + c + word[i+1:]", LineStart: 19, LineEnd: 19},
+				{Title: "Check valid neighbor", Explanation: "Must be in dictionary and not visited", CodeSnippet: "if next_word in word_set and next_word not in visited:", LineStart: 20, LineEnd: 22},
+			},
+		},
+	},
+	// Backtracking - remaining
+	{
+		ID:              "subsets-ii",
+		Number:          113,
+		Title:           "Subsets II",
+		Difficulty:      "Medium",
+		Category:        "backtracking",
+		Tags:            []string{"Array", "Backtracking", "Bit Manipulation"},
+		RelatedChapters: []int{4, 12},
+		Description: `Given an integer array nums that may contain duplicates, return all possible subsets (the power set).
+
+The solution set must not contain duplicate subsets. Return the solution in any order.`,
+		Constraints: []string{
+			"1 <= nums.length <= 10",
+			"-10 <= nums[i] <= 10",
+		},
+		Examples: []Example{
+			{Input: "nums = [1,2,2]", Output: "[[],[1],[1,2],[1,2,2],[2],[2,2]]"},
+			{Input: "nums = [0]", Output: "[[],[0]]"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"nums": []int{1, 2, 2}}, Expected: [][]int{{}, {1}, {1, 2}, {1, 2, 2}, {2}, {2, 2}}},
+		},
+		TimeComplexity:  "O(n * 2^n)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def subsetsWithDup(nums):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Sort array to group duplicates. Skip consecutive duplicates at same recursion level.", ChapterRef: 4},
+			{Level: 2, Type: "algorithm", Content: "Backtrack like Subsets I, but skip nums[i] if nums[i] == nums[i-1] and we didn't include nums[i-1]."},
+			{Level: 3, Type: "code", Content: "Sort nums. In backtrack loop: if i > start and nums[i] == nums[i-1]: continue. This skips duplicates at same level."},
+		},
+		Solution: Solution{
+			Code: `def subsetsWithDup(nums):
+    nums.sort()
+    result = []
+
+    def backtrack(start, path):
+        result.append(path[:])
+
+        for i in range(start, len(nums)):
+            # Skip duplicates at same level
+            if i > start and nums[i] == nums[i - 1]:
+                continue
+            path.append(nums[i])
+            backtrack(i + 1, path)
+            path.pop()
+
+    backtrack(0, [])
+    return result`,
+			Explanation:     "Sort to group duplicates. Skip duplicate at same recursion level to avoid duplicate subsets.",
+			TimeComplexity:  "O(n * 2^n)",
+			SpaceComplexity: "O(n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Sort first", Explanation: "Groups duplicates together", CodeSnippet: "nums.sort()", LineStart: 2, LineEnd: 2},
+				{Title: "Skip duplicates", Explanation: "At same level, skip if same as previous", CodeSnippet: "if i > start and nums[i] == nums[i - 1]:\n    continue", LineStart: 10, LineEnd: 11},
+			},
+		},
+	},
+	{
+		ID:              "combination-sum-ii",
+		Number:          114,
+		Title:           "Combination Sum II",
+		Difficulty:      "Medium",
+		Category:        "backtracking",
+		Tags:            []string{"Array", "Backtracking"},
+		RelatedChapters: []int{4, 12},
+		Description: `Given a collection of candidate numbers (candidates) and a target number (target), find all unique combinations in candidates where the candidate numbers sum to target.
+
+Each number in candidates may only be used once in the combination.
+
+Note: The solution set must not contain duplicate combinations.`,
+		Constraints: []string{
+			"1 <= candidates.length <= 100",
+			"1 <= candidates[i] <= 50",
+			"1 <= target <= 30",
+		},
+		Examples: []Example{
+			{Input: "candidates = [10,1,2,7,6,1,5], target = 8", Output: "[[1,1,6],[1,2,5],[1,7],[2,6]]"},
+			{Input: "candidates = [2,5,2,1,2], target = 5", Output: "[[1,2,2],[5]]"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"candidates": []int{10, 1, 2, 7, 6, 1, 5}, "target": 8}, Expected: [][]int{{1, 1, 6}, {1, 2, 5}, {1, 7}, {2, 6}}},
+		},
+		TimeComplexity:  "O(2^n)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def combinationSum2(candidates, target):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Sort and skip duplicates like Subsets II. Each element used at most once.", ChapterRef: 4},
+			{Level: 2, Type: "algorithm", Content: "Backtrack with remaining target. Skip duplicates at same level. Stop if target < 0."},
+			{Level: 3, Type: "code", Content: "Sort. backtrack(start, target, path). if target == 0: add. for i from start: skip dups, recurse with i+1, target-num."},
+		},
+		Solution: Solution{
+			Code: `def combinationSum2(candidates, target):
+    candidates.sort()
+    result = []
+
+    def backtrack(start, target, path):
+        if target == 0:
+            result.append(path[:])
+            return
+        if target < 0:
+            return
+
+        for i in range(start, len(candidates)):
+            if i > start and candidates[i] == candidates[i - 1]:
+                continue
+            if candidates[i] > target:
+                break
+            path.append(candidates[i])
+            backtrack(i + 1, target - candidates[i], path)
+            path.pop()
+
+    backtrack(0, target, [])
+    return result`,
+			Explanation:     "Sort and skip duplicates. Each element used once (i+1 in recursion). Early termination when sorted value exceeds target.",
+			TimeComplexity:  "O(2^n)",
+			SpaceComplexity: "O(n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Skip duplicates", Explanation: "Avoid duplicate combinations", CodeSnippet: "if i > start and candidates[i] == candidates[i - 1]:\n    continue", LineStart: 13, LineEnd: 14},
+				{Title: "Early termination", Explanation: "Sorted array allows pruning", CodeSnippet: "if candidates[i] > target:\n    break", LineStart: 15, LineEnd: 16},
+				{Title: "Use once", Explanation: "i+1 ensures element used at most once", CodeSnippet: "backtrack(i + 1, target - candidates[i], path)", LineStart: 18, LineEnd: 18},
+			},
+		},
+	},
+	{
+		ID:              "letter-combinations-of-a-phone-number",
+		Number:          115,
+		Title:           "Letter Combinations of a Phone Number",
+		Difficulty:      "Medium",
+		Category:        "backtracking",
+		Tags:            []string{"Hash Table", "String", "Backtracking"},
+		RelatedChapters: []int{4, 5},
+		Description: `Given a string containing digits from 2-9 inclusive, return all possible letter combinations that the number could represent. Return the answer in any order.
+
+A mapping of digits to letters (just like on the telephone buttons) is given below. Note that 1 does not map to any letters.`,
+		Constraints: []string{
+			"0 <= digits.length <= 4",
+			"digits[i] is a digit in the range ['2', '9']",
+		},
+		Examples: []Example{
+			{Input: `digits = "23"`, Output: `["ad","ae","af","bd","be","bf","cd","ce","cf"]`},
+			{Input: `digits = ""`, Output: `[]`},
+			{Input: `digits = "2"`, Output: `["a","b","c"]`},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"digits": "23"}, Expected: []string{"ad", "ae", "af", "bd", "be", "bf", "cd", "ce", "cf"}},
+			{Input: map[string]interface{}{"digits": ""}, Expected: []string{}},
+		},
+		TimeComplexity:  "O(4^n)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def letterCombinations(digits):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Map each digit to its letters. Backtrack through each digit, trying all its letters.", ChapterRef: 4},
+			{Level: 2, Type: "algorithm", Content: "For each position, try all letters mapped to that digit. When we've processed all digits, add combination."},
+			{Level: 3, Type: "code", Content: "phone = {'2': 'abc', ...}. backtrack(index, path). for letter in phone[digits[index]]: recurse with index + 1."},
+		},
+		Solution: Solution{
+			Code: `def letterCombinations(digits):
+    if not digits:
+        return []
+
+    phone = {
+        '2': 'abc', '3': 'def', '4': 'ghi', '5': 'jkl',
+        '6': 'mno', '7': 'pqrs', '8': 'tuv', '9': 'wxyz'
+    }
+    result = []
+
+    def backtrack(index, path):
+        if index == len(digits):
+            result.append(''.join(path))
+            return
+
+        for letter in phone[digits[index]]:
+            path.append(letter)
+            backtrack(index + 1, path)
+            path.pop()
+
+    backtrack(0, [])
+    return result`,
+			Explanation:     "Map digits to letters. Backtrack through each digit position, trying all mapped letters.",
+			TimeComplexity:  "O(4^n) - some digits have 4 letters",
+			SpaceComplexity: "O(n) for recursion",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Phone mapping", Explanation: "Digit to letters mapping", CodeSnippet: "phone = {'2': 'abc', '3': 'def', ...}", LineStart: 5, LineEnd: 8},
+				{Title: "Try all letters", Explanation: "For current digit, try each mapped letter", CodeSnippet: "for letter in phone[digits[index]]:", LineStart: 16, LineEnd: 16},
+				{Title: "Build combination", Explanation: "When all digits processed, join path", CodeSnippet: "result.append(''.join(path))", LineStart: 13, LineEnd: 13},
+			},
+		},
+	},
+	// Math - remaining
+	{
+		ID:              "happy-number",
+		Number:          116,
+		Title:           "Happy Number",
+		Difficulty:      "Easy",
+		Category:        "math-geometry",
+		Tags:            []string{"Hash Table", "Math", "Two Pointers"},
+		RelatedChapters: []int{1, 5},
+		Description: `Write an algorithm to determine if a number n is happy.
+
+A happy number is a number defined by the following process:
+
+- Starting with any positive integer, replace the number by the sum of the squares of its digits.
+- Repeat the process until the number equals 1 (where it will stay), or it loops endlessly in a cycle which does not include 1.
+- Those numbers for which this process ends in 1 are happy.
+
+Return true if n is a happy number, and false if not.`,
+		Constraints: []string{
+			"1 <= n <= 2^31 - 1",
+		},
+		Examples: []Example{
+			{Input: "n = 19", Output: "true", Explanation: "1^2 + 9^2 = 82, 8^2 + 2^2 = 68, 6^2 + 8^2 = 100, 1^2 + 0^2 + 0^2 = 1"},
+			{Input: "n = 2", Output: "false"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"n": 19}, Expected: true},
+			{Input: map[string]interface{}{"n": 2}, Expected: false},
+		},
+		TimeComplexity:  "O(log n)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def isHappy(n):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Detect cycle using Floyd's tortoise and hare, or use a hash set to track seen numbers."},
+			{Level: 2, Type: "algorithm", Content: "Slow and fast pointers: slow = next(n), fast = next(next(n)). If they meet and != 1, cycle without 1."},
+			{Level: 3, Type: "code", Content: "def get_next(n): sum of digit squares. slow, fast = n, get_next(n). while fast != 1 and slow != fast: advance. return fast == 1."},
+		},
+		Solution: Solution{
+			Code: `def isHappy(n):
+    def get_next(num):
+        total = 0
+        while num > 0:
+            digit = num % 10
+            total += digit * digit
+            num //= 10
+        return total
+
+    slow = n
+    fast = get_next(n)
+
+    while fast != 1 and slow != fast:
+        slow = get_next(slow)
+        fast = get_next(get_next(fast))
+
+    return fast == 1`,
+			Explanation:     "Floyd's cycle detection. If we reach 1, happy. If cycle detected (slow == fast), not happy.",
+			TimeComplexity:  "O(log n)",
+			SpaceComplexity: "O(1)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Digit sum of squares", Explanation: "Calculate next number in sequence", CodeSnippet: "total += digit * digit", LineStart: 6, LineEnd: 6},
+				{Title: "Floyd's algorithm", Explanation: "Slow moves 1 step, fast moves 2", CodeSnippet: "slow = get_next(slow)\nfast = get_next(get_next(fast))", LineStart: 14, LineEnd: 15},
+			},
+		},
+	},
+	{
+		ID:              "plus-one",
+		Number:          117,
+		Title:           "Plus One",
+		Difficulty:      "Easy",
+		Category:        "math-geometry",
+		Tags:            []string{"Array", "Math"},
+		RelatedChapters: []int{1},
+		Description: `You are given a large integer represented as an integer array digits, where each digits[i] is the ith digit of the integer. The digits are ordered from most significant to least significant in left-to-right order. The large integer does not contain any leading 0's.
+
+Increment the large integer by one and return the resulting array of digits.`,
+		Constraints: []string{
+			"1 <= digits.length <= 100",
+			"0 <= digits[i] <= 9",
+			"digits does not contain any leading 0's",
+		},
+		Examples: []Example{
+			{Input: "digits = [1,2,3]", Output: "[1,2,4]"},
+			{Input: "digits = [4,3,2,1]", Output: "[4,3,2,2]"},
+			{Input: "digits = [9]", Output: "[1,0]"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"digits": []int{1, 2, 3}}, Expected: []int{1, 2, 4}},
+			{Input: map[string]interface{}{"digits": []int{9, 9, 9}}, Expected: []int{1, 0, 0, 0}},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def plusOne(digits):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Add 1 to last digit. If 9, set to 0 and carry. If all 9s, prepend 1."},
+			{Level: 2, Type: "algorithm", Content: "Iterate from right. If digit < 9, increment and return. If 9, set to 0. If we exit loop, prepend 1."},
+			{Level: 3, Type: "code", Content: "for i from n-1 to 0: if digits[i] < 9: digits[i] += 1, return. else: digits[i] = 0. return [1] + digits."},
+		},
+		Solution: Solution{
+			Code: `def plusOne(digits):
+    for i in range(len(digits) - 1, -1, -1):
+        if digits[i] < 9:
+            digits[i] += 1
+            return digits
+        digits[i] = 0
+
+    return [1] + digits`,
+			Explanation:     "Add 1 from right. If digit < 9, done. If 9, set to 0 and continue. If all 9s, prepend 1.",
+			TimeComplexity:  "O(n)",
+			SpaceComplexity: "O(1) or O(n) if all 9s",
+			Walkthrough: []WalkthroughStep{
+				{Title: "No carry needed", Explanation: "Digit < 9, just increment", CodeSnippet: "if digits[i] < 9:\n    digits[i] += 1\n    return digits", LineStart: 3, LineEnd: 5},
+				{Title: "Carry needed", Explanation: "Digit is 9, set to 0 and continue", CodeSnippet: "digits[i] = 0", LineStart: 6, LineEnd: 6},
+				{Title: "All 9s case", Explanation: "Need new leading 1", CodeSnippet: "return [1] + digits", LineStart: 8, LineEnd: 8},
+			},
+		},
+	},
+	{
+		ID:              "powx-n",
+		Number:          118,
+		Title:           "Pow(x, n)",
+		Difficulty:      "Medium",
+		Category:        "math-geometry",
+		Tags:            []string{"Math", "Recursion"},
+		RelatedChapters: []int{1, 4},
+		Description: `Implement pow(x, n), which calculates x raised to the power n (i.e., x^n).`,
+		Constraints: []string{
+			"-100.0 < x < 100.0",
+			"-2^31 <= n <= 2^31 - 1",
+			"n is an integer",
+			"Either x is not zero or n > 0",
+			"-10^4 <= x^n <= 10^4",
+		},
+		Examples: []Example{
+			{Input: "x = 2.00000, n = 10", Output: "1024.00000"},
+			{Input: "x = 2.10000, n = 3", Output: "9.26100"},
+			{Input: "x = 2.00000, n = -2", Output: "0.25000"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"x": 2.0, "n": 10}, Expected: 1024.0},
+			{Input: map[string]interface{}{"x": 2.0, "n": -2}, Expected: 0.25},
+		},
+		TimeComplexity:  "O(log n)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def myPow(x, n):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Binary exponentiation: x^n = (x^2)^(n/2). Handle negative exponent by using 1/x.", ChapterRef: 4},
+			{Level: 2, Type: "algorithm", Content: "If n is even: x^n = (x*x)^(n/2). If n is odd: x^n = x * x^(n-1). Handle n < 0."},
+			{Level: 3, Type: "code", Content: "if n < 0: x = 1/x, n = -n. result = 1. while n: if n odd: result *= x. x *= x, n //= 2. return result."},
+		},
+		Solution: Solution{
+			Code: `def myPow(x, n):
+    if n < 0:
+        x = 1 / x
+        n = -n
+
+    result = 1
+    while n:
+        if n % 2 == 1:
+            result *= x
+        x *= x
+        n //= 2
+
+    return result`,
+			Explanation:     "Binary exponentiation. Square x each iteration. If odd power, multiply into result. O(log n) iterations.",
+			TimeComplexity:  "O(log n)",
+			SpaceComplexity: "O(1)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Handle negative", Explanation: "x^(-n) = (1/x)^n", CodeSnippet: "if n < 0:\n    x = 1 / x\n    n = -n", LineStart: 2, LineEnd: 4},
+				{Title: "Odd power", Explanation: "Multiply current x into result", CodeSnippet: "if n % 2 == 1:\n    result *= x", LineStart: 8, LineEnd: 9},
+				{Title: "Square and halve", Explanation: "x^n = (x^2)^(n/2)", CodeSnippet: "x *= x\nn //= 2", LineStart: 10, LineEnd: 11},
+			},
+		},
+	},
+	// 1D DP - remaining
+	{
+		ID:              "decode-ways",
+		Number:          119,
+		Title:           "Decode Ways",
+		Difficulty:      "Medium",
+		Category:        "1d-dp",
+		Tags:            []string{"String", "Dynamic Programming"},
+		RelatedChapters: []int{9, 12},
+		Description: `A message containing letters from A-Z can be encoded into numbers using the following mapping:
+
+'A' -> "1"
+'B' -> "2"
+...
+'Z' -> "26"
+
+To decode an encoded message, all the digits must be grouped then mapped back into letters using the reverse of the mapping above (there may be multiple ways).
+
+Given a string s containing only digits, return the number of ways to decode it.`,
+		Constraints: []string{
+			"1 <= s.length <= 100",
+			"s contains only digits and may contain leading zero(s)",
+		},
+		Examples: []Example{
+			{Input: `s = "12"`, Output: "2", Explanation: "'AB' (1 2) or 'L' (12)."},
+			{Input: `s = "226"`, Output: "3", Explanation: "'BZ' (2 26), 'VF' (22 6), or 'BBF' (2 2 6)."},
+			{Input: `s = "06"`, Output: "0", Explanation: "'06' cannot be mapped to 'F' due to leading zero."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"s": "12"}, Expected: 2},
+			{Input: map[string]interface{}{"s": "226"}, Expected: 3},
+			{Input: map[string]interface{}{"s": "06"}, Expected: 0},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def numDecodings(s):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "DP where dp[i] = ways to decode s[0:i]. Single digit (1-9) or two digits (10-26).", ChapterRef: 9},
+			{Level: 2, Type: "algorithm", Content: "dp[i] = dp[i-1] if s[i-1] != '0', plus dp[i-2] if s[i-2:i] is valid (10-26)."},
+			{Level: 3, Type: "code", Content: "Use two variables prev1, prev2. Update based on current digit and two-digit number."},
+		},
+		Solution: Solution{
+			Code: `def numDecodings(s):
+    if not s or s[0] == '0':
+        return 0
+
+    prev2 = 1  # dp[i-2]
+    prev1 = 1  # dp[i-1]
+
+    for i in range(1, len(s)):
+        current = 0
+
+        # Single digit decode
+        if s[i] != '0':
+            current += prev1
+
+        # Two digit decode
+        two_digit = int(s[i-1:i+1])
+        if 10 <= two_digit <= 26:
+            current += prev2
+
+        prev2 = prev1
+        prev1 = current
+
+    return prev1`,
+			Explanation:     "DP with space optimization. Single digit if 1-9, two digits if 10-26. Sum both possibilities.",
+			TimeComplexity:  "O(n)",
+			SpaceComplexity: "O(1)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Single digit", Explanation: "Valid if not '0'", CodeSnippet: "if s[i] != '0':\n    current += prev1", LineStart: 12, LineEnd: 13},
+				{Title: "Two digits", Explanation: "Valid if 10-26", CodeSnippet: "if 10 <= two_digit <= 26:\n    current += prev2", LineStart: 16, LineEnd: 18},
+			},
+		},
+	},
+	{
+		ID:              "maximum-product-subarray",
+		Number:          120,
+		Title:           "Maximum Product Subarray",
+		Difficulty:      "Medium",
+		Category:        "1d-dp",
+		Tags:            []string{"Array", "Dynamic Programming"},
+		RelatedChapters: []int{9, 12},
+		Description: `Given an integer array nums, find a subarray that has the largest product, and return the product.
+
+The test cases are generated so that the answer will fit in a 32-bit integer.`,
+		Constraints: []string{
+			"1 <= nums.length <= 2 * 10^4",
+			"-10 <= nums[i] <= 10",
+			"The product of any prefix or suffix of nums is guaranteed to fit in a 32-bit integer",
+		},
+		Examples: []Example{
+			{Input: "nums = [2,3,-2,4]", Output: "6", Explanation: "[2,3] has the largest product."},
+			{Input: "nums = [-2,0,-1]", Output: "0"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"nums": []int{2, 3, -2, 4}}, Expected: 6},
+			{Input: map[string]interface{}{"nums": []int{-2, 0, -1}}, Expected: 0},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def maxProduct(nums):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Track both max and min product ending at current position. Negative * negative = positive.", ChapterRef: 9},
+			{Level: 2, Type: "algorithm", Content: "cur_max = max(num, cur_max * num, cur_min * num). cur_min similarly. Negative can flip max/min."},
+			{Level: 3, Type: "code", Content: "cur_max = cur_min = result = nums[0]. for num in nums[1:]: candidates = (num, cur_max*num, cur_min*num). Update max, min, result."},
+		},
+		Solution: Solution{
+			Code: `def maxProduct(nums):
+    cur_max = cur_min = result = nums[0]
+
+    for num in nums[1:]:
+        candidates = (num, cur_max * num, cur_min * num)
+        cur_max = max(candidates)
+        cur_min = min(candidates)
+        result = max(result, cur_max)
+
+    return result`,
+			Explanation:     "Track max and min products. Negative number can turn min into max. Consider starting fresh or extending.",
+			TimeComplexity:  "O(n)",
+			SpaceComplexity: "O(1)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Three candidates", Explanation: "Start fresh, extend max, or extend min", CodeSnippet: "candidates = (num, cur_max * num, cur_min * num)", LineStart: 5, LineEnd: 5},
+				{Title: "Track both", Explanation: "Need min because negative * negative = positive", CodeSnippet: "cur_max = max(candidates)\ncur_min = min(candidates)", LineStart: 6, LineEnd: 7},
+			},
+		},
+	},
+	{
+		ID:              "partition-equal-subset-sum",
+		Number:          121,
+		Title:           "Partition Equal Subset Sum",
+		Difficulty:      "Medium",
+		Category:        "1d-dp",
+		Tags:            []string{"Array", "Dynamic Programming"},
+		RelatedChapters: []int{9, 12},
+		Description: `Given an integer array nums, return true if you can partition the array into two subsets such that the sum of the elements in both subsets is equal or false otherwise.`,
+		Constraints: []string{
+			"1 <= nums.length <= 200",
+			"1 <= nums[i] <= 100",
+		},
+		Examples: []Example{
+			{Input: "nums = [1,5,11,5]", Output: "true", Explanation: "[1, 5, 5] and [11]"},
+			{Input: "nums = [1,2,3,5]", Output: "false"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"nums": []int{1, 5, 11, 5}}, Expected: true},
+			{Input: map[string]interface{}{"nums": []int{1, 2, 3, 5}}, Expected: false},
+		},
+		TimeComplexity:  "O(n * sum)",
+		SpaceComplexity: "O(sum)",
+		StarterCode:     "def canPartition(nums):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "If total is odd, impossible. Otherwise, find subset summing to total/2. This is subset sum problem.", ChapterRef: 9},
+			{Level: 2, Type: "algorithm", Content: "DP: dp[s] = can we make sum s? For each num, update from right to left."},
+			{Level: 3, Type: "code", Content: "target = sum // 2. dp = set([0]). for num: dp |= {s + num for s in dp if s + num <= target}. return target in dp."},
+		},
+		Solution: Solution{
+			Code: `def canPartition(nums):
+    total = sum(nums)
+    if total % 2 != 0:
+        return False
+
+    target = total // 2
+    dp = [False] * (target + 1)
+    dp[0] = True
+
+    for num in nums:
+        for s in range(target, num - 1, -1):
+            dp[s] = dp[s] or dp[s - num]
+
+    return dp[target]`,
+			Explanation:     "Find subset summing to half of total. If found, other subset also sums to half.",
+			TimeComplexity:  "O(n * sum)",
+			SpaceComplexity: "O(sum)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Check parity", Explanation: "Odd total can't be split equally", CodeSnippet: "if total % 2 != 0:\n    return False", LineStart: 3, LineEnd: 4},
+				{Title: "Subset sum DP", Explanation: "Can we make each sum?", CodeSnippet: "dp[s] = dp[s] or dp[s - num]", LineStart: 12, LineEnd: 12},
+				{Title: "Right to left", Explanation: "Prevent using same element twice", CodeSnippet: "for s in range(target, num - 1, -1):", LineStart: 11, LineEnd: 11},
+			},
+		},
+	},
+	// Advanced Graphs
+	{
+		ID:              "reconstruct-itinerary",
+		Number:          122,
+		Title:           "Reconstruct Itinerary",
+		Difficulty:      "Hard",
+		Category:        "graphs",
+		Tags:            []string{"Graph", "DFS", "Eulerian Path"},
+		RelatedChapters: []int{6, 12},
+		Description: `You are given a list of airline tickets where tickets[i] = [fromi, toi] represent the departure and the arrival airports of one flight. Reconstruct the itinerary in order and return it.
+
+All of the tickets belong to a man who departs from "JFK", thus, the itinerary must begin with "JFK". If there are multiple valid itineraries, you should return the itinerary that has the smallest lexical order when read as a single string.
+
+You may assume all tickets form at least one valid itinerary. You must use all the tickets once and only once.`,
+		Constraints: []string{
+			"1 <= tickets.length <= 300",
+			"tickets[i].length == 2",
+			"fromi.length == 3",
+			"toi.length == 3",
+			"fromi and toi consist of uppercase English letters",
+			"fromi != toi",
+		},
+		Examples: []Example{
+			{Input: `tickets = [["MUC","LHR"],["JFK","MUC"],["SFO","SJC"],["LHR","SFO"]]`, Output: `["JFK","MUC","LHR","SFO","SJC"]`},
+			{Input: `tickets = [["JFK","SFO"],["JFK","ATL"],["SFO","ATL"],["ATL","JFK"],["ATL","SFO"]]`, Output: `["JFK","ATL","JFK","SFO","ATL","SFO"]`},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"tickets": [][]string{{"MUC", "LHR"}, {"JFK", "MUC"}, {"SFO", "SJC"}, {"LHR", "SFO"}}}, Expected: []string{"JFK", "MUC", "LHR", "SFO", "SJC"}},
+			{Input: map[string]interface{}{"tickets": [][]string{{"JFK", "SFO"}, {"JFK", "ATL"}, {"SFO", "ATL"}, {"ATL", "JFK"}, {"ATL", "SFO"}}}, Expected: []string{"JFK", "ATL", "JFK", "SFO", "ATL", "SFO"}},
+		},
+		TimeComplexity:  "O(E log E)",
+		SpaceComplexity: "O(E)",
+		StarterCode:     "def findItinerary(tickets):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "This is Eulerian path problem. Use Hierholzer's algorithm with DFS.", ChapterRef: 6},
+			{Level: 2, Type: "algorithm", Content: "Build adjacency list sorted in reverse. DFS from JFK, pop destinations, add to result in reverse."},
+			{Level: 3, Type: "code", Content: "graph = defaultdict(list). Sort destinations reversed. DFS: while graph[node]: dfs(graph[node].pop()). result.append(node). Return reversed."},
+		},
+		Solution: Solution{
+			Code: `def findItinerary(tickets):
+    from collections import defaultdict
+
+    graph = defaultdict(list)
+    for src, dst in sorted(tickets, reverse=True):
+        graph[src].append(dst)
+
+    result = []
+
+    def dfs(node):
+        while graph[node]:
+            dfs(graph[node].pop())
+        result.append(node)
+
+    dfs("JFK")
+    return result[::-1]`,
+			Explanation:     "Hierholzer's algorithm for Eulerian path. Sort in reverse for lexical order, build path backwards.",
+			TimeComplexity:  "O(E log E)",
+			SpaceComplexity: "O(E)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Sort reverse", Explanation: "Reverse sort so pop gives smallest", CodeSnippet: "for src, dst in sorted(tickets, reverse=True):", LineStart: 5, LineEnd: 5},
+				{Title: "DFS with pop", Explanation: "Visit and remove edges", CodeSnippet: "while graph[node]:\n    dfs(graph[node].pop())", LineStart: 11, LineEnd: 12},
+				{Title: "Build backwards", Explanation: "Append after visiting all neighbors", CodeSnippet: "result.append(node)", LineStart: 13, LineEnd: 13},
+			},
+		},
+	},
+	{
+		ID:              "min-cost-to-connect-all-points",
+		Number:          123,
+		Title:           "Min Cost to Connect All Points",
+		Difficulty:      "Medium",
+		Category:        "graphs",
+		Tags:            []string{"Graph", "MST", "Prim's", "Union Find"},
+		RelatedChapters: []int{6, 7, 12},
+		Description: `You are given an array points representing integer coordinates of some points on a 2D-plane, where points[i] = [xi, yi].
+
+The cost of connecting two points [xi, yi] and [xj, yj] is the manhattan distance between them: |xi - xj| + |yi - yj|.
+
+Return the minimum cost to make all points connected. All points are connected if there is exactly one simple path between any two points.`,
+		Constraints: []string{
+			"1 <= points.length <= 1000",
+			"-10^6 <= xi, yi <= 10^6",
+			"All pairs (xi, yi) are distinct",
+		},
+		Examples: []Example{
+			{Input: "points = [[0,0],[2,2],[3,10],[5,2],[7,0]]", Output: "20"},
+			{Input: "points = [[3,12],[-2,5],[-4,1]]", Output: "18"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"points": [][]int{{0, 0}, {2, 2}, {3, 10}, {5, 2}, {7, 0}}}, Expected: 20},
+			{Input: map[string]interface{}{"points": [][]int{{3, 12}, {-2, 5}, {-4, 1}}}, Expected: 18},
+		},
+		TimeComplexity:  "O(n^2 log n)",
+		SpaceComplexity: "O(n^2)",
+		StarterCode:     "def minCostConnectPoints(points):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "This is Minimum Spanning Tree (MST). Use Prim's or Kruskal's algorithm.", ChapterRef: 7},
+			{Level: 2, Type: "algorithm", Content: "Prim's: Start from any node, greedily add closest unvisited node. Use min-heap."},
+			{Level: 3, Type: "code", Content: "heap = [(0, 0)]. visited = set(). while len(visited) < n: cost, node = heappop. if not visited: add to visited, add neighbors."},
+		},
+		Solution: Solution{
+			Code: `def minCostConnectPoints(points):
+    import heapq
+
+    n = len(points)
+    visited = set()
+    heap = [(0, 0)]  # (cost, point_index)
+    total_cost = 0
+
+    while len(visited) < n:
+        cost, i = heapq.heappop(heap)
+        if i in visited:
+            continue
+        visited.add(i)
+        total_cost += cost
+
+        for j in range(n):
+            if j not in visited:
+                dist = abs(points[i][0] - points[j][0]) + abs(points[i][1] - points[j][1])
+                heapq.heappush(heap, (dist, j))
+
+    return total_cost`,
+			Explanation:     "Prim's algorithm: greedily add closest unconnected point until all connected.",
+			TimeComplexity:  "O(n^2 log n)",
+			SpaceComplexity: "O(n^2)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Initialize heap", Explanation: "Start from point 0 with cost 0", CodeSnippet: "heap = [(0, 0)]", LineStart: 6, LineEnd: 6},
+				{Title: "Greedy selection", Explanation: "Pop minimum cost unvisited point", CodeSnippet: "cost, i = heapq.heappop(heap)\nif i in visited:\n    continue", LineStart: 10, LineEnd: 12},
+				{Title: "Add neighbors", Explanation: "Push distances to all unvisited points", CodeSnippet: "dist = abs(points[i][0] - points[j][0]) + abs(points[i][1] - points[j][1])", LineStart: 18, LineEnd: 18},
+			},
+		},
+	},
+	{
+		ID:              "network-delay-time",
+		Number:          124,
+		Title:           "Network Delay Time",
+		Difficulty:      "Medium",
+		Category:        "graphs",
+		Tags:            []string{"Graph", "Dijkstra", "Shortest Path"},
+		RelatedChapters: []int{7, 12},
+		Description: `You are given a network of n nodes, labeled from 1 to n. You are also given times, a list of travel times as directed edges times[i] = (ui, vi, wi), where ui is the source node, vi is the target node, and wi is the time it takes for a signal to travel from source to target.
+
+We will send a signal from a given node k. Return the minimum time it takes for all the n nodes to receive the signal. If it is impossible for all the n nodes to receive the signal, return -1.`,
+		Constraints: []string{
+			"1 <= k <= n <= 100",
+			"1 <= times.length <= 6000",
+			"times[i].length == 3",
+			"1 <= ui, vi <= n",
+			"ui != vi",
+			"0 <= wi <= 100",
+			"All the pairs (ui, vi) are unique",
+		},
+		Examples: []Example{
+			{Input: "times = [[2,1,1],[2,3,1],[3,4,1]], n = 4, k = 2", Output: "2"},
+			{Input: "times = [[1,2,1]], n = 2, k = 1", Output: "1"},
+			{Input: "times = [[1,2,1]], n = 2, k = 2", Output: "-1"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"times": [][]int{{2, 1, 1}, {2, 3, 1}, {3, 4, 1}}, "n": 4, "k": 2}, Expected: 2},
+			{Input: map[string]interface{}{"times": [][]int{{1, 2, 1}}, "n": 2, "k": 1}, Expected: 1},
+			{Input: map[string]interface{}{"times": [][]int{{1, 2, 1}}, "n": 2, "k": 2}, Expected: -1},
+		},
+		TimeComplexity:  "O(E log V)",
+		SpaceComplexity: "O(V + E)",
+		StarterCode:     "def networkDelayTime(times, n, k):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Use Dijkstra's algorithm to find shortest path from k to all nodes.", ChapterRef: 7},
+			{Level: 2, Type: "algorithm", Content: "Build graph, use min-heap starting from k. Track minimum time to reach each node."},
+			{Level: 3, Type: "code", Content: "heap = [(0, k)]. dist = {}. while heap: if node not in dist: dist[node] = time; add neighbors. return max(dist) if len == n else -1."},
+		},
+		Solution: Solution{
+			Code: `def networkDelayTime(times, n, k):
+    import heapq
+    from collections import defaultdict
+
+    graph = defaultdict(list)
+    for u, v, w in times:
+        graph[u].append((v, w))
+
+    heap = [(0, k)]
+    dist = {}
+
+    while heap:
+        time, node = heapq.heappop(heap)
+        if node in dist:
+            continue
+        dist[node] = time
+
+        for neighbor, weight in graph[node]:
+            if neighbor not in dist:
+                heapq.heappush(heap, (time + weight, neighbor))
+
+    return max(dist.values()) if len(dist) == n else -1`,
+			Explanation:     "Dijkstra finds shortest path to all nodes. Answer is max of all shortest paths.",
+			TimeComplexity:  "O(E log V)",
+			SpaceComplexity: "O(V + E)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Build graph", Explanation: "Adjacency list with weights", CodeSnippet: "for u, v, w in times:\n    graph[u].append((v, w))", LineStart: 6, LineEnd: 7},
+				{Title: "Dijkstra", Explanation: "Pop minimum, record if first visit", CodeSnippet: "if node in dist:\n    continue\ndist[node] = time", LineStart: 14, LineEnd: 16},
+				{Title: "Check reachability", Explanation: "All n nodes must be reached", CodeSnippet: "return max(dist.values()) if len(dist) == n else -1", LineStart: 22, LineEnd: 22},
+			},
+		},
+	},
+	{
+		ID:              "swim-in-rising-water",
+		Number:          125,
+		Title:           "Swim in Rising Water",
+		Difficulty:      "Hard",
+		Category:        "graphs",
+		Tags:            []string{"Graph", "Binary Search", "BFS", "Union Find"},
+		RelatedChapters: []int{1, 6, 7, 12},
+		Description: `You are given an n x n integer matrix grid where each value grid[i][j] represents the elevation at that point (i, j).
+
+The rain starts to fall. At time t, the depth of the water everywhere is t. You can swim from a square to another 4-directionally adjacent square if and only if the elevation of both squares individually are at most t. You can swim infinite distances in zero time. Of course, you must stay within the boundaries of the grid during your swim.
+
+Return the least time until you can reach the bottom right square (n - 1, n - 1) if you start at the top left square (0, 0).`,
+		Constraints: []string{
+			"n == grid.length",
+			"n == grid[i].length",
+			"1 <= n <= 50",
+			"0 <= grid[i][j] < n^2",
+			"Each value grid[i][j] is unique",
+		},
+		Examples: []Example{
+			{Input: "grid = [[0,2],[1,3]]", Output: "3"},
+			{Input: "grid = [[0,1,2,3,4],[24,23,22,21,5],[12,13,14,15,16],[11,17,18,19,20],[10,9,8,7,6]]", Output: "16"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"grid": [][]int{{0, 2}, {1, 3}}}, Expected: 3},
+			{Input: map[string]interface{}{"grid": [][]int{{0, 1, 2, 3, 4}, {24, 23, 22, 21, 5}, {12, 13, 14, 15, 16}, {11, 17, 18, 19, 20}, {10, 9, 8, 7, 6}}}, Expected: 16},
+		},
+		TimeComplexity:  "O(n^2 log n)",
+		SpaceComplexity: "O(n^2)",
+		StarterCode:     "def swimInWater(grid):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Use modified Dijkstra or binary search + BFS. Find minimum time to reach destination.", ChapterRef: 7},
+			{Level: 2, Type: "algorithm", Content: "Dijkstra variant: cost to reach cell is max(current_max, cell_value). Use min-heap."},
+			{Level: 3, Type: "code", Content: "heap = [(grid[0][0], 0, 0)]. while heap: t, r, c = pop. if (r,c) == (n-1,n-1): return t. For neighbors: push (max(t, grid[nr][nc]), nr, nc)."},
+		},
+		Solution: Solution{
+			Code: `def swimInWater(grid):
+    import heapq
+
+    n = len(grid)
+    visited = set()
+    heap = [(grid[0][0], 0, 0)]
+
+    while heap:
+        t, r, c = heapq.heappop(heap)
+        if (r, c) in visited:
+            continue
+        visited.add((r, c))
+
+        if r == n - 1 and c == n - 1:
+            return t
+
+        for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < n and 0 <= nc < n and (nr, nc) not in visited:
+                heapq.heappush(heap, (max(t, grid[nr][nc]), nr, nc))
+
+    return -1`,
+			Explanation:     "Modified Dijkstra where edge weight is max elevation seen. First path to end is optimal.",
+			TimeComplexity:  "O(n^2 log n)",
+			SpaceComplexity: "O(n^2)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Track max elevation", Explanation: "Time needed is max elevation on path", CodeSnippet: "(max(t, grid[nr][nc]), nr, nc)", LineStart: 20, LineEnd: 20},
+				{Title: "First arrival wins", Explanation: "Min-heap ensures optimal path found first", CodeSnippet: "if r == n - 1 and c == n - 1:\n    return t", LineStart: 14, LineEnd: 15},
+			},
+		},
+	},
+	{
+		ID:              "cheapest-flights-within-k-stops",
+		Number:          126,
+		Title:           "Cheapest Flights Within K Stops",
+		Difficulty:      "Medium",
+		Category:        "graphs",
+		Tags:            []string{"Graph", "BFS", "Dijkstra", "Dynamic Programming"},
+		RelatedChapters: []int{7, 9, 12},
+		Description: `There are n cities connected by some number of flights. You are given an array flights where flights[i] = [fromi, toi, pricei] indicates that there is a flight from city fromi to city toi with cost pricei.
+
+You are also given three integers src, dst, and k, return the cheapest price from src to dst with at most k stops. If there is no such route, return -1.`,
+		Constraints: []string{
+			"1 <= n <= 100",
+			"0 <= flights.length <= (n * (n - 1) / 2)",
+			"flights[i].length == 3",
+			"0 <= fromi, toi < n",
+			"fromi != toi",
+			"1 <= pricei <= 10^4",
+			"There will not be any multiple flights between two cities",
+			"0 <= src, dst, k < n",
+			"src != dst",
+		},
+		Examples: []Example{
+			{Input: "n = 4, flights = [[0,1,100],[1,2,100],[2,0,100],[1,3,600],[2,3,200]], src = 0, dst = 3, k = 1", Output: "700"},
+			{Input: "n = 3, flights = [[0,1,100],[1,2,100],[0,2,500]], src = 0, dst = 2, k = 1", Output: "200"},
+			{Input: "n = 3, flights = [[0,1,100],[1,2,100],[0,2,500]], src = 0, dst = 2, k = 0", Output: "500"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"n": 4, "flights": [][]int{{0, 1, 100}, {1, 2, 100}, {2, 0, 100}, {1, 3, 600}, {2, 3, 200}}, "src": 0, "dst": 3, "k": 1}, Expected: 700},
+			{Input: map[string]interface{}{"n": 3, "flights": [][]int{{0, 1, 100}, {1, 2, 100}, {0, 2, 500}}, "src": 0, "dst": 2, "k": 1}, Expected: 200},
+		},
+		TimeComplexity:  "O(k * E)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def findCheapestPrice(n, flights, src, dst, k):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Use Bellman-Ford variant limited to k+1 iterations, or BFS with level tracking.", ChapterRef: 7},
+			{Level: 2, Type: "algorithm", Content: "Bellman-Ford: relax all edges k+1 times. Or modified Dijkstra tracking stops."},
+			{Level: 3, Type: "code", Content: "prices = [inf]*n. prices[src]=0. for k+1 times: temp=prices.copy(). for u,v,p: temp[v]=min(temp[v], prices[u]+p). prices=temp."},
+		},
+		Solution: Solution{
+			Code: `def findCheapestPrice(n, flights, src, dst, k):
+    prices = [float('inf')] * n
+    prices[src] = 0
+
+    for _ in range(k + 1):
+        temp = prices.copy()
+        for u, v, p in flights:
+            if prices[u] != float('inf'):
+                temp[v] = min(temp[v], prices[u] + p)
+        prices = temp
+
+    return prices[dst] if prices[dst] != float('inf') else -1`,
+			Explanation:     "Bellman-Ford with k+1 iterations. Each iteration allows one more stop.",
+			TimeComplexity:  "O(k * E)",
+			SpaceComplexity: "O(n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Limited iterations", Explanation: "k+1 iterations for at most k stops", CodeSnippet: "for _ in range(k + 1):", LineStart: 5, LineEnd: 5},
+				{Title: "Copy before update", Explanation: "Prevent using updates from same iteration", CodeSnippet: "temp = prices.copy()", LineStart: 6, LineEnd: 6},
+				{Title: "Relax edges", Explanation: "Update if path through u is cheaper", CodeSnippet: "temp[v] = min(temp[v], prices[u] + p)", LineStart: 9, LineEnd: 9},
+			},
+		},
+	},
+	// More 2D DP
+	{
+		ID:              "interleaving-string",
+		Number:          127,
+		Title:           "Interleaving String",
+		Difficulty:      "Medium",
+		Category:        "2d-dp",
+		Tags:            []string{"String", "Dynamic Programming"},
+		RelatedChapters: []int{9, 12},
+		Description: `Given strings s1, s2, and s3, find whether s3 is formed by an interleaving of s1 and s2.
+
+An interleaving of two strings s and t is a configuration where s and t are divided into n and m substrings respectively, such that the interleaving is s1 + t1 + s2 + t2 + ... or t1 + s1 + t2 + s2 + ...`,
+		Constraints: []string{
+			"0 <= s1.length, s2.length <= 100",
+			"0 <= s3.length <= 200",
+			"s1, s2, and s3 consist of lowercase English letters",
+		},
+		Examples: []Example{
+			{Input: `s1 = "aabcc", s2 = "dbbca", s3 = "aadbbcbcac"`, Output: "true"},
+			{Input: `s1 = "aabcc", s2 = "dbbca", s3 = "aadbbbaccc"`, Output: "false"},
+			{Input: `s1 = "", s2 = "", s3 = ""`, Output: "true"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"s1": "aabcc", "s2": "dbbca", "s3": "aadbbcbcac"}, Expected: true},
+			{Input: map[string]interface{}{"s1": "aabcc", "s2": "dbbca", "s3": "aadbbbaccc"}, Expected: false},
+		},
+		TimeComplexity:  "O(m * n)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def isInterleave(s1, s2, s3):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "DP where dp[i][j] = can first i chars of s1 and first j chars of s2 form first i+j chars of s3.", ChapterRef: 9},
+			{Level: 2, Type: "algorithm", Content: "dp[i][j] = (dp[i-1][j] and s1[i-1]==s3[i+j-1]) or (dp[i][j-1] and s2[j-1]==s3[i+j-1])"},
+			{Level: 3, Type: "code", Content: "Can optimize to 1D: dp[j] = dp[j] and s1[i-1]==s3[i+j-1] or dp[j-1] and s2[j-1]==s3[i+j-1]"},
+		},
+		Solution: Solution{
+			Code: `def isInterleave(s1, s2, s3):
+    m, n = len(s1), len(s2)
+    if m + n != len(s3):
+        return False
+
+    dp = [False] * (n + 1)
+    dp[0] = True
+
+    for j in range(1, n + 1):
+        dp[j] = dp[j - 1] and s2[j - 1] == s3[j - 1]
+
+    for i in range(1, m + 1):
+        dp[0] = dp[0] and s1[i - 1] == s3[i - 1]
+        for j in range(1, n + 1):
+            dp[j] = (dp[j] and s1[i - 1] == s3[i + j - 1]) or \
+                    (dp[j - 1] and s2[j - 1] == s3[i + j - 1])
+
+    return dp[n]`,
+			Explanation:     "DP tracks if prefixes of s1 and s2 can interleave to form prefix of s3.",
+			TimeComplexity:  "O(m * n)",
+			SpaceComplexity: "O(n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Length check", Explanation: "Must have m + n = len(s3)", CodeSnippet: "if m + n != len(s3):\n    return False", LineStart: 3, LineEnd: 4},
+				{Title: "Two choices", Explanation: "Take from s1 (dp[j]) or s2 (dp[j-1])", CodeSnippet: "(dp[j] and s1[i - 1] == s3[i + j - 1]) or (dp[j - 1] and s2[j - 1] == s3[i + j - 1])", LineStart: 15, LineEnd: 16},
+			},
+		},
+	},
+	{
+		ID:              "longest-increasing-path-in-matrix",
+		Number:          128,
+		Title:           "Longest Increasing Path in a Matrix",
+		Difficulty:      "Hard",
+		Category:        "2d-dp",
+		Tags:            []string{"Matrix", "DFS", "Dynamic Programming", "Memoization"},
+		RelatedChapters: []int{6, 9, 12},
+		Description: `Given an m x n integers matrix, return the length of the longest increasing path in matrix.
+
+From each cell, you can either move in four directions: left, right, up, or down. You may not move diagonally or move outside the boundary.`,
+		Constraints: []string{
+			"m == matrix.length",
+			"n == matrix[i].length",
+			"1 <= m, n <= 200",
+			"0 <= matrix[i][j] <= 2^31 - 1",
+		},
+		Examples: []Example{
+			{Input: "matrix = [[9,9,4],[6,6,8],[2,1,1]]", Output: "4", Explanation: "Longest path is [1, 2, 6, 9]."},
+			{Input: "matrix = [[3,4,5],[3,2,6],[2,2,1]]", Output: "4", Explanation: "Longest path is [3, 4, 5, 6]."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"matrix": [][]int{{9, 9, 4}, {6, 6, 8}, {2, 1, 1}}}, Expected: 4},
+			{Input: map[string]interface{}{"matrix": [][]int{{3, 4, 5}, {3, 2, 6}, {2, 2, 1}}}, Expected: 4},
+		},
+		TimeComplexity:  "O(m * n)",
+		SpaceComplexity: "O(m * n)",
+		StarterCode:     "def longestIncreasingPath(matrix):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "DFS with memoization. Each cell's answer depends only on larger neighbors.", ChapterRef: 9},
+			{Level: 2, Type: "algorithm", Content: "memo[i][j] = 1 + max(dfs(neighbor) for larger neighbors). No cycles due to strictly increasing."},
+			{Level: 3, Type: "code", Content: "Use @lru_cache. dfs(r,c): return 1 + max(dfs(nr,nc) for valid larger neighbors, default 0)."},
+		},
+		Solution: Solution{
+			Code: `def longestIncreasingPath(matrix):
+    from functools import lru_cache
+
+    m, n = len(matrix), len(matrix[0])
+
+    @lru_cache(maxsize=None)
+    def dfs(r, c):
+        val = matrix[r][c]
+        result = 1
+        for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < m and 0 <= nc < n and matrix[nr][nc] > val:
+                result = max(result, 1 + dfs(nr, nc))
+        return result
+
+    return max(dfs(r, c) for r in range(m) for c in range(n))`,
+			Explanation:     "DFS from each cell, memoize results. No cycle possible since path is strictly increasing.",
+			TimeComplexity:  "O(m * n)",
+			SpaceComplexity: "O(m * n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Memoization", Explanation: "Cache results to avoid recomputation", CodeSnippet: "@lru_cache(maxsize=None)", LineStart: 6, LineEnd: 6},
+				{Title: "Only larger neighbors", Explanation: "Path must be strictly increasing", CodeSnippet: "if 0 <= nr < m and 0 <= nc < n and matrix[nr][nc] > val:", LineStart: 12, LineEnd: 12},
+				{Title: "Try all starts", Explanation: "Longest path could start anywhere", CodeSnippet: "max(dfs(r, c) for r in range(m) for c in range(n))", LineStart: 16, LineEnd: 16},
+			},
+		},
+	},
+	{
+		ID:              "distinct-subsequences",
+		Number:          129,
+		Title:           "Distinct Subsequences",
+		Difficulty:      "Hard",
+		Category:        "2d-dp",
+		Tags:            []string{"String", "Dynamic Programming"},
+		RelatedChapters: []int{9, 12},
+		Description: `Given two strings s and t, return the number of distinct subsequences of s which equals t.
+
+The test cases are generated so that the answer fits on a 32-bit signed integer.`,
+		Constraints: []string{
+			"1 <= s.length, t.length <= 1000",
+			"s and t consist of English letters",
+		},
+		Examples: []Example{
+			{Input: `s = "rabbbit", t = "rabbit"`, Output: "3"},
+			{Input: `s = "babgbag", t = "bag"`, Output: "5"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"s": "rabbbit", "t": "rabbit"}, Expected: 3},
+			{Input: map[string]interface{}{"s": "babgbag", "t": "bag"}, Expected: 5},
+		},
+		TimeComplexity:  "O(m * n)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def numDistinct(s, t):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "DP where dp[i][j] = number of ways to form t[0:j] from s[0:i].", ChapterRef: 9},
+			{Level: 2, Type: "algorithm", Content: "If s[i]==t[j]: dp[i][j] = dp[i-1][j-1] + dp[i-1][j]. Else: dp[i][j] = dp[i-1][j]."},
+			{Level: 3, Type: "code", Content: "Optimize to 1D going right to left. dp[j] += dp[j-1] if s[i]==t[j]."},
+		},
+		Solution: Solution{
+			Code: `def numDistinct(s, t):
+    m, n = len(s), len(t)
+    dp = [0] * (n + 1)
+    dp[0] = 1  # Empty t can be formed from any prefix
+
+    for i in range(1, m + 1):
+        for j in range(min(i, n), 0, -1):
+            if s[i - 1] == t[j - 1]:
+                dp[j] += dp[j - 1]
+
+    return dp[n]`,
+			Explanation:     "DP counts ways to select characters from s to form t. Update right to left to use previous row values.",
+			TimeComplexity:  "O(m * n)",
+			SpaceComplexity: "O(n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Base case", Explanation: "Empty t formed in one way (select nothing)", CodeSnippet: "dp[0] = 1", LineStart: 4, LineEnd: 4},
+				{Title: "Match case", Explanation: "Use char (dp[j-1]) or skip (dp[j])", CodeSnippet: "if s[i - 1] == t[j - 1]:\n    dp[j] += dp[j - 1]", LineStart: 8, LineEnd: 9},
+				{Title: "Right to left", Explanation: "Preserve previous row values", CodeSnippet: "for j in range(min(i, n), 0, -1):", LineStart: 7, LineEnd: 7},
+			},
+		},
+	},
+	{
+		ID:              "burst-balloons",
+		Number:          130,
+		Title:           "Burst Balloons",
+		Difficulty:      "Hard",
+		Category:        "2d-dp",
+		Tags:            []string{"Array", "Dynamic Programming"},
+		RelatedChapters: []int{9, 12},
+		Description: `You are given n balloons, indexed from 0 to n - 1. Each balloon is painted with a number on it represented by an array nums. You are asked to burst all the balloons.
+
+If you burst the ith balloon, you will get nums[i - 1] * nums[i] * nums[i + 1] coins. If i - 1 or i + 1 goes out of bounds, treat it as having a balloon with value 1.
+
+Return the maximum coins you can collect by bursting the balloons wisely.`,
+		Constraints: []string{
+			"n == nums.length",
+			"1 <= n <= 300",
+			"0 <= nums[i] <= 100",
+		},
+		Examples: []Example{
+			{Input: "nums = [3,1,5,8]", Output: "167", Explanation: "Burst 1, then 5, then 3, then 8. Coins = 3*1*5 + 3*5*8 + 1*3*8 + 1*8*1 = 167."},
+			{Input: "nums = [1,5]", Output: "10"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"nums": []int{3, 1, 5, 8}}, Expected: 167},
+			{Input: map[string]interface{}{"nums": []int{1, 5}}, Expected: 10},
+		},
+		TimeComplexity:  "O(n^3)",
+		SpaceComplexity: "O(n^2)",
+		StarterCode:     "def maxCoins(nums):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Think in reverse: which balloon to burst LAST in a range. Interval DP.", ChapterRef: 9},
+			{Level: 2, Type: "algorithm", Content: "dp[l][r] = max coins for bursting all balloons in range (l,r). Last balloon k: dp[l][r] = dp[l][k] + nums[l]*nums[k]*nums[r] + dp[k][r]."},
+			{Level: 3, Type: "code", Content: "Add virtual 1s at ends. for length 2 to n+2: for left: for k in (left+1, right): dp[l][r] = max over k."},
+		},
+		Solution: Solution{
+			Code: `def maxCoins(nums):
+    nums = [1] + nums + [1]
+    n = len(nums)
+    dp = [[0] * n for _ in range(n)]
+
+    for length in range(2, n):
+        for left in range(n - length):
+            right = left + length
+            for k in range(left + 1, right):
+                dp[left][right] = max(
+                    dp[left][right],
+                    dp[left][k] + nums[left] * nums[k] * nums[right] + dp[k][right]
+                )
+
+    return dp[0][n - 1]`,
+			Explanation:     "Interval DP. Think of k as last balloon to burst in range (left, right).",
+			TimeComplexity:  "O(n^3)",
+			SpaceComplexity: "O(n^2)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Add boundaries", Explanation: "Virtual balloons with value 1", CodeSnippet: "nums = [1] + nums + [1]", LineStart: 2, LineEnd: 2},
+				{Title: "Last balloon k", Explanation: "k is last to burst, neighbors are left and right", CodeSnippet: "nums[left] * nums[k] * nums[right]", LineStart: 12, LineEnd: 12},
+				{Title: "Combine subproblems", Explanation: "Solve left and right independently", CodeSnippet: "dp[left][k] + ... + dp[k][right]", LineStart: 11, LineEnd: 12},
+			},
+		},
+	},
+	{
+		ID:              "regular-expression-matching",
+		Number:          131,
+		Title:           "Regular Expression Matching",
+		Difficulty:      "Hard",
+		Category:        "2d-dp",
+		Tags:            []string{"String", "Dynamic Programming", "Recursion"},
+		RelatedChapters: []int{9, 12},
+		Description: `Given an input string s and a pattern p, implement regular expression matching with support for '.' and '*' where:
+
+'.' Matches any single character.
+'*' Matches zero or more of the preceding element.
+
+The matching should cover the entire input string (not partial).`,
+		Constraints: []string{
+			"1 <= s.length <= 20",
+			"1 <= p.length <= 20",
+			"s contains only lowercase English letters",
+			"p contains only lowercase English letters, '.', and '*'",
+			"It is guaranteed for each '*', there is a previous valid character to match",
+		},
+		Examples: []Example{
+			{Input: `s = "aa", p = "a"`, Output: "false"},
+			{Input: `s = "aa", p = "a*"`, Output: "true"},
+			{Input: `s = "ab", p = ".*"`, Output: "true"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"s": "aa", "p": "a"}, Expected: false},
+			{Input: map[string]interface{}{"s": "aa", "p": "a*"}, Expected: true},
+			{Input: map[string]interface{}{"s": "ab", "p": ".*"}, Expected: true},
+		},
+		TimeComplexity:  "O(m * n)",
+		SpaceComplexity: "O(m * n)",
+		StarterCode:     "def isMatch(s, p):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "DP where dp[i][j] = does s[0:i] match p[0:j]. Handle '*' specially.", ChapterRef: 9},
+			{Level: 2, Type: "algorithm", Content: "If p[j-1]=='*': dp[i][j] = dp[i][j-2] (skip x*) or (match and dp[i-1][j]). Else: dp[i][j] = match and dp[i-1][j-1]."},
+			{Level: 3, Type: "code", Content: "match = p[j-1]=='.' or p[j-1]==s[i-1]. Handle '*' case: zero matches (dp[i][j-2]) or one+ matches."},
+		},
+		Solution: Solution{
+			Code: `def isMatch(s, p):
+    m, n = len(s), len(p)
+    dp = [[False] * (n + 1) for _ in range(m + 1)]
+    dp[0][0] = True
+
+    # Handle patterns like a*, a*b*, a*b*c* matching empty string
+    for j in range(2, n + 1):
+        if p[j - 1] == '*':
+            dp[0][j] = dp[0][j - 2]
+
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if p[j - 1] == '*':
+                # Zero matches or one+ matches
+                dp[i][j] = dp[i][j - 2] or \
+                           (dp[i - 1][j] and (p[j - 2] == '.' or p[j - 2] == s[i - 1]))
+            else:
+                # Direct match
+                dp[i][j] = dp[i - 1][j - 1] and (p[j - 1] == '.' or p[j - 1] == s[i - 1])
+
+    return dp[m][n]`,
+			Explanation:     "DP with special handling for '*'. Either skip pattern (zero matches) or consume string char.",
+			TimeComplexity:  "O(m * n)",
+			SpaceComplexity: "O(m * n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Empty string patterns", Explanation: "a* can match empty string", CodeSnippet: "if p[j - 1] == '*':\n    dp[0][j] = dp[0][j - 2]", LineStart: 8, LineEnd: 9},
+				{Title: "Star cases", Explanation: "Zero matches (dp[i][j-2]) or extend match", CodeSnippet: "dp[i][j] = dp[i][j - 2] or (dp[i - 1][j] and ...)", LineStart: 15, LineEnd: 16},
+				{Title: "Dot wildcard", Explanation: "'.' matches any character", CodeSnippet: "p[j - 1] == '.' or p[j - 1] == s[i - 1]", LineStart: 19, LineEnd: 19},
+			},
+		},
+	},
+	// Additional Graphs
+	{
+		ID:              "redundant-connection",
+		Number:          132,
+		Title:           "Redundant Connection",
+		Difficulty:      "Medium",
+		Category:        "graphs",
+		Tags:            []string{"Graph", "Union Find", "DFS"},
+		RelatedChapters: []int{6, 12},
+		Description: `In this problem, a tree is an undirected graph that is connected and has no cycles.
+
+You are given a graph that started as a tree with n nodes labeled from 1 to n, with one additional edge added. The added edge has two different vertices chosen from 1 to n, and was not an edge that already existed.
+
+Return an edge that can be removed so that the resulting graph is a tree of n nodes. If there are multiple answers, return the answer that occurs last in the input.`,
+		Constraints: []string{
+			"n == edges.length",
+			"3 <= n <= 1000",
+			"edges[i].length == 2",
+			"1 <= ai < bi <= edges.length",
+			"ai != bi",
+			"There are no repeated edges",
+			"The given graph is connected",
+		},
+		Examples: []Example{
+			{Input: "edges = [[1,2],[1,3],[2,3]]", Output: "[2,3]"},
+			{Input: "edges = [[1,2],[2,3],[3,4],[1,4],[1,5]]", Output: "[1,4]"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"edges": [][]int{{1, 2}, {1, 3}, {2, 3}}}, Expected: []int{2, 3}},
+			{Input: map[string]interface{}{"edges": [][]int{{1, 2}, {2, 3}, {3, 4}, {1, 4}, {1, 5}}}, Expected: []int{1, 4}},
+		},
+		TimeComplexity:  "O(n * alpha(n))",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def findRedundantConnection(edges):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Use Union-Find. The edge that creates a cycle is the redundant one.", ChapterRef: 6},
+			{Level: 2, Type: "algorithm", Content: "Process edges in order. If two nodes already connected, that edge is redundant."},
+			{Level: 3, Type: "code", Content: "parent = list(range(n+1)). find with path compression. union: if find(u)==find(v): return [u,v]."},
+		},
+		Solution: Solution{
+			Code: `def findRedundantConnection(edges):
+    parent = list(range(len(edges) + 1))
+    rank = [0] * (len(edges) + 1)
+
+    def find(x):
+        if parent[x] != x:
+            parent[x] = find(parent[x])
+        return parent[x]
+
+    def union(x, y):
+        px, py = find(x), find(y)
+        if px == py:
+            return False
+        if rank[px] < rank[py]:
+            px, py = py, px
+        parent[py] = px
+        if rank[px] == rank[py]:
+            rank[px] += 1
+        return True
+
+    for u, v in edges:
+        if not union(u, v):
+            return [u, v]
+
+    return []`,
+			Explanation:     "Union-Find detects cycle. When union fails (same component), that's the redundant edge.",
+			TimeComplexity:  "O(n * alpha(n))",
+			SpaceComplexity: "O(n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Path compression", Explanation: "Flatten tree during find", CodeSnippet: "parent[x] = find(parent[x])", LineStart: 7, LineEnd: 7},
+				{Title: "Cycle detection", Explanation: "Same root means already connected", CodeSnippet: "if px == py:\n    return False", LineStart: 12, LineEnd: 13},
+				{Title: "Return last", Explanation: "Process in order, return first failure", CodeSnippet: "if not union(u, v):\n    return [u, v]", LineStart: 22, LineEnd: 23},
+			},
+		},
+	},
+	{
+		ID:              "graph-valid-tree",
+		Number:          133,
+		Title:           "Graph Valid Tree",
+		Difficulty:      "Medium",
+		Category:        "graphs",
+		Tags:            []string{"Graph", "Union Find", "BFS", "DFS"},
+		RelatedChapters: []int{6, 12},
+		Description: `You have a graph of n nodes labeled from 0 to n - 1. You are given an integer n and a list of edges where edges[i] = [ai, bi] indicates that there is an undirected edge between nodes ai and bi in the graph.
+
+Return true if the edges of the given graph make up a valid tree, and false otherwise.`,
+		Constraints: []string{
+			"1 <= n <= 2000",
+			"0 <= edges.length <= 5000",
+			"edges[i].length == 2",
+			"0 <= ai, bi < n",
+			"ai != bi",
+			"There are no self-loops or repeated edges",
+		},
+		Examples: []Example{
+			{Input: "n = 5, edges = [[0,1],[0,2],[0,3],[1,4]]", Output: "true"},
+			{Input: "n = 5, edges = [[0,1],[1,2],[2,3],[1,3],[1,4]]", Output: "false"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"n": 5, "edges": [][]int{{0, 1}, {0, 2}, {0, 3}, {1, 4}}}, Expected: true},
+			{Input: map[string]interface{}{"n": 5, "edges": [][]int{{0, 1}, {1, 2}, {2, 3}, {1, 3}, {1, 4}}}, Expected: false},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def validTree(n, edges):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "A valid tree has exactly n-1 edges, is connected, and has no cycles.", ChapterRef: 6},
+			{Level: 2, Type: "algorithm", Content: "Check edges == n-1. Then use Union-Find or DFS to verify connectivity and no cycles."},
+			{Level: 3, Type: "code", Content: "if len(edges) != n-1: return False. Use Union-Find: all unions must succeed (no cycle)."},
+		},
+		Solution: Solution{
+			Code: `def validTree(n, edges):
+    if len(edges) != n - 1:
+        return False
+
+    parent = list(range(n))
+
+    def find(x):
+        if parent[x] != x:
+            parent[x] = find(parent[x])
+        return parent[x]
+
+    def union(x, y):
+        px, py = find(x), find(y)
+        if px == py:
+            return False
+        parent[px] = py
+        return True
+
+    return all(union(u, v) for u, v in edges)`,
+			Explanation:     "Tree needs exactly n-1 edges and no cycles. Union-Find checks both.",
+			TimeComplexity:  "O(n)",
+			SpaceComplexity: "O(n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Edge count", Explanation: "Tree has exactly n-1 edges", CodeSnippet: "if len(edges) != n - 1:\n    return False", LineStart: 2, LineEnd: 3},
+				{Title: "No cycles", Explanation: "All unions must succeed", CodeSnippet: "return all(union(u, v) for u, v in edges)", LineStart: 19, LineEnd: 19},
+			},
+		},
+	},
+	{
+		ID:              "number-of-connected-components",
+		Number:          134,
+		Title:           "Number of Connected Components in an Undirected Graph",
+		Difficulty:      "Medium",
+		Category:        "graphs",
+		Tags:            []string{"Graph", "Union Find", "BFS", "DFS"},
+		RelatedChapters: []int{6, 12},
+		Description: `You have a graph of n nodes. You are given an integer n and an array edges where edges[i] = [ai, bi] indicates that there is an edge between ai and bi in the graph.
+
+Return the number of connected components in the graph.`,
+		Constraints: []string{
+			"1 <= n <= 2000",
+			"1 <= edges.length <= 5000",
+			"edges[i].length == 2",
+			"0 <= ai <= bi < n",
+			"ai != bi",
+			"There are no repeated edges",
+		},
+		Examples: []Example{
+			{Input: "n = 5, edges = [[0,1],[1,2],[3,4]]", Output: "2"},
+			{Input: "n = 5, edges = [[0,1],[1,2],[2,3],[3,4]]", Output: "1"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"n": 5, "edges": [][]int{{0, 1}, {1, 2}, {3, 4}}}, Expected: 2},
+			{Input: map[string]interface{}{"n": 5, "edges": [][]int{{0, 1}, {1, 2}, {2, 3}, {3, 4}}}, Expected: 1},
+		},
+		TimeComplexity:  "O(n + E)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def countComponents(n, edges):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Use Union-Find or DFS/BFS from each unvisited node.", ChapterRef: 6},
+			{Level: 2, Type: "algorithm", Content: "Union-Find: start with n components. Each successful union decreases count by 1."},
+			{Level: 3, Type: "code", Content: "count = n. for u,v in edges: if find(u) != find(v): union(u,v); count -= 1. return count."},
+		},
+		Solution: Solution{
+			Code: `def countComponents(n, edges):
+    parent = list(range(n))
+
+    def find(x):
+        if parent[x] != x:
+            parent[x] = find(parent[x])
+        return parent[x]
+
+    def union(x, y):
+        px, py = find(x), find(y)
+        if px != py:
+            parent[px] = py
+            return True
+        return False
+
+    count = n
+    for u, v in edges:
+        if union(u, v):
+            count -= 1
+
+    return count`,
+			Explanation:     "Start with n components. Each successful union merges two components.",
+			TimeComplexity:  "O(n + E)",
+			SpaceComplexity: "O(n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Start with n", Explanation: "Initially each node is its own component", CodeSnippet: "count = n", LineStart: 16, LineEnd: 16},
+				{Title: "Merge components", Explanation: "Successful union reduces count", CodeSnippet: "if union(u, v):\n    count -= 1", LineStart: 18, LineEnd: 19},
+			},
+		},
+	},
+	{
+		ID:              "alien-dictionary",
+		Number:          135,
+		Title:           "Alien Dictionary",
+		Difficulty:      "Hard",
+		Category:        "graphs",
+		Tags:            []string{"Graph", "Topological Sort", "BFS"},
+		RelatedChapters: []int{6, 12},
+		Description: `There is a new alien language that uses the English alphabet. However, the order of the letters is unknown to you.
+
+You are given a list of strings words from the alien language's dictionary. The strings in words are sorted lexicographically by the rules of this new language.
+
+Return a string of the unique letters in the new alien language sorted in lexicographically increasing order by the new language's rules. If there is no solution, return "". If there are multiple solutions, return any of them.`,
+		Constraints: []string{
+			"1 <= words.length <= 100",
+			"1 <= words[i].length <= 100",
+			"words[i] consists of only lowercase English letters",
+		},
+		Examples: []Example{
+			{Input: `words = ["wrt","wrf","er","ett","rftt"]`, Output: `"wertf"`},
+			{Input: `words = ["z","x"]`, Output: `"zx"`},
+			{Input: `words = ["z","x","z"]`, Output: `""`, Explanation: "Invalid order."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"words": []string{"wrt", "wrf", "er", "ett", "rftt"}}, Expected: "wertf"},
+			{Input: map[string]interface{}{"words": []string{"z", "x"}}, Expected: "zx"},
+			{Input: map[string]interface{}{"words": []string{"z", "x", "z"}}, Expected: ""},
+		},
+		TimeComplexity:  "O(C)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def alienOrder(words):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Build a graph from adjacent word pairs, then topological sort.", ChapterRef: 6},
+			{Level: 2, Type: "algorithm", Content: "Compare adjacent words to find ordering. First different char gives edge. Use Kahn's algorithm for topo sort."},
+			{Level: 3, Type: "code", Content: "Build graph and indegree. BFS from zero-indegree nodes. If result length != unique chars, return empty."},
+		},
+		Solution: Solution{
+			Code: `def alienOrder(words):
+    from collections import defaultdict, deque
+
+    # Build adjacency list and indegree
+    adj = defaultdict(set)
+    indegree = {c: 0 for word in words for c in word}
+
+    for i in range(len(words) - 1):
+        w1, w2 = words[i], words[i + 1]
+        min_len = min(len(w1), len(w2))
+
+        # Check for invalid case: prefix is longer
+        if len(w1) > len(w2) and w1[:min_len] == w2[:min_len]:
+            return ""
+
+        for j in range(min_len):
+            if w1[j] != w2[j]:
+                if w2[j] not in adj[w1[j]]:
+                    adj[w1[j]].add(w2[j])
+                    indegree[w2[j]] += 1
+                break
+
+    # Topological sort
+    queue = deque([c for c in indegree if indegree[c] == 0])
+    result = []
+
+    while queue:
+        c = queue.popleft()
+        result.append(c)
+        for neighbor in adj[c]:
+            indegree[neighbor] -= 1
+            if indegree[neighbor] == 0:
+                queue.append(neighbor)
+
+    return "".join(result) if len(result) == len(indegree) else ""`,
+			Explanation:     "Build graph from word orderings. Topological sort gives valid alphabet order.",
+			TimeComplexity:  "O(C)",
+			SpaceComplexity: "O(1)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Invalid prefix", Explanation: "Longer word can't come before its prefix", CodeSnippet: "if len(w1) > len(w2) and w1[:min_len] == w2[:min_len]:\n    return \"\"", LineStart: 13, LineEnd: 14},
+				{Title: "First difference", Explanation: "Gives ordering between chars", CodeSnippet: "if w1[j] != w2[j]:", LineStart: 17, LineEnd: 17},
+				{Title: "Cycle check", Explanation: "Must include all characters", CodeSnippet: "len(result) == len(indegree)", LineStart: 35, LineEnd: 35},
+			},
+		},
+	},
+	// Design Twitter (Heap category)
+	{
+		ID:              "design-twitter",
+		Number:          136,
+		Title:           "Design Twitter",
+		Difficulty:      "Medium",
+		Category:        "heap-priority-queue",
+		Tags:            []string{"Design", "Heap", "Hash Table"},
+		RelatedChapters: []int{7, 11, 12},
+		Description: `Design a simplified version of Twitter where users can post tweets, follow/unfollow another user, and is able to see the 10 most recent tweets in the user's news feed.
+
+Implement the Twitter class:
+- Twitter() Initializes your twitter object.
+- void postTweet(int userId, int tweetId) Composes a new tweet with ID tweetId by the user userId.
+- List<Integer> getNewsFeed(int userId) Retrieves the 10 most recent tweet IDs in the user's news feed.
+- void follow(int followerId, int followeeId) The user with ID followerId started following the user with ID followeeId.
+- void unfollow(int followerId, int followeeId) The user with ID followerId started unfollowing the user with ID followeeId.`,
+		Constraints: []string{
+			"1 <= userId, followerId, followeeId <= 500",
+			"0 <= tweetId <= 10^4",
+			"All the tweets have unique IDs",
+			"At most 3 * 10^4 calls will be made to postTweet, getNewsFeed, follow, and unfollow",
+		},
+		Examples: []Example{
+			{Input: `["Twitter", "postTweet", "getNewsFeed", "follow", "postTweet", "getNewsFeed", "unfollow", "getNewsFeed"]
+[[], [1, 5], [1], [1, 2], [2, 6], [1], [1, 2], [1]]`, Output: `[null, null, [5], null, null, [6, 5], null, [5]]`},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"operations": []string{"Twitter", "postTweet", "getNewsFeed"}, "args": [][]int{{}, {1, 5}, {1}}}, Expected: []interface{}{nil, nil, []int{5}}},
+		},
+		TimeComplexity:  "O(n log n) for getNewsFeed",
+		SpaceComplexity: "O(users * tweets + follows)",
+		StarterCode:     "class Twitter:\n    def __init__(self):\n        pass\n\n    def postTweet(self, userId, tweetId):\n        pass\n\n    def getNewsFeed(self, userId):\n        pass\n\n    def follow(self, followerId, followeeId):\n        pass\n\n    def unfollow(self, followerId, followeeId):\n        pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Use hash maps for tweets and follows. Heap for merging feeds.", ChapterRef: 7},
+			{Level: 2, Type: "algorithm", Content: "Store tweets with timestamps. GetNewsFeed: merge k sorted lists using min-heap."},
+			{Level: 3, Type: "code", Content: "tweets = defaultdict(list). follows = defaultdict(set). Use heap with (time, tweetId, userId, index)."},
+		},
+		Solution: Solution{
+			Code: `class Twitter:
+    def __init__(self):
+        from collections import defaultdict
+        import heapq
+        self.time = 0
+        self.tweets = defaultdict(list)  # userId -> [(time, tweetId)]
+        self.follows = defaultdict(set)  # userId -> set of followeeIds
+
+    def postTweet(self, userId, tweetId):
+        self.tweets[userId].append((self.time, tweetId))
+        self.time += 1
+
+    def getNewsFeed(self, userId):
+        import heapq
+        heap = []
+        self.follows[userId].add(userId)  # Include own tweets
+
+        for followeeId in self.follows[userId]:
+            tweets = self.tweets[followeeId]
+            if tweets:
+                idx = len(tweets) - 1
+                time, tweetId = tweets[idx]
+                heapq.heappush(heap, (-time, tweetId, followeeId, idx))
+
+        result = []
+        while heap and len(result) < 10:
+            time, tweetId, followeeId, idx = heapq.heappop(heap)
+            result.append(tweetId)
+            if idx > 0:
+                idx -= 1
+                time, tweetId = self.tweets[followeeId][idx]
+                heapq.heappush(heap, (-time, tweetId, followeeId, idx))
+
+        return result
+
+    def follow(self, followerId, followeeId):
+        self.follows[followerId].add(followeeId)
+
+    def unfollow(self, followerId, followeeId):
+        self.follows[followerId].discard(followeeId)`,
+			Explanation:     "Merge k sorted lists (each user's tweets) using heap to get 10 most recent.",
+			TimeComplexity:  "O(n log n) for getNewsFeed",
+			SpaceComplexity: "O(users * tweets + follows)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Timestamp tweets", Explanation: "Track posting order globally", CodeSnippet: "self.tweets[userId].append((self.time, tweetId))\nself.time += 1", LineStart: 10, LineEnd: 11},
+				{Title: "Merge with heap", Explanation: "K-way merge of sorted lists", CodeSnippet: "heapq.heappush(heap, (-time, tweetId, followeeId, idx))", LineStart: 23, LineEnd: 23},
+				{Title: "Get next tweet", Explanation: "Move to previous tweet in same user's list", CodeSnippet: "if idx > 0:\n    idx -= 1", LineStart: 29, LineEnd: 30},
+			},
+		},
+	},
+	// Missing Backtracking: Palindrome Partitioning
+	{
+		ID:              "palindrome-partitioning",
+		Number:          137,
+		Title:           "Palindrome Partitioning",
+		Difficulty:      "Medium",
+		Category:        "backtracking",
+		Tags:            []string{"String", "Backtracking", "Dynamic Programming"},
+		RelatedChapters: []int{4, 9, 12},
+		Description: `Given a string s, partition s such that every substring of the partition is a palindrome. Return all possible palindrome partitioning of s.`,
+		Constraints: []string{
+			"1 <= s.length <= 16",
+			"s contains only lowercase English letters",
+		},
+		Examples: []Example{
+			{Input: `s = "aab"`, Output: `[["a","a","b"],["aa","b"]]`},
+			{Input: `s = "a"`, Output: `[["a"]]`},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"s": "aab"}, Expected: [][]string{{"a", "a", "b"}, {"aa", "b"}}},
+			{Input: map[string]interface{}{"s": "a"}, Expected: [][]string{{"a"}}},
+		},
+		TimeComplexity:  "O(n * 2^n)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def partition(s):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Backtracking: try all possible first palindrome prefixes, then recurse on rest.", ChapterRef: 4},
+			{Level: 2, Type: "algorithm", Content: "For each position, try all palindrome substrings starting there. Backtrack when reaching end."},
+			{Level: 3, Type: "code", Content: "def backtrack(start, path): if start == len(s): result.append(path[:]). for end in range(start, n): if isPalindrome: path.append; backtrack; path.pop."},
+		},
+		Solution: Solution{
+			Code: `def partition(s):
+    def is_palindrome(start, end):
+        while start < end:
+            if s[start] != s[end]:
+                return False
+            start += 1
+            end -= 1
+        return True
+
+    def backtrack(start, path):
+        if start == len(s):
+            result.append(path[:])
+            return
+
+        for end in range(start, len(s)):
+            if is_palindrome(start, end):
+                path.append(s[start:end + 1])
+                backtrack(end + 1, path)
+                path.pop()
+
+    result = []
+    backtrack(0, [])
+    return result`,
+			Explanation:     "Try all palindrome prefixes at each position, backtrack to explore all partitions.",
+			TimeComplexity:  "O(n * 2^n)",
+			SpaceComplexity: "O(n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Base case", Explanation: "Reached end, found valid partition", CodeSnippet: "if start == len(s):\n    result.append(path[:])", LineStart: 11, LineEnd: 12},
+				{Title: "Try prefixes", Explanation: "All palindrome substrings from start", CodeSnippet: "for end in range(start, len(s)):\n    if is_palindrome(start, end):", LineStart: 15, LineEnd: 16},
+				{Title: "Backtrack", Explanation: "Remove and try next option", CodeSnippet: "path.pop()", LineStart: 19, LineEnd: 19},
+			},
+		},
+	},
+	// Meeting Rooms (basic)
+	{
+		ID:              "meeting-rooms",
+		Number:          138,
+		Title:           "Meeting Rooms",
+		Difficulty:      "Easy",
+		Category:        "intervals",
+		Tags:            []string{"Array", "Sorting"},
+		RelatedChapters: []int{2, 8},
+		Description: `Given an array of meeting time intervals where intervals[i] = [starti, endi], determine if a person could attend all meetings.`,
+		Constraints: []string{
+			"0 <= intervals.length <= 10^4",
+			"intervals[i].length == 2",
+			"0 <= starti < endi <= 10^6",
+		},
+		Examples: []Example{
+			{Input: "intervals = [[0,30],[5,10],[15,20]]", Output: "false"},
+			{Input: "intervals = [[7,10],[2,4]]", Output: "true"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"intervals": [][]int{{0, 30}, {5, 10}, {15, 20}}}, Expected: false},
+			{Input: map[string]interface{}{"intervals": [][]int{{7, 10}, {2, 4}}}, Expected: true},
+		},
+		TimeComplexity:  "O(n log n)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def canAttendMeetings(intervals):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Sort by start time, then check for overlaps.", ChapterRef: 8},
+			{Level: 2, Type: "algorithm", Content: "After sorting, if any meeting starts before previous ends, there's overlap."},
+			{Level: 3, Type: "code", Content: "intervals.sort(). for i in range(1, n): if intervals[i][0] < intervals[i-1][1]: return False."},
+		},
+		Solution: Solution{
+			Code: `def canAttendMeetings(intervals):
+    intervals.sort()
+
+    for i in range(1, len(intervals)):
+        if intervals[i][0] < intervals[i - 1][1]:
+            return False
+
+    return True`,
+			Explanation:     "Sort by start time. Check if any meeting starts before previous ends.",
+			TimeComplexity:  "O(n log n)",
+			SpaceComplexity: "O(1)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Sort first", Explanation: "Order by start time", CodeSnippet: "intervals.sort()", LineStart: 2, LineEnd: 2},
+				{Title: "Check overlap", Explanation: "Start before previous end means conflict", CodeSnippet: "if intervals[i][0] < intervals[i - 1][1]:", LineStart: 5, LineEnd: 5},
+			},
+		},
+	},
+	// Walls and Gates
+	{
+		ID:              "walls-and-gates",
+		Number:          139,
+		Title:           "Walls and Gates",
+		Difficulty:      "Medium",
+		Category:        "graphs",
+		Tags:            []string{"Array", "BFS", "Matrix"},
+		RelatedChapters: []int{6, 12},
+		Description: `You are given an m x n grid rooms initialized with these three possible values.
+
+-1 A wall or an obstacle.
+0 A gate.
+INF Infinity means an empty room. We use the value 2^31 - 1 = 2147483647 to represent INF.
+
+Fill each empty room with the distance to its nearest gate. If it is impossible to reach a gate, leave it as INF.`,
+		Constraints: []string{
+			"m == rooms.length",
+			"n == rooms[i].length",
+			"1 <= m, n <= 250",
+			"rooms[i][j] is -1, 0, or 2^31 - 1",
+		},
+		Examples: []Example{
+			{Input: "rooms = [[2147483647,-1,0,2147483647],[2147483647,2147483647,2147483647,-1],[2147483647,-1,2147483647,-1],[0,-1,2147483647,2147483647]]", Output: "[[3,-1,0,1],[2,2,1,-1],[1,-1,2,-1],[0,-1,3,4]]"},
+			{Input: "rooms = [[-1]]", Output: "[[-1]]"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"rooms": [][]int{{2147483647, -1, 0, 2147483647}, {2147483647, 2147483647, 2147483647, -1}, {2147483647, -1, 2147483647, -1}, {0, -1, 2147483647, 2147483647}}}, Expected: [][]int{{3, -1, 0, 1}, {2, 2, 1, -1}, {1, -1, 2, -1}, {0, -1, 3, 4}}},
+		},
+		TimeComplexity:  "O(m * n)",
+		SpaceComplexity: "O(m * n)",
+		StarterCode:     "def wallsAndGates(rooms):\n    # Write your solution here (modify in place)\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Multi-source BFS starting from all gates simultaneously.", ChapterRef: 6},
+			{Level: 2, Type: "algorithm", Content: "Add all gates to queue. BFS outward, updating distances level by level."},
+			{Level: 3, Type: "code", Content: "queue = all gates. while queue: for neighbors: if INF: rooms[nr][nc] = rooms[r][c] + 1; add to queue."},
+		},
+		Solution: Solution{
+			Code: `def wallsAndGates(rooms):
+    from collections import deque
+
+    if not rooms:
+        return
+
+    m, n = len(rooms), len(rooms[0])
+    INF = 2147483647
+    queue = deque()
+
+    # Add all gates to queue
+    for i in range(m):
+        for j in range(n):
+            if rooms[i][j] == 0:
+                queue.append((i, j))
+
+    # BFS from all gates
+    while queue:
+        r, c = queue.popleft()
+        for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < m and 0 <= nc < n and rooms[nr][nc] == INF:
+                rooms[nr][nc] = rooms[r][c] + 1
+                queue.append((nr, nc))`,
+			Explanation:     "Multi-source BFS from all gates. First visit to each cell gives shortest distance.",
+			TimeComplexity:  "O(m * n)",
+			SpaceComplexity: "O(m * n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Collect gates", Explanation: "All gates are starting points", CodeSnippet: "if rooms[i][j] == 0:\n    queue.append((i, j))", LineStart: 14, LineEnd: 15},
+				{Title: "Update distance", Explanation: "INF cells get distance from neighbor + 1", CodeSnippet: "rooms[nr][nc] = rooms[r][c] + 1", LineStart: 23, LineEnd: 23},
+			},
+		},
+	},
+	// Multiply Strings (Math)
+	{
+		ID:              "multiply-strings",
+		Number:          140,
+		Title:           "Multiply Strings",
+		Difficulty:      "Medium",
+		Category:        "math-geometry",
+		Tags:            []string{"Math", "String", "Simulation"},
+		RelatedChapters: []int{1, 12},
+		Description: `Given two non-negative integers num1 and num2 represented as strings, return the product of num1 and num2, also represented as a string.
+
+Note: You must not use any built-in BigInteger library or convert the inputs to integer directly.`,
+		Constraints: []string{
+			"1 <= num1.length, num2.length <= 200",
+			"num1 and num2 consist of digits only",
+			"Both num1 and num2 do not contain any leading zero, except the number 0 itself",
+		},
+		Examples: []Example{
+			{Input: `num1 = "2", num2 = "3"`, Output: `"6"`},
+			{Input: `num1 = "123", num2 = "456"`, Output: `"56088"`},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"num1": "2", "num2": "3"}, Expected: "6"},
+			{Input: map[string]interface{}{"num1": "123", "num2": "456"}, Expected: "56088"},
+		},
+		TimeComplexity:  "O(m * n)",
+		SpaceComplexity: "O(m + n)",
+		StarterCode:     "def multiply(num1, num2):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Simulate grade-school multiplication. Position i*j contributes to position i+j and i+j+1.", ChapterRef: 1},
+			{Level: 2, Type: "algorithm", Content: "Create result array of length m+n. Multiply each pair of digits, accumulate at correct positions."},
+			{Level: 3, Type: "code", Content: "result = [0]*(m+n). for i,j: mul = d1*d2. result[i+j+1] += mul. Handle carries. Convert to string."},
+		},
+		Solution: Solution{
+			Code: `def multiply(num1, num2):
+    if num1 == "0" or num2 == "0":
+        return "0"
+
+    m, n = len(num1), len(num2)
+    result = [0] * (m + n)
+
+    for i in range(m - 1, -1, -1):
+        for j in range(n - 1, -1, -1):
+            mul = int(num1[i]) * int(num2[j])
+            p1, p2 = i + j, i + j + 1
+            total = mul + result[p2]
+
+            result[p2] = total % 10
+            result[p1] += total // 10
+
+    # Remove leading zeros
+    result_str = ''.join(map(str, result))
+    return result_str.lstrip('0') or '0'`,
+			Explanation:     "Simulate multiplication. digit[i] * digit[j] contributes to positions i+j and i+j+1.",
+			TimeComplexity:  "O(m * n)",
+			SpaceComplexity: "O(m + n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Position mapping", Explanation: "i*j affects positions i+j and i+j+1", CodeSnippet: "p1, p2 = i + j, i + j + 1", LineStart: 11, LineEnd: 11},
+				{Title: "Handle carry", Explanation: "Digit goes to p2, carry to p1", CodeSnippet: "result[p2] = total % 10\nresult[p1] += total // 10", LineStart: 14, LineEnd: 15},
+			},
+		},
+	},
+	// Detect Squares (Math/Geometry)
+	{
+		ID:              "detect-squares",
+		Number:          141,
+		Title:           "Detect Squares",
+		Difficulty:      "Medium",
+		Category:        "math-geometry",
+		Tags:            []string{"Array", "Hash Table", "Design", "Counting"},
+		RelatedChapters: []int{5, 12},
+		Description: `You are given a stream of points on the X-Y plane. Design an algorithm that:
+
+- Adds new points from the stream into a data structure. Duplicate points are allowed.
+- Given a query point, counts the number of ways to choose three points from the data structure such that the three points and the query point form an axis-aligned square with positive area.
+
+An axis-aligned square is a square whose edges are all the same length and are either parallel or perpendicular to the x-axis and y-axis.`,
+		Constraints: []string{
+			"point.length == 2",
+			"0 <= x, y <= 1000",
+			"At most 3000 calls in total will be made to add and count",
+		},
+		Examples: []Example{
+			{Input: `["DetectSquares", "add", "add", "add", "count", "count", "add", "count"]
+[[], [[3, 10]], [[11, 2]], [[3, 2]], [[11, 10]], [[14, 8]], [[11, 2]], [[11, 10]]]`, Output: "[null, null, null, null, 1, 0, null, 2]"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"operations": []string{"DetectSquares", "add", "add", "add", "count"}, "args": [][]int{{}, {3, 10}, {11, 2}, {3, 2}, {11, 10}}}, Expected: []interface{}{nil, nil, nil, nil, 1}},
+		},
+		TimeComplexity:  "O(n) for count",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "class DetectSquares:\n    def __init__(self):\n        pass\n\n    def add(self, point):\n        pass\n\n    def count(self, point):\n        pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Store point counts. For count query, iterate diagonal points.", ChapterRef: 5},
+			{Level: 2, Type: "algorithm", Content: "For query (x,y), find all points (px,py) where |px-x|==|py-y|!=0. Check if other two corners exist."},
+			{Level: 3, Type: "code", Content: "cnt = Counter of points. For diagonal (px,py): count += cnt[(px,py)] * cnt[(x,py)] * cnt[(px,y)]."},
+		},
+		Solution: Solution{
+			Code: `class DetectSquares:
+    def __init__(self):
+        from collections import Counter, defaultdict
+        self.points = Counter()
+        self.x_coords = defaultdict(list)  # x -> list of y values
+
+    def add(self, point):
+        x, y = point
+        self.points[(x, y)] += 1
+        self.x_coords[x].append(y)
+
+    def count(self, point):
+        x, y = point
+        result = 0
+
+        for py in self.x_coords[x]:
+            side = py - y
+            if side == 0:
+                continue
+
+            # Check two possible squares (left and right)
+            for px in [x + side, x - side]:
+                result += self.points[(x, py)] * self.points[(px, y)] * self.points[(px, py)]
+
+        return result`,
+			Explanation:     "For query point, find diagonal candidates sharing same x. Check if square corners exist.",
+			TimeComplexity:  "O(n) for count",
+			SpaceComplexity: "O(n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Track by x", Explanation: "Store y values for each x coordinate", CodeSnippet: "self.x_coords[x].append(y)", LineStart: 10, LineEnd: 10},
+				{Title: "Find diagonals", Explanation: "Same x, different y gives side length", CodeSnippet: "side = py - y", LineStart: 17, LineEnd: 17},
+				{Title: "Multiply counts", Explanation: "Product of point counts at three corners", CodeSnippet: "self.points[(x, py)] * self.points[(px, y)] * self.points[(px, py)]", LineStart: 23, LineEnd: 23},
+			},
+		},
+	},
+	// Best Time to Buy and Sell Stock with Cooldown (2D DP)
+	{
+		ID:              "best-time-to-buy-sell-stock-cooldown",
+		Number:          142,
+		Title:           "Best Time to Buy and Sell Stock with Cooldown",
+		Difficulty:      "Medium",
+		Category:        "2d-dp",
+		Tags:            []string{"Array", "Dynamic Programming"},
+		RelatedChapters: []int{9, 12},
+		Description: `You are given an array prices where prices[i] is the price of a given stock on the ith day.
+
+Find the maximum profit you can achieve. You may complete as many transactions as you like (i.e., buy one and sell one share of the stock multiple times) with the following restrictions:
+
+After you sell your stock, you cannot buy stock on the next day (i.e., cooldown one day).
+
+Note: You may not engage in multiple transactions simultaneously (i.e., you must sell the stock before you buy again).`,
+		Constraints: []string{
+			"1 <= prices.length <= 5000",
+			"0 <= prices[i] <= 1000",
+		},
+		Examples: []Example{
+			{Input: "prices = [1,2,3,0,2]", Output: "3", Explanation: "Buy, sell, cooldown, buy, sell"},
+			{Input: "prices = [1]", Output: "0"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"prices": []int{1, 2, 3, 0, 2}}, Expected: 3},
+			{Input: map[string]interface{}{"prices": []int{1}}, Expected: 0},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def maxProfit(prices):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "State machine DP: held, sold, cooldown states.", ChapterRef: 9},
+			{Level: 2, Type: "algorithm", Content: "held[i] = max(held[i-1], cooldown[i-1]-price). sold[i] = held[i-1]+price. cooldown[i] = max(cooldown[i-1], sold[i-1])."},
+			{Level: 3, Type: "code", Content: "held, sold, cooldown = -inf, 0, 0. for price: held, sold, cooldown = max(held, cooldown-price), held+price, max(cooldown, sold)."},
+		},
+		Solution: Solution{
+			Code: `def maxProfit(prices):
+    if not prices:
+        return 0
+
+    held = float('-inf')
+    sold = 0
+    cooldown = 0
+
+    for price in prices:
+        prev_held = held
+        held = max(held, cooldown - price)
+        cooldown = max(cooldown, sold)
+        sold = prev_held + price
+
+    return max(sold, cooldown)`,
+			Explanation:     "Three states: holding stock, just sold, cooldown. Track max profit in each state.",
+			TimeComplexity:  "O(n)",
+			SpaceComplexity: "O(1)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Held state", Explanation: "Keep holding or buy from cooldown", CodeSnippet: "held = max(held, cooldown - price)", LineStart: 11, LineEnd: 11},
+				{Title: "Sold state", Explanation: "Sell what we're holding", CodeSnippet: "sold = prev_held + price", LineStart: 13, LineEnd: 13},
+				{Title: "Cooldown state", Explanation: "Stay in cooldown or transition from sold", CodeSnippet: "cooldown = max(cooldown, sold)", LineStart: 12, LineEnd: 12},
+			},
+		},
+	},
+	// Hand of Straights (Greedy)
+	{
+		ID:              "hand-of-straights",
+		Number:          143,
+		Title:           "Hand of Straights",
+		Difficulty:      "Medium",
+		Category:        "greedy",
+		Tags:            []string{"Array", "Hash Table", "Greedy", "Sorting"},
+		RelatedChapters: []int{8, 12},
+		Description: `Alice has some number of cards and she wants to rearrange the cards into groups so that each group is of size groupSize, and consists of groupSize consecutive cards.
+
+Given an integer array hand where hand[i] is the value written on the ith card and an integer groupSize, return true if she can rearrange the cards, or false otherwise.`,
+		Constraints: []string{
+			"1 <= hand.length <= 10^4",
+			"0 <= hand[i] <= 10^9",
+			"1 <= groupSize <= hand.length",
+		},
+		Examples: []Example{
+			{Input: "hand = [1,2,3,6,2,3,4,7,8], groupSize = 3", Output: "true", Explanation: "Groups: [1,2,3], [2,3,4], [6,7,8]"},
+			{Input: "hand = [1,2,3,4,5], groupSize = 4", Output: "false"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"hand": []int{1, 2, 3, 6, 2, 3, 4, 7, 8}, "groupSize": 3}, Expected: true},
+			{Input: map[string]interface{}{"hand": []int{1, 2, 3, 4, 5}, "groupSize": 4}, Expected: false},
+		},
+		TimeComplexity:  "O(n log n)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def isNStraightHand(hand, groupSize):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Greedy: always start group from smallest available card.", ChapterRef: 8},
+			{Level: 2, Type: "algorithm", Content: "Count cards. Sort unique values. For each smallest, try to form consecutive group."},
+			{Level: 3, Type: "code", Content: "cnt = Counter. for card in sorted(cnt): while cnt[card]: for i in range(groupSize): if not cnt[card+i]: return False; cnt[card+i]-=1."},
+		},
+		Solution: Solution{
+			Code: `def isNStraightHand(hand, groupSize):
+    from collections import Counter
+
+    if len(hand) % groupSize != 0:
+        return False
+
+    cnt = Counter(hand)
+
+    for card in sorted(cnt):
+        while cnt[card] > 0:
+            for i in range(groupSize):
+                if cnt[card + i] <= 0:
+                    return False
+                cnt[card + i] -= 1
+
+    return True`,
+			Explanation:     "Greedy: start from smallest card, form consecutive groups.",
+			TimeComplexity:  "O(n log n)",
+			SpaceComplexity: "O(n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Check divisibility", Explanation: "Must divide evenly into groups", CodeSnippet: "if len(hand) % groupSize != 0:", LineStart: 4, LineEnd: 4},
+				{Title: "Start smallest", Explanation: "Greedy: use smallest available first", CodeSnippet: "for card in sorted(cnt):", LineStart: 9, LineEnd: 9},
+				{Title: "Form group", Explanation: "Need groupSize consecutive cards", CodeSnippet: "for i in range(groupSize):", LineStart: 11, LineEnd: 11},
+			},
+		},
+	},
+	// Merge Triplets to Form Target (Greedy)
+	{
+		ID:              "merge-triplets-to-form-target",
+		Number:          144,
+		Title:           "Merge Triplets to Form Target Triplet",
+		Difficulty:      "Medium",
+		Category:        "greedy",
+		Tags:            []string{"Array", "Greedy"},
+		RelatedChapters: []int{8, 12},
+		Description: `A triplet is an array of three integers. You are given a 2D integer array triplets, where triplets[i] = [ai, bi, ci] describes the ith triplet. You are also given an integer array target = [x, y, z] that describes the triplet you want to obtain.
+
+To obtain target, you may apply the following operation on triplets any number of times (possibly zero):
+
+Choose two indices (0-indexed) i and j (i != j) and update triplets[j] to become [max(ai, aj), max(bi, bj), max(ci, cj)].
+
+Return true if it is possible to obtain the target triplet [x, y, z] as an element of triplets, or false otherwise.`,
+		Constraints: []string{
+			"1 <= triplets.length <= 10^5",
+			"triplets[i].length == target.length == 3",
+			"1 <= ai, bi, ci, x, y, z <= 1000",
+		},
+		Examples: []Example{
+			{Input: "triplets = [[2,5,3],[1,8,4],[1,7,5]], target = [2,7,5]", Output: "true"},
+			{Input: "triplets = [[3,4,5],[4,5,6]], target = [3,2,5]", Output: "false"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"triplets": [][]int{{2, 5, 3}, {1, 8, 4}, {1, 7, 5}}, "target": []int{2, 7, 5}}, Expected: true},
+			{Input: map[string]interface{}{"triplets": [][]int{{3, 4, 5}, {4, 5, 6}}, "target": []int{3, 2, 5}}, Expected: false},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def mergeTriplets(triplets, target):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "A triplet is usable only if no element exceeds target. Greedy: track which target positions achieved.", ChapterRef: 8},
+			{Level: 2, Type: "algorithm", Content: "Skip triplets with any value > target. From valid triplets, check if we can achieve each target value."},
+			{Level: 3, Type: "code", Content: "good = set(). for t in triplets: if all(t[i]<=target[i]): for i: if t[i]==target[i]: good.add(i). return len(good)==3."},
+		},
+		Solution: Solution{
+			Code: `def mergeTriplets(triplets, target):
+    good = set()
+
+    for t in triplets:
+        if t[0] > target[0] or t[1] > target[1] or t[2] > target[2]:
+            continue
+
+        for i in range(3):
+            if t[i] == target[i]:
+                good.add(i)
+
+    return len(good) == 3`,
+			Explanation:     "Only use triplets that don't exceed target. Track which positions we can achieve exactly.",
+			TimeComplexity:  "O(n)",
+			SpaceComplexity: "O(1)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Filter invalid", Explanation: "Any value > target makes triplet unusable", CodeSnippet: "if t[0] > target[0] or t[1] > target[1] or t[2] > target[2]:", LineStart: 5, LineEnd: 5},
+				{Title: "Track matches", Explanation: "Record positions where we hit target exactly", CodeSnippet: "if t[i] == target[i]:\n    good.add(i)", LineStart: 9, LineEnd: 10},
+			},
+		},
+	},
 }
 
 // Note: Blind75Categories and Category type are defined in category.go
