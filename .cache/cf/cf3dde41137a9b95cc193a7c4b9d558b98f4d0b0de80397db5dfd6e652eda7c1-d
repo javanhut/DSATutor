@@ -1,7 +1,0 @@
-./category.go
-./embed.go
-./embedded_backlog.go
-./embedded_problems.go
-./loader.go
-./problem.go
-./submission.go

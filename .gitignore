@@ -3,3 +3,5 @@
 *Grokking*
 *.gocache/
 .gocache/*
+.cache/*
+*.cache/
