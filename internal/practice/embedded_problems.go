@@ -895,7 +895,540 @@ Given an integer array nums representing the amount of money of each house, retu
 			Explanation: "Track max if we rob this house vs skip. Only need two previous values.",
 		},
 	},
-	// Stack
+	// Arrays & Hashing (continued)
+	{
+		ID:         "product-of-array-except-self",
+		Number:     6,
+		Title:      "Product of Array Except Self",
+		Difficulty: "Medium",
+		Category:   "arrays-hashing",
+		Tags:       []string{"Array", "Prefix Sum"},
+		Description: `Given an integer array nums, return an array answer such that answer[i] is equal to the product of all the elements of nums except nums[i].
+
+The product of any prefix or suffix of nums is guaranteed to fit in a 32-bit integer.
+
+You must write an algorithm that runs in O(n) time and without using the division operation.`,
+		Constraints: []string{
+			"2 <= nums.length <= 10^5",
+			"-30 <= nums[i] <= 30",
+			"The product of any prefix or suffix of nums is guaranteed to fit in a 32-bit integer",
+		},
+		Examples: []Example{
+			{Input: "nums = [1,2,3,4]", Output: "[24,12,8,6]"},
+			{Input: "nums = [-1,1,0,-3,3]", Output: "[0,0,9,0,0]"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"nums": []int{1, 2, 3, 4}}, Expected: []int{24, 12, 8, 6}},
+			{Input: map[string]interface{}{"nums": []int{-1, 1, 0, -3, 3}}, Expected: []int{0, 0, 9, 0, 0}},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def productExceptSelf(nums):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Think about prefix and suffix products."},
+			{Level: 2, Type: "algorithm", Content: "For each position, multiply prefix product (left) by suffix product (right)."},
+		},
+		Solution: Solution{
+			Code: `def productExceptSelf(nums):
+    n = len(nums)
+    result = [1] * n
+
+    # Left pass - prefix products
+    prefix = 1
+    for i in range(n):
+        result[i] = prefix
+        prefix *= nums[i]
+
+    # Right pass - suffix products
+    suffix = 1
+    for i in range(n - 1, -1, -1):
+        result[i] *= suffix
+        suffix *= nums[i]
+
+    return result`,
+			Explanation: "Two passes: first stores prefix products, second multiplies by suffix products.",
+		},
+	},
+	{
+		ID:         "valid-sudoku",
+		Number:     7,
+		Title:      "Valid Sudoku",
+		Difficulty: "Medium",
+		Category:   "arrays-hashing",
+		Tags:       []string{"Array", "Hash Table", "Matrix"},
+		Description: `Determine if a 9 x 9 Sudoku board is valid. Only the filled cells need to be validated according to the following rules:
+
+1. Each row must contain the digits 1-9 without repetition.
+2. Each column must contain the digits 1-9 without repetition.
+3. Each of the nine 3 x 3 sub-boxes of the grid must contain the digits 1-9 without repetition.`,
+		Constraints: []string{
+			"board.length == 9",
+			"board[i].length == 9",
+			"board[i][j] is a digit 1-9 or '.'",
+		},
+		Examples: []Example{
+			{Input: "board = [[\"5\",\"3\",\".\",\".\",\"7\",\".\",\".\",\".\",\".\"],[\"6\",\".\",\".\",\"1\",\"9\",\"5\",\".\",\".\",\".\"],[\".\",\"9\",\"8\",\".\",\".\",\".\",\".\",\"6\",\".\"],[\"8\",\".\",\".\",\".\",\"6\",\".\",\".\",\".\",\"3\"],[\"4\",\".\",\".\",\"8\",\".\",\"3\",\".\",\".\",\"1\"],[\"7\",\".\",\".\",\".\",\"2\",\".\",\".\",\".\",\"6\"],[\".\",\"6\",\".\",\".\",\".\",\".\",\"2\",\"8\",\".\"],[\".\",\".\",\".\",\"4\",\"1\",\"9\",\".\",\".\",\"5\"],[\".\",\".\",\".\",\".\",\"8\",\".\",\".\",\"7\",\"9\"]]", Output: "true"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"board": [][]string{{"5", "3", "."}, {"6", ".", "."}, {".", "9", "8"}}}, Expected: true},
+		},
+		TimeComplexity:  "O(81)",
+		SpaceComplexity: "O(81)",
+		StarterCode:     "def isValidSudoku(board):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Use sets to track seen numbers in each row, column, and 3x3 box."},
+			{Level: 2, Type: "algorithm", Content: "Box index can be calculated as (row // 3) * 3 + (col // 3)."},
+		},
+		Solution: Solution{
+			Code: `def isValidSudoku(board):
+    rows = [set() for _ in range(9)]
+    cols = [set() for _ in range(9)]
+    boxes = [set() for _ in range(9)]
+
+    for r in range(9):
+        for c in range(9):
+            if board[r][c] == '.':
+                continue
+            num = board[r][c]
+            box_idx = (r // 3) * 3 + (c // 3)
+
+            if num in rows[r] or num in cols[c] or num in boxes[box_idx]:
+                return False
+
+            rows[r].add(num)
+            cols[c].add(num)
+            boxes[box_idx].add(num)
+
+    return True`,
+			Explanation: "Track seen numbers in each row, column, and 3x3 box using sets.",
+		},
+	},
+	{
+		ID:         "encode-and-decode-strings",
+		Number:     8,
+		Title:      "Encode and Decode Strings",
+		Difficulty: "Medium",
+		Category:   "arrays-hashing",
+		Tags:       []string{"Array", "String", "Design"},
+		Description: `Design an algorithm to encode a list of strings to a string. The encoded string is then sent over the network and is decoded back to the original list of strings.
+
+Implement encode and decode methods.`,
+		Constraints: []string{
+			"0 <= strs.length < 100",
+			"0 <= strs[i].length < 200",
+			"strs[i] contains any possible characters out of 256 valid ASCII characters",
+		},
+		Examples: []Example{
+			{Input: `strs = ["hello","world"]`, Output: `["hello","world"]`},
+			{Input: `strs = [""]`, Output: `[""]`},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"strs": []string{"hello", "world"}}, Expected: []string{"hello", "world"}},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def encode(strs):\n    # Write your solution here\n    pass\n\ndef decode(s):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Use length prefix to handle any characters including delimiters."},
+			{Level: 2, Type: "algorithm", Content: "Format: length + delimiter + string for each word."},
+		},
+		Solution: Solution{
+			Code: `def encode(strs):
+    result = ""
+    for s in strs:
+        result += str(len(s)) + "#" + s
+    return result
+
+def decode(s):
+    result = []
+    i = 0
+    while i < len(s):
+        j = i
+        while s[j] != '#':
+            j += 1
+        length = int(s[i:j])
+        result.append(s[j + 1:j + 1 + length])
+        i = j + 1 + length
+    return result`,
+			Explanation: "Encode with length prefix and # delimiter. Decode by reading length then extracting string.",
+		},
+	},
+	{
+		ID:         "longest-consecutive-sequence",
+		Number:     9,
+		Title:      "Longest Consecutive Sequence",
+		Difficulty: "Medium",
+		Category:   "arrays-hashing",
+		Tags:       []string{"Array", "Hash Table", "Union Find"},
+		Description: `Given an unsorted array of integers nums, return the length of the longest consecutive elements sequence.
+
+You must write an algorithm that runs in O(n) time.`,
+		Constraints: []string{
+			"0 <= nums.length <= 10^5",
+			"-10^9 <= nums[i] <= 10^9",
+		},
+		Examples: []Example{
+			{Input: "nums = [100,4,200,1,3,2]", Output: "4", Explanation: "The longest consecutive sequence is [1, 2, 3, 4]."},
+			{Input: "nums = [0,3,7,2,5,8,4,6,0,1]", Output: "9"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"nums": []int{100, 4, 200, 1, 3, 2}}, Expected: 4},
+			{Input: map[string]interface{}{"nums": []int{0, 3, 7, 2, 5, 8, 4, 6, 0, 1}}, Expected: 9},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def longestConsecutive(nums):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Use a set for O(1) lookups."},
+			{Level: 2, Type: "algorithm", Content: "Only start counting from numbers that don't have num-1 in the set (sequence starts)."},
+		},
+		Solution: Solution{
+			Code: `def longestConsecutive(nums):
+    num_set = set(nums)
+    longest = 0
+
+    for num in num_set:
+        if num - 1 not in num_set:  # Start of sequence
+            length = 1
+            while num + length in num_set:
+                length += 1
+            longest = max(longest, length)
+
+    return longest`,
+			Explanation: "Use set for O(1) lookup. Only start counting from sequence beginnings (no num-1).",
+		},
+	},
+	// Two Pointers (continued)
+	{
+		ID:         "two-sum-ii",
+		Number:     11,
+		Title:      "Two Sum II - Input Array Is Sorted",
+		Difficulty: "Medium",
+		Category:   "two-pointers",
+		Tags:       []string{"Array", "Two Pointers", "Binary Search"},
+		Description: `Given a 1-indexed array of integers numbers that is already sorted in non-decreasing order, find two numbers such that they add up to a specific target number.
+
+Return the indices of the two numbers, index1 and index2, added by one as an integer array [index1, index2] of length 2.`,
+		Constraints: []string{
+			"2 <= numbers.length <= 3 * 10^4",
+			"-1000 <= numbers[i] <= 1000",
+			"numbers is sorted in non-decreasing order",
+			"-1000 <= target <= 1000",
+			"The tests are generated such that there is exactly one solution",
+		},
+		Examples: []Example{
+			{Input: "numbers = [2,7,11,15], target = 9", Output: "[1,2]"},
+			{Input: "numbers = [2,3,4], target = 6", Output: "[1,3]"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"numbers": []int{2, 7, 11, 15}, "target": 9}, Expected: []int{1, 2}},
+			{Input: map[string]interface{}{"numbers": []int{2, 3, 4}, "target": 6}, Expected: []int{1, 3}},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def twoSum(numbers, target):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Use two pointers since array is sorted."},
+			{Level: 2, Type: "algorithm", Content: "If sum too small, move left pointer right. If too big, move right pointer left."},
+		},
+		Solution: Solution{
+			Code: `def twoSum(numbers, target):
+    left, right = 0, len(numbers) - 1
+    while left < right:
+        total = numbers[left] + numbers[right]
+        if total == target:
+            return [left + 1, right + 1]
+        elif total < target:
+            left += 1
+        else:
+            right -= 1
+    return []`,
+			Explanation: "Two pointers from ends. Adjust based on sum comparison with target.",
+		},
+	},
+	{
+		ID:         "trapping-rain-water",
+		Number:     14,
+		Title:      "Trapping Rain Water",
+		Difficulty: "Hard",
+		Category:   "two-pointers",
+		Tags:       []string{"Array", "Two Pointers", "Dynamic Programming", "Stack"},
+		Description: `Given n non-negative integers representing an elevation map where the width of each bar is 1, compute how much water it can trap after raining.`,
+		Constraints: []string{
+			"n == height.length",
+			"1 <= n <= 2 * 10^4",
+			"0 <= height[i] <= 10^5",
+		},
+		Examples: []Example{
+			{Input: "height = [0,1,0,2,1,0,1,3,2,1,2,1]", Output: "6"},
+			{Input: "height = [4,2,0,3,2,5]", Output: "9"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"height": []int{0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1}}, Expected: 6},
+			{Input: map[string]interface{}{"height": []int{4, 2, 0, 3, 2, 5}}, Expected: 9},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def trap(height):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Water at each position depends on min of max heights on left and right."},
+			{Level: 2, Type: "algorithm", Content: "Use two pointers tracking max heights from each side."},
+		},
+		Solution: Solution{
+			Code: `def trap(height):
+    if not height:
+        return 0
+
+    left, right = 0, len(height) - 1
+    left_max, right_max = height[left], height[right]
+    water = 0
+
+    while left < right:
+        if left_max < right_max:
+            left += 1
+            left_max = max(left_max, height[left])
+            water += left_max - height[left]
+        else:
+            right -= 1
+            right_max = max(right_max, height[right])
+            water += right_max - height[right]
+
+    return water`,
+			Explanation: "Two pointers with max heights. Water at position = min(left_max, right_max) - height.",
+		},
+	},
+	// Sliding Window (continued)
+	{
+		ID:         "longest-repeating-character-replacement",
+		Number:     17,
+		Title:      "Longest Repeating Character Replacement",
+		Difficulty: "Medium",
+		Category:   "sliding-window",
+		Tags:       []string{"Hash Table", "String", "Sliding Window"},
+		Description: `You are given a string s and an integer k. You can choose any character of the string and change it to any other uppercase English character. You can perform this operation at most k times.
+
+Return the length of the longest substring containing the same letter you can get after performing the above operations.`,
+		Constraints: []string{
+			"1 <= s.length <= 10^5",
+			"s consists of only uppercase English letters",
+			"0 <= k <= s.length",
+		},
+		Examples: []Example{
+			{Input: `s = "ABAB", k = 2`, Output: "4"},
+			{Input: `s = "AABABBA", k = 1`, Output: "4"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"s": "ABAB", "k": 2}, Expected: 4},
+			{Input: map[string]interface{}{"s": "AABABBA", "k": 1}, Expected: 4},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(26)",
+		StarterCode:     "def characterReplacement(s, k):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Sliding window where window size - max freq <= k."},
+			{Level: 2, Type: "algorithm", Content: "Track character frequencies in window. Shrink if replacements needed > k."},
+		},
+		Solution: Solution{
+			Code: `def characterReplacement(s, k):
+    count = {}
+    max_freq = 0
+    left = 0
+    result = 0
+
+    for right in range(len(s)):
+        count[s[right]] = count.get(s[right], 0) + 1
+        max_freq = max(max_freq, count[s[right]])
+
+        while (right - left + 1) - max_freq > k:
+            count[s[left]] -= 1
+            left += 1
+
+        result = max(result, right - left + 1)
+
+    return result`,
+			Explanation: "Window is valid if (size - max_freq) <= k. Track max frequency to minimize replacements.",
+		},
+	},
+	{
+		ID:         "permutation-in-string",
+		Number:     18,
+		Title:      "Permutation in String",
+		Difficulty: "Medium",
+		Category:   "sliding-window",
+		Tags:       []string{"Hash Table", "Two Pointers", "String", "Sliding Window"},
+		Description: `Given two strings s1 and s2, return true if s2 contains a permutation of s1, or false otherwise.
+
+In other words, return true if one of s1's permutations is the substring of s2.`,
+		Constraints: []string{
+			"1 <= s1.length, s2.length <= 10^4",
+			"s1 and s2 consist of lowercase English letters",
+		},
+		Examples: []Example{
+			{Input: `s1 = "ab", s2 = "eidbaooo"`, Output: "true"},
+			{Input: `s1 = "ab", s2 = "eidboaoo"`, Output: "false"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"s1": "ab", "s2": "eidbaooo"}, Expected: true},
+			{Input: map[string]interface{}{"s1": "ab", "s2": "eidboaoo"}, Expected: false},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(26)",
+		StarterCode:     "def checkInclusion(s1, s2):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Fixed-size sliding window of length s1."},
+			{Level: 2, Type: "algorithm", Content: "Compare character counts in window with s1's counts."},
+		},
+		Solution: Solution{
+			Code: `def checkInclusion(s1, s2):
+    if len(s1) > len(s2):
+        return False
+
+    s1_count = {}
+    window_count = {}
+
+    for c in s1:
+        s1_count[c] = s1_count.get(c, 0) + 1
+
+    for i, c in enumerate(s2):
+        window_count[c] = window_count.get(c, 0) + 1
+
+        if i >= len(s1):
+            left_char = s2[i - len(s1)]
+            window_count[left_char] -= 1
+            if window_count[left_char] == 0:
+                del window_count[left_char]
+
+        if window_count == s1_count:
+            return True
+
+    return False`,
+			Explanation: "Fixed sliding window of s1's length. Compare character counts.",
+		},
+	},
+	{
+		ID:         "minimum-window-substring",
+		Number:     19,
+		Title:      "Minimum Window Substring",
+		Difficulty: "Hard",
+		Category:   "sliding-window",
+		Tags:       []string{"Hash Table", "String", "Sliding Window"},
+		Description: `Given two strings s and t of lengths m and n respectively, return the minimum window substring of s such that every character in t (including duplicates) is included in the window. If there is no such substring, return the empty string "".`,
+		Constraints: []string{
+			"m == s.length",
+			"n == t.length",
+			"1 <= m, n <= 10^5",
+			"s and t consist of uppercase and lowercase English letters",
+		},
+		Examples: []Example{
+			{Input: `s = "ADOBECODEBANC", t = "ABC"`, Output: `"BANC"`},
+			{Input: `s = "a", t = "a"`, Output: `"a"`},
+			{Input: `s = "a", t = "aa"`, Output: `""`},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"s": "ADOBECODEBANC", "t": "ABC"}, Expected: "BANC"},
+			{Input: map[string]interface{}{"s": "a", "t": "a"}, Expected: "a"},
+		},
+		TimeComplexity:  "O(m + n)",
+		SpaceComplexity: "O(m + n)",
+		StarterCode:     "def minWindow(s, t):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Expand window until valid, then contract to find minimum."},
+			{Level: 2, Type: "algorithm", Content: "Track how many required characters are satisfied. Shrink when all satisfied."},
+		},
+		Solution: Solution{
+			Code: `def minWindow(s, t):
+    if not t or not s:
+        return ""
+
+    t_count = {}
+    for c in t:
+        t_count[c] = t_count.get(c, 0) + 1
+
+    required = len(t_count)
+    formed = 0
+    window_count = {}
+
+    left = 0
+    min_len = float('inf')
+    min_left = 0
+
+    for right in range(len(s)):
+        c = s[right]
+        window_count[c] = window_count.get(c, 0) + 1
+
+        if c in t_count and window_count[c] == t_count[c]:
+            formed += 1
+
+        while formed == required:
+            if right - left + 1 < min_len:
+                min_len = right - left + 1
+                min_left = left
+
+            left_c = s[left]
+            window_count[left_c] -= 1
+            if left_c in t_count and window_count[left_c] < t_count[left_c]:
+                formed -= 1
+            left += 1
+
+    return "" if min_len == float('inf') else s[min_left:min_left + min_len]`,
+			Explanation: "Expand until all t chars found, contract to minimize while valid.",
+		},
+	},
+	{
+		ID:         "sliding-window-maximum",
+		Number:     20,
+		Title:      "Sliding Window Maximum",
+		Difficulty: "Hard",
+		Category:   "sliding-window",
+		Tags:       []string{"Array", "Queue", "Sliding Window", "Heap", "Monotonic Queue"},
+		Description: `You are given an array of integers nums, there is a sliding window of size k which is moving from the very left of the array to the very right. You can only see the k numbers in the window. Each time the sliding window moves right by one position.
+
+Return the max sliding window.`,
+		Constraints: []string{
+			"1 <= nums.length <= 10^5",
+			"-10^4 <= nums[i] <= 10^4",
+			"1 <= k <= nums.length",
+		},
+		Examples: []Example{
+			{Input: "nums = [1,3,-1,-3,5,3,6,7], k = 3", Output: "[3,3,5,5,6,7]"},
+			{Input: "nums = [1], k = 1", Output: "[1]"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"nums": []int{1, 3, -1, -3, 5, 3, 6, 7}, "k": 3}, Expected: []int{3, 3, 5, 5, 6, 7}},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(k)",
+		StarterCode:     "def maxSlidingWindow(nums, k):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Use a monotonic decreasing deque to track potential maximums."},
+			{Level: 2, Type: "algorithm", Content: "Remove smaller elements from back, remove out-of-window from front."},
+		},
+		Solution: Solution{
+			Code: `from collections import deque
+
+def maxSlidingWindow(nums, k):
+    dq = deque()  # Store indices
+    result = []
+
+    for i in range(len(nums)):
+        # Remove indices outside window
+        while dq and dq[0] < i - k + 1:
+            dq.popleft()
+
+        # Remove smaller elements
+        while dq and nums[dq[-1]] < nums[i]:
+            dq.pop()
+
+        dq.append(i)
+
+        if i >= k - 1:
+            result.append(nums[dq[0]])
+
+    return result`,
+			Explanation: "Monotonic decreasing deque. Front always has max for current window.",
+		},
+	},
+	// Stack (continued)
 	{
 		ID:         "valid-parentheses",
 		Number:     19,

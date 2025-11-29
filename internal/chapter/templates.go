@@ -1052,5 +1052,88 @@ results = {key: reduce_fn(key, vals) for key, vals in grouped.items()}`,
 				{ID: "topic-map", Title: "Topic Map", Goal: "Display unlocked topics and suggested paths.", DataModel: "topic graph", Interactions: []string{"expand-topic", "add-note"}, Hooks: []string{"onStep", "onReset", "onProgressUpdate"}},
 			},
 		},
+		{
+			Number:  12,
+			Slug:    "blind-75-visuals",
+			Title:   "Blind 75 Visual Walkthroughs",
+			Summary: "High-value interview problems with compact, purpose-built animations.",
+			Objectives: []string{
+				"Trace how supporting data structures evolve step by step",
+				"Connect problem statements to concrete algorithm flows",
+				"Build intuition for backtracking, heaps, and binary search partitions",
+			},
+			Animations: []Storyboard{
+				{
+					ID:    "min-stack",
+					Title: "Min Stack Operations",
+					Goal:  "See how value/min pairs keep O(1) min queries.",
+					Steps: []StoryboardStep{
+						{Cue: "push-min", Narration: "Push values while tracking current min.", VisualHint: "Stack nodes carry value + min", Duration: Duration(3 * time.Second), CodeRef: "push"},
+						{Cue: "query", Narration: "Get top and min in O(1).", VisualHint: "Read last tuple", Duration: Duration(2 * time.Second), CodeRef: "top/getMin"},
+						{Cue: "pop", Narration: "Pop restores previous min.", VisualHint: "Remove top tuple", Duration: Duration(2 * time.Second), CodeRef: "pop"},
+					},
+				},
+				{
+					ID:    "lru-cache",
+					Title: "LRU Cache",
+					Goal:  "Visualize MRU/LRU order alongside hash map lookups.",
+					Steps: []StoryboardStep{
+						{Cue: "put", Narration: "Insert or update a key and move it to MRU.", VisualHint: "Order list bumps key to front", Duration: Duration(3 * time.Second), CodeRef: "put"},
+						{Cue: "evict", Narration: "Evict LRU when capacity is exceeded.", VisualHint: "Drop tail node", Duration: Duration(3 * time.Second), CodeRef: "evict"},
+						{Cue: "get", Narration: "Reads also refresh recency.", VisualHint: "Move hit to front", Duration: Duration(2 * time.Second), CodeRef: "get"},
+					},
+				},
+				{
+					ID:    "trie-ops",
+					Title: "Trie Insert & Search",
+					Goal:  "Step through character-by-character traversal.",
+					Steps: []StoryboardStep{
+						{Cue: "insert", Narration: "Create nodes along the word path.", VisualHint: "Grow children per letter", Duration: Duration(3 * time.Second), CodeRef: "insert"},
+						{Cue: "mark-end", Narration: "Mark terminal nodes to store full words.", VisualHint: "End flag", Duration: Duration(2 * time.Second), CodeRef: "end"},
+						{Cue: "search", Narration: "Walk the path for search and prefix checks.", VisualHint: "Highlight traversed edges", Duration: Duration(3 * time.Second), CodeRef: "search/startsWith"},
+					},
+				},
+				{
+					ID:    "car-fleet",
+					Title: "Car Fleet",
+					Goal:  "Show how arrival times form fleets with a monotonic stack.",
+					Steps: []StoryboardStep{
+						{Cue: "sort", Narration: "Sort cars from closest to farthest from target.", VisualHint: "Positions descending", Duration: Duration(2 * time.Second), CodeRef: "sort"},
+						{Cue: "time", Narration: "Compute each car's arrival time.", VisualHint: "Time to target", Duration: Duration(2 * time.Second), CodeRef: "time"},
+						{Cue: "stack", Narration: "Merge into fleets when arrival time is slower.", VisualHint: "Monotonic stack of times", Duration: Duration(3 * time.Second), CodeRef: "stack"},
+					},
+				},
+				{
+					ID:    "median-two-arrays",
+					Title: "Median of Two Sorted Arrays",
+					Goal:  "Follow binary search over partitions to find the median.",
+					Steps: []StoryboardStep{
+						{Cue: "partition", Narration: "Place partition in the shorter array.", VisualHint: "Partition bars", Duration: Duration(3 * time.Second), CodeRef: "partition"},
+						{Cue: "check", Narration: "Validate partition correctness with max-left/min-right.", VisualHint: "Compare boundaries", Duration: Duration(3 * time.Second), CodeRef: "bounds"},
+						{Cue: "adjust", Narration: "Move left/right until balanced, then compute median.", VisualHint: "Shift partition", Duration: Duration(3 * time.Second), CodeRef: "adjust"},
+					},
+				},
+				{
+					ID:    "kth-largest",
+					Title: "Kth Largest via Min-Heap",
+					Goal:  "Keep only k largest elements with a min-heap.",
+					Steps: []StoryboardStep{
+						{Cue: "push", Narration: "Push each element onto the heap.", VisualHint: "Heap grows", Duration: Duration(2 * time.Second), CodeRef: "heappush"},
+						{Cue: "trim", Narration: "Pop when heap size exceeds k.", VisualHint: "Remove smallest", Duration: Duration(2 * time.Second), CodeRef: "heappop"},
+						{Cue: "answer", Narration: "Heap root holds the kth largest.", VisualHint: "Root = answer", Duration: Duration(2 * time.Second), CodeRef: "heap[0]"},
+					},
+				},
+				{
+					ID:    "n-queens",
+					Title: "N-Queens Backtracking",
+					Goal:  "Place queens row by row and backtrack on conflicts.",
+					Steps: []StoryboardStep{
+						{Cue: "place", Narration: "Try a column for the current row.", VisualHint: "Drop queen", Duration: Duration(2 * time.Second), CodeRef: "place"},
+						{Cue: "attack-check", Narration: "Skip columns under attack.", VisualHint: "Mark diagonals/columns", Duration: Duration(3 * time.Second), CodeRef: "is_safe"},
+						{Cue: "solution", Narration: "Record a full board when all rows filled.", VisualHint: "Board snapshot", Duration: Duration(2 * time.Second), CodeRef: "append solution"},
+					},
+				},
+			},
+		},
 	}
 }

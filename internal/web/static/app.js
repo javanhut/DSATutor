@@ -4794,6 +4794,844 @@ class KnapsackAnimator extends AlgorithmAnimator {
   }
 }
 
+// Min Stack Visualizer
+class MinStackAnimator extends AlgorithmAnimator {
+  constructor(canvasEl, codeEl, stateEl, config) {
+    super(canvasEl, codeEl, stateEl, config);
+    this.operations = [
+      { op: 'push', val: 3 },
+      { op: 'push', val: 5 },
+      { op: 'getMin' },
+      { op: 'push', val: 2 },
+      { op: 'push', val: 1 },
+      { op: 'getMin' },
+      { op: 'pop' },
+      { op: 'getMin' },
+      { op: 'pop' },
+      { op: 'top' },
+    ];
+    this.stack = [];
+    this.currentOp = null;
+
+    this.setCode(`class MinStack:
+    def __init__(self):
+        self.stack = []
+
+    def push(self, val):
+        cur_min = val if not self.stack else min(val, self.stack[-1][1])
+        self.stack.append((val, cur_min))
+
+    def pop(self):
+        self.stack.pop()
+
+    def top(self):
+        return self.stack[-1][0]
+
+    def getMin(self):
+        return self.stack[-1][1]`);
+  }
+
+  buildSteps() {
+    this.steps = [];
+    let stack = [];
+
+    this.steps.push({
+      lineNum: 2,
+      state: 'Initialize empty min stack',
+      stack: [],
+      op: { op: 'init' },
+      apply: () => { this.stack = []; this.currentOp = 'init'; },
+    });
+
+    this.operations.forEach((operation) => {
+      let stateText = '';
+      if (operation.op === 'push') {
+        const curMin = stack.length === 0 ? operation.val : Math.min(operation.val, stack[stack.length - 1].min);
+        stack = [...stack, { val: operation.val, min: curMin }];
+        stateText = `push(${operation.val}), min now ${curMin}`;
+      } else if (operation.op === 'pop') {
+        const popped = stack.pop();
+        stateText = popped ? `pop() removed ${popped.val}` : 'pop() on empty stack';
+      } else if (operation.op === 'top') {
+        const top = stack[stack.length - 1];
+        stateText = top ? `top() -> ${top.val}` : 'top() on empty stack';
+      } else if (operation.op === 'getMin') {
+        const top = stack[stack.length - 1];
+        stateText = top ? `getMin() -> ${top.min}` : 'getMin() on empty stack';
+      }
+
+      const snapshot = stack.map(item => ({ ...item }));
+      this.steps.push({
+        lineNums: this.linesForOp(operation.op),
+        state: stateText,
+        stack: snapshot,
+        op: operation,
+        apply: () => { this.stack = snapshot; this.currentOp = operation.op; },
+      });
+    });
+  }
+
+  linesForOp(op) {
+    switch (op) {
+      case 'push': return [5, 6, 7];
+      case 'pop': return [9];
+      case 'top': return [12];
+      case 'getMin': return [15];
+      default: return [2];
+    }
+  }
+
+  render() {
+    if (!this.canvas) return;
+    const items = [...this.stack].map((item, idx) => ({ ...item, idx }));
+    let html = '<div class="stack-viz">';
+    if (items.length === 0) {
+      html += '<div class="stack-empty">Empty stack</div>';
+    } else {
+      for (let i = items.length - 1; i >= 0; i--) {
+        const item = items[i];
+        html += `<div class="stack-node">
+          <div class="stack-value">${item.val}</div>
+          <div class="stack-min">min ${item.min}</div>
+        </div>`;
+      }
+    }
+    html += '</div>';
+    this.canvas.innerHTML = html;
+  }
+
+  getVariables() {
+    const top = this.stack[this.stack.length - 1];
+    return {
+      size: this.stack.length,
+      top: top ? top.val : 'none',
+      min: top ? top.min : 'none',
+      op: this.currentOp || 'init',
+    };
+  }
+
+  getInputData() {
+    return this.operations.map(o => o.val !== undefined ? `${o.op}(${o.val})` : o.op);
+  }
+}
+
+// LRU Cache Visualizer (capacity 2)
+class LRUCacheAnimator extends AlgorithmAnimator {
+  constructor(canvasEl, codeEl, stateEl, config) {
+    super(canvasEl, codeEl, stateEl, config);
+    this.capacity = 2;
+    this.operations = [
+      { op: 'put', key: 1, val: 1 },
+      { op: 'put', key: 2, val: 2 },
+      { op: 'get', key: 1 },
+      { op: 'put', key: 3, val: 3 },
+      { op: 'get', key: 2 },
+      { op: 'put', key: 4, val: 4 },
+      { op: 'get', key: 1 },
+      { op: 'get', key: 3 },
+      { op: 'get', key: 4 },
+    ];
+    this.order = [];
+    this.map = {};
+    this.current = null;
+
+    this.setCode(`class LRUCache:
+    def __init__(self, capacity):
+        self.cap = capacity
+        self.map = {}       # key -> (val, node)
+        self.order = []     # most recent at front
+
+    def get(self, key):
+        if key not in self.map:
+            return -1
+        val = self.map[key]
+        self._bump(key)
+        return val
+
+    def put(self, key, value):
+        if key in self.map:
+            self.map[key] = value
+            self._bump(key)
+            return
+        if len(self.order) == self.cap:
+            lru = self.order.pop()  # remove LRU
+            self.map.pop(lru, None)
+        self.order.insert(0, key)
+        self.map[key] = value`);
+  }
+
+  buildSteps() {
+    this.steps = [];
+    let map = {};
+    let order = [];
+
+    this.steps.push({
+      lineNum: 2,
+      state: `Capacity ${this.capacity}, cache empty`,
+      apply: () => { this.map = {}; this.order = []; this.current = 'init'; },
+    });
+
+    this.operations.forEach((op) => {
+      let stateText = '';
+      if (op.op === 'put') {
+        if (map.hasOwnProperty(op.key)) {
+          map = { ...map, [op.key]: op.val };
+          order = [op.key, ...order.filter(k => k !== op.key)];
+          stateText = `put(${op.key}, ${op.val}) update & move to MRU`;
+        } else {
+          if (order.length === this.capacity) {
+            const evict = order.pop();
+            const { [evict]: _, ...rest } = map;
+            map = rest;
+            stateText = `put(${op.key}, ${op.val}) evicts ${evict}`;
+          } else {
+            stateText = `put(${op.key}, ${op.val})`;
+          }
+          order = [op.key, ...order];
+          map = { ...map, [op.key]: op.val };
+        }
+      } else if (op.op === 'get') {
+        if (map.hasOwnProperty(op.key)) {
+          order = [op.key, ...order.filter(k => k !== op.key)];
+          stateText = `get(${op.key}) -> ${map[op.key]} (bump to MRU)`;
+        } else {
+          stateText = `get(${op.key}) -> -1 (miss)`;
+        }
+      }
+
+      const snapOrder = [...order];
+      const snapMap = { ...map };
+
+      this.steps.push({
+        lineNums: op.op === 'put' ? [12, 13, 19] : [7, 8, 9],
+        state: stateText,
+        order: snapOrder,
+        map: snapMap,
+        op,
+        apply: () => { this.order = snapOrder; this.map = snapMap; this.current = `${op.op}(${op.key}${op.val !== undefined ? ',' + op.val : ''})`; },
+      });
+    });
+  }
+
+  render() {
+    if (!this.canvas) return;
+    let html = '<div class="lru-viz">';
+    html += '<div class="lru-order"><div class="lru-label">Order (MRU → LRU)</div>';
+    if (this.order.length === 0) {
+      html += '<div class="lru-empty">Cache empty</div>';
+    } else {
+      html += '<div class="lru-row">';
+      this.order.forEach((key, idx) => {
+        html += `<div class="lru-card ${idx === 0 ? 'mru' : ''}"><div class="lru-key">k=${key}</div><div class="lru-val">v=${this.map[key]}</div></div>`;
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+
+    html += '<div class="lru-map"><div class="lru-label">Hash Map</div>';
+    if (Object.keys(this.map).length === 0) {
+      html += '<div class="lru-empty">No entries</div>';
+    } else {
+      html += '<div class="lru-map-grid">';
+      Object.entries(this.map).forEach(([k, v]) => {
+        html += `<div class="lru-map-entry"><span class="map-key">key ${k}</span><span class="map-val">→ ${v}</span></div>`;
+      });
+      html += '</div>';
+    }
+    html += '</div></div>';
+
+    this.canvas.innerHTML = html;
+  }
+
+  getVariables() {
+    return {
+      capacity: this.capacity,
+      size: Object.keys(this.map).length,
+      order: this.order.join(' → ') || 'empty',
+      op: this.current || 'init',
+    };
+  }
+
+  getInputData() {
+    return this.operations.map(o => o.val !== undefined ? `${o.op}(${o.key},${o.val})` : `${o.op}(${o.key})`);
+  }
+}
+
+// Trie (insert/search) Visualizer
+class TrieAnimator extends AlgorithmAnimator {
+  constructor(canvasEl, codeEl, stateEl, config) {
+    super(canvasEl, codeEl, stateEl, config);
+    this.trie = this.createNode();
+    this.operations = [
+      { op: 'insert', word: 'cat' },
+      { op: 'insert', word: 'car' },
+      { op: 'insert', word: 'dog' },
+      { op: 'search', word: 'car' },
+      { op: 'startsWith', word: 'ca' },
+      { op: 'search', word: 'cow' },
+    ];
+    this.currentWord = '';
+    this.charIndex = -1;
+
+    this.setCode(`class TrieNode:
+    def __init__(self):
+        self.children = {}
+        self.end = False
+
+class Trie:
+    def insert(self, word):
+        node = self.root
+        for ch in word:
+            node = node.children.setdefault(ch, TrieNode())
+        node.end = True
+
+    def search(self, word):
+        node = self._walk(word)
+        return bool(node and node.end)
+
+    def startsWith(self, prefix):
+        return bool(self._walk(prefix))`);
+  }
+
+  createNode() {
+    return { children: {}, end: false };
+  }
+
+  cloneNode(node) {
+    const cloned = { end: node.end, children: {} };
+    Object.entries(node.children).forEach(([ch, child]) => {
+      cloned.children[ch] = this.cloneNode(child);
+    });
+    return cloned;
+  }
+
+  buildSteps() {
+    this.steps = [];
+    let root = this.createNode();
+
+    this.steps.push({
+      lineNum: 2,
+      state: 'Initialize empty trie',
+      trie: this.cloneNode(root),
+      op: { op: 'init' },
+      apply: () => { this.trie = this.cloneNode(root); this.currentWord = ''; this.charIndex = -1; },
+    });
+
+    this.operations.forEach((op) => {
+      if (op.op === 'insert') {
+        let node = root;
+        op.word.split('').forEach((ch, idx) => {
+          if (!node.children[ch]) node.children[ch] = this.createNode();
+          node = node.children[ch];
+          const snapshot = this.cloneNode(root);
+          this.steps.push({
+            lineNums: [9, 10, 11],
+            state: `insert("${op.word}") visiting '${ch}' (idx ${idx})`,
+            trie: snapshot,
+            op,
+            charIndex: idx,
+            currentWord: op.word,
+            apply: () => { this.trie = snapshot; this.currentWord = op.word; this.charIndex = idx; },
+          });
+        });
+        node.end = true;
+        const snapshot = this.cloneNode(root);
+        this.steps.push({
+          lineNum: 12,
+          state: `mark end of "${op.word}"`,
+          trie: snapshot,
+          op,
+          charIndex: op.word.length - 1,
+          currentWord: op.word,
+          apply: () => { this.trie = snapshot; this.currentWord = op.word; this.charIndex = op.word.length - 1; },
+        });
+      } else {
+        // search / startsWith
+        let node = root;
+        let failedAt = -1;
+        op.word.split('').forEach((ch, idx) => {
+          if (node && node.children[ch]) {
+            node = node.children[ch];
+          } else {
+            node = null;
+            failedAt = idx;
+          }
+          const snapshot = this.cloneNode(root);
+          this.steps.push({
+            lineNums: op.op === 'search' ? [14, 15, 16] : [19],
+            state: `${op.op}("${op.word}") at '${ch}' (idx ${idx})` + (failedAt === -1 ? '' : ' - missing'),
+            trie: snapshot,
+            op,
+            charIndex: idx,
+            currentWord: op.word,
+            apply: () => { this.trie = snapshot; this.currentWord = op.word; this.charIndex = idx; },
+          });
+        });
+        const found = !!node && (op.op === 'startsWith' || node.end);
+        const snapshot = this.cloneNode(root);
+        this.steps.push({
+          lineNums: op.op === 'search' ? [17] : [19],
+          state: `${op.op}("${op.word}") -> ${found}`,
+          trie: snapshot,
+          op,
+          charIndex: op.word.length - 1,
+          currentWord: op.word,
+          apply: () => { this.trie = snapshot; this.currentWord = op.word; this.charIndex = op.word.length - 1; },
+        });
+      }
+    });
+  }
+
+  render() {
+    if (!this.canvas) return;
+
+    const buildList = (node, prefix) => {
+      let html = '';
+      Object.entries(node.children).forEach(([ch, child]) => {
+        const nextPrefix = prefix + ch;
+        html += `<div class="trie-node">
+          <div class="trie-chip ${nextPrefix === this.currentPrefix() ? 'active' : ''}">
+            ${escapeHtml(nextPrefix)}${child.end ? '<span class="trie-end">★</span>' : ''}
+          </div>
+          <div class="trie-children">${buildList(child, nextPrefix)}</div>
+        </div>`;
+      });
+      return html;
+    };
+
+    let html = '<div class="trie-viz">';
+    html += '<div class="trie-root">root</div>';
+    html += `<div class="trie-children">${buildList(this.trie, '')}</div>`;
+    html += '</div>';
+    this.canvas.innerHTML = html;
+  }
+
+  currentPrefix() {
+    if (!this.currentWord || this.charIndex < 0) return '';
+    return this.currentWord.slice(0, this.charIndex + 1);
+  }
+
+  getVariables() {
+    return {
+      word: this.currentWord || 'n/a',
+      prefix: this.currentPrefix() || 'n/a',
+      idx: this.charIndex,
+    };
+  }
+
+  getInputData() {
+    return this.operations.map(o => `${o.op}("${o.word}")`);
+  }
+}
+
+// Car Fleet Visualizer
+class CarFleetAnimator extends AlgorithmAnimator {
+  constructor(canvasEl, codeEl, stateEl, config) {
+    super(canvasEl, codeEl, stateEl, config);
+    this.target = 12;
+    this.positions = [10, 8, 0, 5, 3];
+    this.speeds = [2, 4, 1, 1, 3];
+    this.cars = this.positions.map((pos, idx) => ({ pos, speed: this.speeds[idx] }));
+    this.stack = [];
+    this.current = null;
+
+    this.setCode(`def carFleet(target, position, speed):
+    pairs = sorted(zip(position, speed), reverse=True)
+    stack = []
+    for pos, spd in pairs:
+        time = (target - pos) / spd
+        if not stack or time > stack[-1]:
+            stack.append(time)
+    return len(stack)`);
+  }
+
+  buildSteps() {
+    this.steps = [];
+    const pairs = this.cars.map(c => ({ ...c })).sort((a, b) => b.pos - a.pos);
+    let stack = [];
+    this.steps.push({
+      lineNum: 2,
+      state: 'Sort cars by position descending',
+      stack: [],
+      current: null,
+      apply: () => { this.stack = []; this.current = null; },
+    });
+
+    pairs.forEach((car, idx) => {
+      const time = (this.target - car.pos) / car.speed;
+      let stateText = `Car at ${car.pos} (spd ${car.speed}) time ${time.toFixed(2)}`;
+      if (stack.length === 0 || time > stack[stack.length - 1]) {
+        stack.push(time);
+        stateText += ' starts new fleet';
+      } else {
+        stateText += ' joins fleet ahead';
+      }
+      const snap = [...stack];
+      this.steps.push({
+        lineNums: [3, 4, 5, 6],
+        state: stateText,
+        stack: snap,
+        current: { ...car, time },
+        apply: () => { this.stack = snap; this.current = { ...car, time }; },
+      });
+    });
+  }
+
+  render() {
+    if (!this.canvas) return;
+    const roadLength = this.target;
+    let html = '<div class="fleet-viz">';
+    html += `<div class="fleet-road">`;
+    this.cars.sort((a, b) => b.pos - a.pos).forEach((car, idx) => {
+      const percent = Math.max(0, Math.min(100, (car.pos / roadLength) * 100));
+      html += `<div class="fleet-car" style="left:${percent}%">
+        <div class="car-label">pos ${car.pos}, v ${car.speed}</div>
+      </div>`;
+    });
+    html += `<div class="fleet-target" style="left:100%;">Target ${this.target}</div>`;
+    html += '</div>';
+
+    html += '<div class="fleet-stack"><div class="fleet-label">Fleet arrival times (stack)</div>';
+    if (this.stack.length === 0) {
+      html += '<div class="fleet-empty">No fleets yet</div>';
+    } else {
+      html += '<div class="fleet-stack-items">';
+      this.stack.slice().reverse().forEach(time => {
+        html += `<div class="fleet-time">time ${time.toFixed(2)}</div>`;
+      });
+      html += '</div>';
+    }
+    html += '</div></div>';
+
+    this.canvas.innerHTML = html;
+  }
+
+  getVariables() {
+    return {
+      target: this.target,
+      fleets: this.stack.length,
+      current: this.current ? `pos ${this.current.pos}, v ${this.current.speed}, t ${this.current.time.toFixed(2)}` : 'n/a',
+    };
+  }
+
+  getInputData() {
+    return { position: this.positions, speed: this.speeds, target: this.target };
+  }
+}
+
+// Median of Two Sorted Arrays Visualizer
+class MedianTwoArraysAnimator extends AlgorithmAnimator {
+  constructor(canvasEl, codeEl, stateEl, config) {
+    super(canvasEl, codeEl, stateEl, config);
+    this.A = [1, 3, 8];
+    this.B = [7, 9, 10, 11];
+    this.low = 0;
+    this.high = this.A.length;
+    this.partA = 0;
+    this.partB = 0;
+    this.median = null;
+    this.stateText = '';
+
+    this.setCode(`def findMedianSortedArrays(nums1, nums2):
+    A, B = nums1, nums2
+    if len(A) > len(B):
+        A, B = B, A
+    low, high = 0, len(A)
+    while low <= high:
+        i = (low + high) // 2
+        j = (len(A) + len(B) + 1)//2 - i
+        maxLeftA = -inf if i == 0 else A[i-1]
+        minRightA = inf if i == len(A) else A[i]
+        maxLeftB = -inf if j == 0 else B[j-1]
+        minRightB = inf if j == len(B) else B[j]
+        if maxLeftA <= minRightB and maxLeftB <= minRightA:
+            if (len(A)+len(B)) % 2 == 0:
+                return (max(maxLeftA, maxLeftB) + min(minRightA, minRightB))/2
+            return max(maxLeftA, maxLeftB)
+        elif maxLeftA > minRightB:
+            high = i - 1
+        else:
+            low = i + 1`);
+  }
+
+  buildSteps() {
+    this.steps = [];
+    let low = 0, high = this.A.length;
+    const total = this.A.length + this.B.length;
+
+    while (low <= high) {
+      const i = Math.floor((low + high) / 2);
+      const j = Math.floor((total + 1) / 2) - i;
+
+      const maxLeftA = i === 0 ? -Infinity : this.A[i - 1];
+      const minRightA = i === this.A.length ? Infinity : this.A[i];
+      const maxLeftB = j === 0 ? -Infinity : this.B[j - 1];
+      const minRightB = j === this.B.length ? Infinity : this.B[j];
+
+      let state = `i=${i}, j=${j}, maxLeftA=${maxLeftA}, minRightA=${minRightA}, maxLeftB=${maxLeftB}, minRightB=${minRightB}`;
+
+      let found = false;
+      let median = null;
+      if (maxLeftA <= minRightB && maxLeftB <= minRightA) {
+        found = true;
+        if (total % 2 === 0) {
+          median = (Math.max(maxLeftA, maxLeftB) + Math.min(minRightA, minRightB)) / 2;
+        } else {
+          median = Math.max(maxLeftA, maxLeftB);
+        }
+        state += ` -> median ${median}`;
+      } else if (maxLeftA > minRightB) {
+        state += ' (move left)';
+        high = i - 1;
+      } else {
+        state += ' (move right)';
+        low = i + 1;
+      }
+
+      this.steps.push({
+        lineNums: [6, 7, 8, 12, 13],
+        state,
+        low,
+        high,
+        partA: i,
+        partB: j,
+        median,
+        found,
+        apply: () => {
+          this.low = low;
+          this.high = high;
+          this.partA = i;
+          this.partB = j;
+          this.median = median;
+          this.stateText = state;
+        },
+      });
+
+      if (found) break;
+    }
+  }
+
+  render() {
+    if (!this.canvas) return;
+    const renderRow = (arr, part) => {
+      let html = '<div class="median-row">';
+      arr.forEach((val, idx) => {
+        const before = idx < part;
+        const boundary = idx === part;
+        html += `<div class="median-cell ${before ? 'left' : 'right'}">${val}</div>`;
+        if (boundary) {
+          html += '<div class="median-partition">|</div>';
+        }
+      });
+      if (part === arr.length) {
+        html += '<div class="median-partition">|</div>';
+      }
+      html += '</div>';
+      return html;
+    };
+
+    let html = '<div class="median-viz">';
+    html += '<div class="median-label">Array A (shorter)</div>';
+    html += renderRow(this.A, this.partA);
+    html += '<div class="median-label">Array B</div>';
+    html += renderRow(this.B, this.partB);
+    html += `<div class="median-state">${escapeHtml(this.stateText)}</div>`;
+    html += '</div>';
+    this.canvas.innerHTML = html;
+  }
+
+  getVariables() {
+    return {
+      low: this.low,
+      high: this.high,
+      partA: this.partA,
+      partB: this.partB,
+      median: this.median !== null ? this.median : 'pending',
+    };
+  }
+
+  getInputData() {
+    return { nums1: this.A, nums2: this.B };
+  }
+}
+
+// Kth Largest Element Visualizer (min-heap approach)
+class KthLargestAnimator extends AlgorithmAnimator {
+  constructor(canvasEl, codeEl, stateEl, config) {
+    super(canvasEl, codeEl, stateEl, config);
+    this.nums = [4, 5, 8, 2, 3, 5, 10, 9, 4];
+    this.k = 3;
+    this.heap = [];
+    this.current = null;
+
+    this.setCode(`import heapq
+
+def kthLargest(nums, k):
+    heap = []
+    for num in nums:
+        heapq.heappush(heap, num)
+        if len(heap) > k:
+            heapq.heappop(heap)
+    return heap[0]`);
+  }
+
+  buildSteps() {
+    this.steps = [];
+    let heap = [];
+    this.steps.push({
+      lineNum: 2,
+      state: `k=${this.k}, start with empty min-heap`,
+      heap: [],
+      apply: () => { this.heap = []; this.current = null; },
+    });
+
+    this.nums.forEach((num) => {
+      heap.push(num);
+      heap.sort((a, b) => a - b);
+      let state = `push ${num}`;
+      if (heap.length > this.k) {
+        const removed = heap.shift();
+        state += `, pop ${removed} to keep size ${this.k}`;
+      }
+      const snap = [...heap];
+      this.steps.push({
+        lineNums: [6, 7, 8],
+        state,
+        heap: snap,
+        current: num,
+        apply: () => { this.heap = snap; this.current = num; },
+      });
+    });
+  }
+
+  render() {
+    if (!this.canvas) return;
+    let html = '<div class="heap-viz">';
+    if (this.heap.length === 0) {
+      html += '<div class="heap-empty">Heap empty</div>';
+    } else {
+      html += '<div class="heap-levels">';
+      this.heap.forEach((val, idx) => {
+        html += `<div class="heap-node">${val}</div>`;
+      });
+      html += '</div>';
+    }
+    html += `<div class="heap-footer">Top of heap = current ${this.k}th largest${this.heap.length > 0 ? ` (${this.heap[0]})` : ''}</div>`;
+    html += '</div>';
+    this.canvas.innerHTML = html;
+  }
+
+  getVariables() {
+    return {
+      k: this.k,
+      heap: this.heap,
+      current: this.current !== null ? this.current : 'n/a',
+    };
+  }
+
+  getInputData() {
+    return { nums: this.nums, k: this.k };
+  }
+}
+
+// N-Queens Visualizer (n=4)
+class NQueensAnimator extends AlgorithmAnimator {
+  constructor(canvasEl, codeEl, stateEl, config) {
+    super(canvasEl, codeEl, stateEl, config);
+    this.n = 4;
+    this.boards = [];
+    this.currentBoard = this.emptyBoard();
+    this.stepBoards = this.precomputeBoards();
+
+    this.setCode(`def solveNQueens(n):
+    res = []
+    board = [['.'] * n for _ in range(n)]
+
+    def backtrack(r):
+        if r == n:
+            res.append([''.join(row) for row in board])
+            return
+        for c in range(n):
+            if is_safe(r, c):
+                board[r][c] = 'Q'
+                backtrack(r + 1)
+                board[r][c] = '.'
+
+    backtrack(0)
+    return res`);
+  }
+
+  emptyBoard() {
+    return Array.from({ length: this.n }, () => Array(this.n).fill('.'));
+  }
+
+  precomputeBoards() {
+    // Simple scripted path to one solution for n=4
+    return [
+      { row: 0, col: 1 },
+      { row: 1, col: 3 },
+      { row: 2, col: 0 },
+      { row: 3, col: 2 },
+    ];
+  }
+
+  buildSteps() {
+    this.steps = [];
+    let board = this.emptyBoard();
+
+    this.steps.push({
+      lineNum: 2,
+      state: 'Start backtracking on 4x4 board',
+      board: board.map(row => [...row]),
+      apply: () => { this.currentBoard = board.map(row => [...row]); },
+    });
+
+    this.stepBoards.forEach((placement, idx) => {
+      board[placement.row][placement.col] = 'Q';
+      const snap = board.map(row => [...row]);
+      this.steps.push({
+        lineNums: [5, 6, 7, 8],
+        state: `Place queen at row ${placement.row}, col ${placement.col}`,
+        board: snap,
+        apply: () => { this.currentBoard = snap.map(row => [...row]); },
+      });
+    });
+
+    this.steps.push({
+      lineNum: 11,
+      state: 'Solution found',
+      board: board.map(row => [...row]),
+      apply: () => { this.currentBoard = board.map(row => [...row]); },
+    });
+  }
+
+  render() {
+    if (!this.canvas) return;
+    let html = '<div class="board-viz">';
+    this.currentBoard.forEach((row, rIdx) => {
+      html += '<div class="board-row">';
+      row.forEach((cell, cIdx) => {
+        const isQueen = cell === 'Q';
+        html += `<div class="board-cell ${isQueen ? 'queen' : ''}">${isQueen ? '♛' : ''}</div>`;
+      });
+      html += '</div>';
+    });
+    html += '</div>';
+    this.canvas.innerHTML = html;
+  }
+
+  getVariables() {
+    return {
+      n: this.n,
+      queensPlaced: this.currentBoard.flat().filter(c => c === 'Q').length,
+    };
+  }
+
+  getInputData() {
+    return { n: this.n };
+  }
+}
+
 // Sandbox Animator - Dynamic visualization of user Python code
 class SandboxAnimator extends AlgorithmAnimator {
   constructor(canvasEl, codeEl, stateEl, config) {
@@ -5449,6 +6287,13 @@ animationRegistry['binary-tree'] = BinaryTreeAnimator;
 animationRegistry['heap'] = HeapAnimator;
 animationRegistry['greedy'] = GreedyAnimator;
 animationRegistry['knapsack'] = KnapsackAnimator;
+animationRegistry['min-stack'] = MinStackAnimator;
+animationRegistry['lru-cache'] = LRUCacheAnimator;
+animationRegistry['trie-ops'] = TrieAnimator;
+animationRegistry['car-fleet'] = CarFleetAnimator;
+animationRegistry['median-two-arrays'] = MedianTwoArraysAnimator;
+animationRegistry['kth-largest'] = KthLargestAnimator;
+animationRegistry['n-queens'] = NQueensAnimator;
 
 // Current animation instance
 let currentAnimator = null;
