@@ -38,11 +38,12 @@ type Example struct {
 
 // TestCase is a machine-readable test for validation.
 type TestCase struct {
-	ID       string      `json:"id,omitempty"`
-	Input    interface{} `json:"input"`
-	Expected interface{} `json:"expected"`
-	Hidden   bool        `json:"hidden"`
-	Timeout  int         `json:"timeout,omitempty"` // milliseconds
+	ID               string      `json:"id,omitempty"`
+	Input            interface{} `json:"input"`
+	Expected         interface{} `json:"expected"`
+	Hidden           bool        `json:"hidden"`
+	Timeout          int         `json:"timeout,omitempty"` // milliseconds
+	OrderIndependent bool        `json:"orderIndependent"`  // Result can be in any order (e.g., group anagrams)
 }
 
 // Hint represents a progressive hint for the problem.

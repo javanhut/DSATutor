@@ -2,7 +2,9 @@ package web
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 
 	"dsatutor/internal/practice"
@@ -278,7 +280,7 @@ func (ps *PracticeServer) handleRunCode(w http.ResponseWriter, r *http.Request) 
 
 	// Compare output with expected value
 	if execResp.Success && testCase.Expected != nil {
-		response.Passed = compareOutput(execResp.Output, testCase.Expected)
+		response.Passed = compareOutput(execResp.Output, testCase.Expected, testCase.OrderIndependent)
 	}
 
 	// Extract structures from last step if available
@@ -346,7 +348,7 @@ func (ps *PracticeServer) handleSubmitCode(w http.ResponseWriter, r *http.Reques
 			result.Error = execResp.Error
 		} else {
 			// Parse output and compare with expected
-			result.Passed = compareOutput(execResp.Output, tc.Expected)
+			result.Passed = compareOutput(execResp.Output, tc.Expected, tc.OrderIndependent)
 			result.Actual = execResp.Output
 			if !tc.Hidden {
 				result.Input = tc.Input
@@ -539,7 +541,7 @@ func (ps *PracticeServer) handleVisualizeSolution(w http.ResponseWriter, r *http
 
 	// Compare output with expected value
 	if execResp.Success && testCase.Expected != nil {
-		response.Passed = compareOutput(execResp.Output, testCase.Expected)
+		response.Passed = compareOutput(execResp.Output, testCase.Expected, testCase.OrderIndependent)
 	}
 
 	// Extract structures from last step if available
@@ -721,32 +723,105 @@ func extractFunctionName(starterCode string) string {
 }
 
 // compareOutput compares execution output with expected value.
-func compareOutput(output string, expected interface{}) bool {
+func compareOutput(output string, expected interface{}, orderIndependent bool) bool {
 	output = strings.TrimSpace(output)
 
 	// Normalize Python output to JSON format
 	// Python uses single quotes, True/False, None - convert to JSON equivalents
 	normalized := normalizePythonOutput(output)
 
-	// Marshal expected to JSON for comparison
-	expectedJSON, err := json.Marshal(expected)
-	if err != nil {
-		return false
-	}
-
 	// Try to parse normalized output as JSON
 	var actualValue interface{}
 	if err := json.Unmarshal([]byte(normalized), &actualValue); err != nil {
 		// Output is not valid JSON, try direct comparison
-		// Remove all whitespace for comparison
+		expectedJSON, _ := json.Marshal(expected)
 		outputNoSpace := strings.ReplaceAll(strings.ReplaceAll(output, " ", ""), "\t", "")
 		expectedNoSpace := strings.ReplaceAll(string(expectedJSON), " ", "")
 		return outputNoSpace == expectedNoSpace
 	}
 
+	// For order-independent comparison (e.g., group anagrams, top k elements)
+	if orderIndependent {
+		return compareOrderIndependent(actualValue, expected)
+	}
+
 	// Compare JSON values (this normalizes spacing)
 	actualJSON, _ := json.Marshal(actualValue)
+	expectedJSON, _ := json.Marshal(expected)
 	return string(actualJSON) == string(expectedJSON)
+}
+
+// compareOrderIndependent compares two values regardless of order.
+// Works for arrays of arrays (like group anagrams) and simple arrays.
+func compareOrderIndependent(actual, expected interface{}) bool {
+	// Convert expected to interface{} via JSON round-trip to normalize types
+	// This handles Go types like [][]string -> []interface{} containing []interface{}
+	expectedJSON, err := json.Marshal(expected)
+	if err != nil {
+		return false
+	}
+	var expectedNormalized interface{}
+	if err := json.Unmarshal(expectedJSON, &expectedNormalized); err != nil {
+		return false
+	}
+
+	// Convert both to normalized form
+	actualNorm := normalizeForComparison(actual)
+	expectedNorm := normalizeForComparison(expectedNormalized)
+
+	return actualNorm == expectedNorm
+}
+
+// normalizeForComparison converts a value to a canonical string form for comparison.
+// For arrays: sorts elements. For arrays of arrays: sorts inner arrays, then sorts outer.
+func normalizeForComparison(v interface{}) string {
+	switch val := v.(type) {
+	case []interface{}:
+		// Check if it's an array of arrays
+		if len(val) > 0 {
+			if _, ok := val[0].([]interface{}); ok {
+				// Array of arrays - sort each inner array, then sort outer by canonical form
+				innerStrs := make([]string, len(val))
+				for i, inner := range val {
+					innerStrs[i] = normalizeForComparison(inner)
+				}
+				sort.Strings(innerStrs)
+				return "[" + strings.Join(innerStrs, ",") + "]"
+			}
+		}
+		// Simple array - convert elements to strings and sort
+		strs := make([]string, len(val))
+		for i, elem := range val {
+			strs[i] = normalizeElement(elem)
+		}
+		sort.Strings(strs)
+		return "[" + strings.Join(strs, ",") + "]"
+	default:
+		return normalizeElement(v)
+	}
+}
+
+// normalizeElement converts a single element to its canonical string form.
+func normalizeElement(v interface{}) string {
+	switch val := v.(type) {
+	case string:
+		return fmt.Sprintf("%q", val)
+	case float64:
+		// JSON numbers are float64
+		if val == float64(int(val)) {
+			return fmt.Sprintf("%d", int(val))
+		}
+		return fmt.Sprintf("%g", val)
+	case bool:
+		return fmt.Sprintf("%t", val)
+	case nil:
+		return "null"
+	case []interface{}:
+		return normalizeForComparison(val)
+	default:
+		b, _ := json.Marshal(val)
+		return string(b)
+	}
 }
 
 // normalizePythonOutput converts Python repr output to JSON format

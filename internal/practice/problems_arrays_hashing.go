@@ -152,26 +152,33 @@ An Anagram is a word or phrase formed by rearranging the letters of a different 
 		Category:   "arrays-hashing",
 		Tags:       []string{"Array", "Hash Table", "String", "Sorting"},
 		RelatedChapters: []int{2, 3},
-		Description: `Given an array of strings strs, group the anagrams together. You can return the answer in any order.`,
+		Description: `Given an array of strings strs, group the anagrams together. You can return the answer in any order.
+
+An Anagram is a word or phrase formed by rearranging the letters of a different word or phrase, typically using all the original letters exactly once.`,
 		Constraints: []string{
 			"1 <= strs.length <= 10^4",
 			"0 <= strs[i].length <= 100",
 			"strs[i] consists of lowercase English letters",
 		},
 		Examples: []Example{
-			{Input: `strs = ["eat","tea","tan","ate","nat","bat"]`, Output: `[["bat"],["nat","tan"],["ate","eat","tea"]]`},
+			{Input: `strs = ["eat","tea","tan","ate","nat","bat"]`, Output: `[["bat"],["nat","tan"],["ate","eat","tea"]]`, Explanation: "The groups are anagrams of each other. Order within groups and order of groups doesn't matter."},
 			{Input: `strs = [""]`, Output: `[[""]]`},
 			{Input: `strs = ["a"]`, Output: `[["a"]]`},
 		},
 		TestCases: []TestCase{
-			{Input: map[string]interface{}{"strs": []string{"eat", "tea", "tan", "ate", "nat", "bat"}}, Expected: [][]string{{"bat"}, {"nat", "tan"}, {"ate", "eat", "tea"}}},
+			{Input: map[string]interface{}{"strs": []string{"eat", "tea", "tan", "ate", "nat", "bat"}}, Expected: [][]string{{"eat", "tea", "ate"}, {"tan", "nat"}, {"bat"}}, OrderIndependent: true},
+			{Input: map[string]interface{}{"strs": []string{""}}, Expected: [][]string{{""}}, OrderIndependent: true},
+			{Input: map[string]interface{}{"strs": []string{"a"}}, Expected: [][]string{{"a"}}, OrderIndependent: true},
+			{Input: map[string]interface{}{"strs": []string{"cab", "tin", "pew", "duh", "may", "ill", "buy", "bar", "max", "doc"}}, Expected: [][]string{{"cab"}, {"tin"}, {"pew"}, {"duh"}, {"may"}, {"ill"}, {"buy"}, {"bar"}, {"max"}, {"doc"}}, OrderIndependent: true},
+			{Input: map[string]interface{}{"strs": []string{"listen", "silent", "enlist", "hello", "world"}}, Expected: [][]string{{"listen", "silent", "enlist"}, {"hello"}, {"world"}}, OrderIndependent: true},
 		},
 		TimeComplexity:  "O(n * k log k)",
 		SpaceComplexity: "O(n * k)",
 		StarterCode:     "def groupAnagrams(strs):\n    # Write your solution here\n    pass",
 		Hints: []Hint{
 			{Level: 1, Type: "approach", Content: "Anagrams have the same sorted characters."},
-			{Level: 2, Type: "algorithm", Content: "Use sorted string as key in a hash map."},
+			{Level: 2, Type: "algorithm", Content: "Use sorted string as key in a hash map. All words that are anagrams will have the same sorted key."},
+			{Level: 3, Type: "code", Content: "Create a defaultdict(list), iterate through strings, use ''.join(sorted(s)) as key, append s to groups[key]."},
 		},
 		Solution: Solution{
 			Code: `from collections import defaultdict
@@ -182,7 +189,7 @@ def groupAnagrams(strs):
         key = ''.join(sorted(s))
         groups[key].append(s)
     return list(groups.values())`,
-			Explanation: "Sort each string to create a key. Group strings with the same key.",
+			Explanation: "Sort each string to create a key. Group strings with the same key. Time: O(n * k log k) where n is number of strings and k is max string length.",
 		},
 	},
 	{
@@ -205,8 +212,9 @@ def groupAnagrams(strs):
 			{Input: "nums = [1], k = 1", Output: "[1]"},
 		},
 		TestCases: []TestCase{
-			{Input: map[string]interface{}{"nums": []int{1, 1, 1, 2, 2, 3}, "k": 2}, Expected: []int{1, 2}},
-			{Input: map[string]interface{}{"nums": []int{1}, "k": 1}, Expected: []int{1}},
+			{Input: map[string]interface{}{"nums": []int{1, 1, 1, 2, 2, 3}, "k": 2}, Expected: []int{1, 2}, OrderIndependent: true},
+			{Input: map[string]interface{}{"nums": []int{1}, "k": 1}, Expected: []int{1}, OrderIndependent: true},
+			{Input: map[string]interface{}{"nums": []int{4, 1, -1, 2, -1, 2, 3}, "k": 2}, Expected: []int{-1, 2}, OrderIndependent: true},
 		},
 		TimeComplexity:  "O(n)",
 		SpaceComplexity: "O(n)",
