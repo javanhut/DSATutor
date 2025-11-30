@@ -26,16 +26,20 @@ type Chapter struct {
 type Concept struct {
 	Name        string        `json:"name"`
 	Description string        `json:"description"`
+	WhyItWorks  string        `json:"whyItWorks"`  // Detailed explanation of WHY this pattern works
+	Intuition   string        `json:"intuition"`   // Easy-to-understand mental model
 	CoreIdeas   []string      `json:"coreIdeas"`
+	CommonMistakes []string   `json:"commonMistakes"` // What beginners often get wrong
 	Examples    []CodeExample `json:"examples"`
 }
 
 // Storyboard is a high-level animation script that can be fed to a renderer.
 type Storyboard struct {
-	ID    string           `json:"id"`
-	Title string           `json:"title"`
-	Goal  string           `json:"goal"`
-	Steps []StoryboardStep `json:"steps"`
+	ID         string           `json:"id"`
+	Title      string           `json:"title"`
+	Goal       string           `json:"goal"`
+	MemoryTips []string         `json:"memoryTips"` // Easy-to-remember steps for solving this type of problem
+	Steps      []StoryboardStep `json:"steps"`
 }
 
 // StoryboardStep is a single beat in an animation or visualization.

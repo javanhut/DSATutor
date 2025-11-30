@@ -253,6 +253,18 @@ class DSATracer:
                 "highlights": highlights
             }
 
+        # String as array (for sliding window on strings)
+        if isinstance(value, str) and len(value) > 0 and len(value) <= 50:
+            # Convert string to list of characters for visualization
+            char_list = list(value)
+            highlights = self.detect_array_highlights(name, char_list, all_locals)
+            return {
+                "name": name,
+                "type": "array",
+                "data": char_list,
+                "highlights": highlights
+            }
+
         # Dictionary/Hash table detection
         if isinstance(value, dict):
             # Check if it looks like an adjacency list (graph)
@@ -287,9 +299,13 @@ class DSATracer:
 
         return None
 
-    def detect_array_highlights(self, array_name: str, array: List, all_locals: Dict) -> Dict[str, int]:
+    def detect_array_highlights(self, array_name: str, array: List, all_locals: Dict) -> Dict:
         """Detect pointer variables that might reference array indices."""
-        highlights = {}
+        highlights = {
+            "pointers": {},
+            "window": None,
+            "annotations": []
+        }
 
         # Common pointer variable names
         pointer_vars = [
@@ -303,7 +319,53 @@ class DSATracer:
             if var_name in all_locals:
                 val = all_locals[var_name]
                 if isinstance(val, int) and 0 <= val < len(array):
-                    highlights[var_name] = val
+                    highlights["pointers"][var_name] = val
+
+        # Detect sliding window pattern (left/right or l/r or start/end pairs)
+        window_pairs = [('left', 'right'), ('l', 'r'), ('start', 'end'), ('i', 'j')]
+        for left_var, right_var in window_pairs:
+            if left_var in highlights["pointers"] and right_var in highlights["pointers"]:
+                left_idx = highlights["pointers"][left_var]
+                right_idx = highlights["pointers"][right_var]
+                if left_idx <= right_idx:
+                    highlights["window"] = {
+                        "start": left_idx,
+                        "end": right_idx,
+                        "leftVar": left_var,
+                        "rightVar": right_var
+                    }
+                    break
+
+        # Add annotations for common sliding window variables
+        annotation_vars = {
+            'max_len': 'Max Length',
+            'max_freq': 'Max Freq',
+            'result': 'Result',
+            'formed': 'Formed',
+            'required': 'Required',
+            'count': 'Count',
+            'window_count': 'Window',
+            'char_set': 'Chars in Window',
+            'min_len': 'Min Length',
+            'min_price': 'Min Price',
+            'max_profit': 'Max Profit',
+        }
+
+        for var_name, label in annotation_vars.items():
+            if var_name in all_locals:
+                val = all_locals[var_name]
+                # Format the value for display
+                if isinstance(val, set):
+                    display_val = '{' + ', '.join(str(v) for v in sorted(val, key=str)) + '}'
+                elif isinstance(val, dict):
+                    display_val = '{' + ', '.join(f'{k}:{v}' for k, v in val.items()) + '}'
+                elif isinstance(val, float) and val == float('inf'):
+                    display_val = 'inf'
+                elif isinstance(val, float) and val == float('-inf'):
+                    display_val = '-inf'
+                else:
+                    display_val = str(val)
+                highlights["annotations"].append({"label": label, "value": display_val})
 
         return highlights
 

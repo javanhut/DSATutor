@@ -18,13 +18,43 @@ const complexityFunctions = {
   'O(n^2)':     (n) => n * n,
 };
 
-// Curve styling configuration
+// Curve styling configuration with examples and explanations
 const curveConfig = {
-  'O(1)':       { color: '#22c55e', label: 'O(1)' },
-  'O(log n)':   { color: '#38bdf8', label: 'O(log n)' },
-  'O(n)':       { color: '#f59e0b', label: 'O(n)' },
-  'O(n log n)': { color: '#a855f7', label: 'O(n log n)' },
-  'O(n^2)':     { color: '#ef4444', label: 'O(n^2)' },
+  'O(1)': {
+    color: '#22c55e',
+    label: 'O(1)',
+    name: 'Constant',
+    examples: ['Array index lookup', 'Hash table access', 'Push/pop from stack'],
+    why: 'Operations take the same time regardless of input size. Direct memory address calculation.',
+  },
+  'O(log n)': {
+    color: '#38bdf8',
+    label: 'O(log n)',
+    name: 'Logarithmic',
+    examples: ['Binary search', 'Balanced BST lookup', 'Finding in sorted array'],
+    why: 'Each step eliminates half the remaining data. Doubling input only adds one more step.',
+  },
+  'O(n)': {
+    color: '#f59e0b',
+    label: 'O(n)',
+    name: 'Linear',
+    examples: ['Linear search', 'Array traversal', 'Finding max/min'],
+    why: 'Must examine each element once. Time grows directly with input size.',
+  },
+  'O(n log n)': {
+    color: '#a855f7',
+    label: 'O(n log n)',
+    name: 'Linearithmic',
+    examples: ['Merge sort', 'Quick sort (avg)', 'Heap sort'],
+    why: 'Divide-and-conquer: split into halves (log n levels), process all n items at each level.',
+  },
+  'O(n^2)': {
+    color: '#ef4444',
+    label: 'O(n^2)',
+    name: 'Quadratic',
+    examples: ['Bubble sort', 'Selection sort', 'Nested loops over same data'],
+    why: 'For each element, examine all other elements. Nested iteration over input.',
+  },
 };
 
 // Step to N-value mapping for storyboard progression
@@ -36,17 +66,18 @@ class RuntimeShapesVisualizer {
     this.container = container;
     this.config = config;
     this.maxN = 100;
-    this.currentN = 100;
+    this.currentN = 50;
     this.curveVisibility = {};
+    this.selectedCurve = 'O(n)'; // Default selection
     Object.keys(curveConfig).forEach(k => this.curveVisibility[k] = true);
     this.svg = null;
     this.paths = {};
     this.animationId = null;
 
     // SVG dimensions
-    this.width = 600;
-    this.height = 400;
-    this.padding = { top: 30, right: 30, bottom: 50, left: 60 };
+    this.width = 500;
+    this.height = 300;
+    this.padding = { top: 30, right: 30, bottom: 50, left: 70 };
     this.chartWidth = this.width - this.padding.left - this.padding.right;
     this.chartHeight = this.height - this.padding.top - this.padding.bottom;
   }
@@ -54,10 +85,20 @@ class RuntimeShapesVisualizer {
   mount() {
     this.container.innerHTML = '';
 
+    // Create main layout - side by side
+    const layout = document.createElement('div');
+    layout.className = 'runtime-viz-layout';
+    this.container.appendChild(layout);
+
+    // Left side: graph
+    const graphSection = document.createElement('div');
+    graphSection.className = 'runtime-graph-section';
+    layout.appendChild(graphSection);
+
     // Create controls container
     const controls = document.createElement('div');
     controls.className = 'viz-controls';
-    this.container.appendChild(controls);
+    graphSection.appendChild(controls);
 
     // Create toggle buttons
     this.createToggles(controls);
@@ -66,7 +107,18 @@ class RuntimeShapesVisualizer {
     this.createSlider(controls);
 
     // Create SVG canvas
-    this.createSVG();
+    this.createSVG(graphSection);
+
+    // Right side: operations table and explanation
+    const infoSection = document.createElement('div');
+    infoSection.className = 'runtime-info-section';
+    layout.appendChild(infoSection);
+
+    // Create operations table
+    this.createOpsTable(infoSection);
+
+    // Create explanation panel
+    this.createExplanationPanel(infoSection);
 
     // Initial render
     this.render();
@@ -123,12 +175,12 @@ class RuntimeShapesVisualizer {
     container.appendChild(sliderWrap);
   }
 
-  createSVG() {
+  createSVG(container) {
     const svgNS = 'http://www.w3.org/2000/svg';
 
     this.svg = document.createElementNS(svgNS, 'svg');
     this.svg.setAttribute('viewBox', `0 0 ${this.width} ${this.height}`);
-    this.svg.setAttribute('class', 'viz-canvas');
+    this.svg.setAttribute('class', 'runtime-svg');
 
     // Create axes group
     const axesGroup = document.createElementNS(svgNS, 'g');
@@ -150,12 +202,151 @@ class RuntimeShapesVisualizer {
       path.setAttribute('stroke-width', '2.5');
       path.setAttribute('stroke-linecap', 'round');
       path.setAttribute('stroke-linejoin', 'round');
+      path.style.cursor = 'pointer';
+      path.onclick = () => this.selectCurve(key);
       this.paths[key] = path;
       curvesGroup.appendChild(path);
     });
 
+    // Create vertical line indicator for current N
+    this.nLine = document.createElementNS(svgNS, 'line');
+    this.nLine.setAttribute('class', 'n-indicator');
+    this.nLine.setAttribute('stroke', 'var(--text-dim)');
+    this.nLine.setAttribute('stroke-width', '1');
+    this.nLine.setAttribute('stroke-dasharray', '4,4');
+    this.svg.appendChild(this.nLine);
+
     this.svg.appendChild(curvesGroup);
-    this.container.appendChild(this.svg);
+    container.appendChild(this.svg);
+  }
+
+  createOpsTable(container) {
+    const tableWrapper = document.createElement('div');
+    tableWrapper.className = 'ops-table-wrapper';
+
+    const title = document.createElement('h4');
+    title.textContent = 'Operations at n = ';
+    const nSpan = document.createElement('span');
+    nSpan.className = 'ops-n-value';
+    nSpan.textContent = this.currentN;
+    this.opsNValue = nSpan;
+    title.appendChild(nSpan);
+    tableWrapper.appendChild(title);
+
+    const table = document.createElement('table');
+    table.className = 'ops-table';
+
+    const thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th>Complexity</th><th>Operations</th><th>If 1ms each</th></tr>';
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    this.opsTableBody = tbody;
+    table.appendChild(tbody);
+
+    tableWrapper.appendChild(table);
+    container.appendChild(tableWrapper);
+  }
+
+  createExplanationPanel(container) {
+    const panel = document.createElement('div');
+    panel.className = 'complexity-explanation';
+
+    const defaultContent = `
+      <div class="explanation-prompt">
+        <p>Click on a curve or toggle button to see details about that complexity class.</p>
+        <p class="explanation-hint">Drag the slider to see how operations grow with input size.</p>
+      </div>
+    `;
+    panel.innerHTML = defaultContent;
+    this.explanationPanel = panel;
+    container.appendChild(panel);
+  }
+
+  selectCurve(key) {
+    this.selectedCurve = key;
+    this.updateExplanation();
+
+    // Highlight selected curve
+    Object.entries(this.paths).forEach(([k, path]) => {
+      if (k === key) {
+        path.setAttribute('stroke-width', '4');
+      } else {
+        path.setAttribute('stroke-width', '2.5');
+      }
+    });
+  }
+
+  updateExplanation() {
+    if (!this.selectedCurve || !this.explanationPanel) return;
+
+    const cfg = curveConfig[this.selectedCurve];
+    const fn = complexityFunctions[this.selectedCurve];
+    const ops = Math.round(fn(this.currentN));
+
+    this.explanationPanel.innerHTML = `
+      <div class="explanation-content">
+        <div class="explanation-header" style="border-left-color: ${cfg.color}">
+          <span class="complexity-badge" style="background: ${cfg.color}">${cfg.label}</span>
+          <span class="complexity-name">${cfg.name} Time</span>
+        </div>
+        <div class="explanation-why">
+          <strong>Why?</strong> ${cfg.why}
+        </div>
+        <div class="explanation-examples">
+          <strong>Examples:</strong>
+          <ul>
+            ${cfg.examples.map(ex => `<li>${ex}</li>`).join('')}
+          </ul>
+        </div>
+        <div class="explanation-calc">
+          <strong>At n = ${this.currentN}:</strong> ${ops.toLocaleString()} operations
+        </div>
+      </div>
+    `;
+  }
+
+  updateOpsTable() {
+    if (!this.opsTableBody || !this.opsNValue) return;
+
+    this.opsNValue.textContent = this.currentN;
+
+    const rows = Object.entries(curveConfig).map(([key, cfg]) => {
+      const fn = complexityFunctions[key];
+      const ops = fn(this.currentN);
+      const time = this.formatTime(ops);
+      const isSelected = key === this.selectedCurve;
+
+      return `
+        <tr class="${isSelected ? 'selected' : ''}" style="--row-color: ${cfg.color}">
+          <td>
+            <span class="ops-dot" style="background: ${cfg.color}"></span>
+            ${cfg.label}
+          </td>
+          <td class="ops-count">${this.formatOps(ops)}</td>
+          <td class="ops-time">${time}</td>
+        </tr>
+      `;
+    }).join('');
+
+    this.opsTableBody.innerHTML = rows;
+  }
+
+  formatOps(n) {
+    if (n < 1000) return Math.round(n).toString();
+    if (n < 1000000) return (n / 1000).toFixed(1) + 'K';
+    if (n < 1000000000) return (n / 1000000).toFixed(1) + 'M';
+    return (n / 1000000000).toFixed(1) + 'B';
+  }
+
+  formatTime(ops) {
+    const ms = ops; // 1 op = 1ms
+    if (ms < 1000) return ms.toFixed(0) + ' ms';
+    if (ms < 60000) return (ms / 1000).toFixed(1) + ' sec';
+    if (ms < 3600000) return (ms / 60000).toFixed(1) + ' min';
+    if (ms < 86400000) return (ms / 3600000).toFixed(1) + ' hrs';
+    if (ms < 31536000000) return (ms / 86400000).toFixed(1) + ' days';
+    return (ms / 31536000000).toFixed(1) + ' yrs';
   }
 
   drawAxes(group) {
@@ -245,11 +436,29 @@ class RuntimeShapesVisualizer {
         path.style.opacity = this.curveVisibility[key] ? 1 : 0;
       }
     });
+
+    // Update N indicator line
+    if (this.nLine) {
+      const x = this.scaleX(this.currentN);
+      this.nLine.setAttribute('x1', x);
+      this.nLine.setAttribute('y1', this.padding.top);
+      this.nLine.setAttribute('x2', x);
+      this.nLine.setAttribute('y2', this.padding.top + this.chartHeight);
+    }
+
+    // Update operations table
+    this.updateOpsTable();
+
+    // Update explanation if a curve is selected
+    if (this.selectedCurve) {
+      this.updateExplanation();
+    }
   }
 
   toggleCurve(key, btn) {
     this.curveVisibility[key] = !this.curveVisibility[key];
     btn.classList.toggle('active', this.curveVisibility[key]);
+    this.selectCurve(key);
     this.render();
   }
 
@@ -6523,10 +6732,133 @@ function selectChapter(ch) {
   }
 
   populateSelectors();
+  renderTutorialContent(ch);
+  renderMemoryTips(getStoryboard());
   renderStoryboard(getStoryboard());
   renderExamples(ch);
   mountVisualizer(getVisualizer());
   renderEditor();
+}
+
+// Render the tutorial content with WHY explanations
+function renderTutorialContent(ch) {
+  const container = el("tutorial-content");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  if (!ch.concepts || ch.concepts.length === 0) {
+    container.innerHTML = `<p class="placeholder">No concepts defined for this chapter yet.</p>`;
+    return;
+  }
+
+  ch.concepts.forEach((concept) => {
+    const block = document.createElement("div");
+    block.className = "concept-block";
+
+    let bodyContent = "";
+
+    // WHY IT WORKS section
+    if (concept.whyItWorks) {
+      bodyContent += `
+        <div class="why-section">
+          <h4>Why It Works</h4>
+          <p>${escapeHtml(concept.whyItWorks)}</p>
+        </div>
+      `;
+    }
+
+    // INTUITION section
+    if (concept.intuition) {
+      bodyContent += `
+        <div class="intuition-section">
+          <h4>Mental Model</h4>
+          <p>${escapeHtml(concept.intuition)}</p>
+        </div>
+      `;
+    }
+
+    // CORE IDEAS section
+    if (concept.coreIdeas && concept.coreIdeas.length > 0) {
+      bodyContent += `
+        <div class="core-ideas">
+          <h4>Key Points</h4>
+          <ul>
+            ${concept.coreIdeas.map(idea => `<li>${escapeHtml(idea)}</li>`).join("")}
+          </ul>
+        </div>
+      `;
+    }
+
+    // COMMON MISTAKES section
+    if (concept.commonMistakes && concept.commonMistakes.length > 0) {
+      bodyContent += `
+        <div class="mistakes-section">
+          <h4>Common Mistakes</h4>
+          <ul>
+            ${concept.commonMistakes.map(mistake => `<li>${escapeHtml(mistake)}</li>`).join("")}
+          </ul>
+        </div>
+      `;
+    }
+
+    // If no detailed content, show description
+    if (!bodyContent) {
+      bodyContent = `<p class="concept-description">${escapeHtml(concept.description)}</p>`;
+    }
+
+    block.innerHTML = `
+      <div class="concept-header">
+        <h3>${escapeHtml(concept.name)}</h3>
+        <p class="concept-desc">${escapeHtml(concept.description)}</p>
+      </div>
+      <div class="concept-body">
+        ${bodyContent}
+      </div>
+    `;
+
+    container.appendChild(block);
+  });
+}
+
+// Render memory tips for the current storyboard
+function renderMemoryTips(sb) {
+  const container = el("memory-tips");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  if (!sb || !sb.memoryTips || sb.memoryTips.length === 0) {
+    // Fallback to generating tips from storyboard steps
+    if (sb && sb.steps && sb.steps.length > 0) {
+      sb.steps.forEach((step, idx) => {
+        const tip = document.createElement("div");
+        tip.className = "memory-tip";
+        tip.innerHTML = `
+          <span class="memory-tip-num">${idx + 1}</span>
+          <div class="memory-tip-content">
+            <p>${escapeHtml(step.narration)}</p>
+          </div>
+        `;
+        container.appendChild(tip);
+      });
+    } else {
+      container.innerHTML = `<p class="placeholder">No memory tips defined for this topic.</p>`;
+    }
+    return;
+  }
+
+  sb.memoryTips.forEach((tip, idx) => {
+    const tipEl = document.createElement("div");
+    tipEl.className = "memory-tip";
+    tipEl.innerHTML = `
+      <span class="memory-tip-num">${idx + 1}</span>
+      <div class="memory-tip-content">
+        <p>${escapeHtml(tip)}</p>
+      </div>
+    `;
+    container.appendChild(tipEl);
+  });
 }
 
 function renderStoryboard(sb) {
@@ -6739,10 +7071,11 @@ function populateSelectors() {
   sbSelect.value = state.storyboardIndex;
   sbSelect.onchange = () => {
     state.storyboardIndex = Number(sbSelect.value);
-    renderStoryboard(getStoryboard());
+    const sb = getStoryboard();
+    renderMemoryTips(sb);
+    renderStoryboard(sb);
     renderEditor();
     // Mount animation if available
-    const sb = getStoryboard();
     if (sb && sb.id) {
       mountAnimation(sb.id);
     }
@@ -7668,51 +8001,95 @@ function renderArrayViz(struct) {
   const data = struct.data || [];
   const highlights = struct.highlights || {};
 
+  // Handle both old format (direct pointer map) and new format (with pointers, window, annotations)
+  const pointers = highlights.pointers || highlights;
+  const window = highlights.window || null;
+  const annotations = highlights.annotations || [];
+
   // Build pointer labels for each index
   const pointersByIndex = {};
-  Object.entries(highlights).forEach(([name, idx]) => {
+  Object.entries(pointers).forEach(([name, idx]) => {
     if (typeof idx === 'number' && idx >= 0 && idx < data.length) {
       if (!pointersByIndex[idx]) pointersByIndex[idx] = [];
       pointersByIndex[idx].push(name);
     }
   });
 
+  // Build set of indices inside the window
+  const windowIndices = new Set();
+  if (window && typeof window.start === 'number' && typeof window.end === 'number') {
+    for (let i = window.start; i <= window.end; i++) {
+      windowIndices.add(i);
+    }
+  }
+
   let html = `<div class="array-viz">
-    <div class="struct-label">${escapeHtml(struct.name)}</div>
-    <div class="array-container">
+    <div class="struct-label">${escapeHtml(struct.name)}</div>`;
+
+  // Render annotations if present
+  if (annotations.length > 0) {
+    html += `<div class="array-annotations">`;
+    annotations.forEach(ann => {
+      html += `<span class="annotation"><span class="ann-label">${escapeHtml(ann.label)}:</span> <span class="ann-value">${escapeHtml(ann.value)}</span></span>`;
+    });
+    html += `</div>`;
+  }
+
+  html += `<div class="array-container">
       <div class="array-cells-horizontal">`;
 
   data.forEach((val, i) => {
-    const pointers = pointersByIndex[i] || [];
-    const hasPointer = pointers.length > 0;
-    const pointerClasses = pointers.map(p => `pointer-${p}`).join(' ');
+    const pointerList = pointersByIndex[i] || [];
+    const hasPointer = pointerList.length > 0;
+    const pointerClasses = pointerList.map(p => `pointer-${p}`).join(' ');
+    const inWindow = windowIndices.has(i);
+
+    // Determine if this is a window boundary
+    const isWindowStart = window && i === window.start;
+    const isWindowEnd = window && i === window.end;
 
     // Determine cell highlight class based on pointer type
     let highlightClass = '';
-    if (pointers.includes('low') || pointers.includes('left') || pointers.includes('start')) {
+    if (pointerList.includes('low') || pointerList.includes('left') || pointerList.includes('start') || pointerList.includes('l')) {
       highlightClass = 'highlight-low';
-    } else if (pointers.includes('high') || pointers.includes('right') || pointers.includes('end')) {
+    } else if (pointerList.includes('high') || pointerList.includes('right') || pointerList.includes('end') || pointerList.includes('r')) {
       highlightClass = 'highlight-high';
-    } else if (pointers.includes('mid') || pointers.includes('pivot')) {
+    } else if (pointerList.includes('mid') || pointerList.includes('pivot')) {
       highlightClass = 'highlight-mid';
-    } else if (pointers.includes('i') || pointers.includes('current') || pointers.includes('slow')) {
+    } else if (pointerList.includes('i') || pointerList.includes('current') || pointerList.includes('slow')) {
       highlightClass = 'highlight-i';
-    } else if (pointers.includes('j') || pointers.includes('fast')) {
+    } else if (pointerList.includes('j') || pointerList.includes('fast')) {
       highlightClass = 'highlight-j';
     } else if (hasPointer) {
       highlightClass = 'highlight-other';
     }
 
-    html += `<div class="array-cell-wrapper">
-      <div class="array-cell ${highlightClass} ${pointerClasses}">
+    // Add window styling
+    let windowClass = '';
+    if (inWindow) {
+      windowClass = 'in-window';
+      if (isWindowStart) windowClass += ' window-start';
+      if (isWindowEnd) windowClass += ' window-end';
+    }
+
+    html += `<div class="array-cell-wrapper ${windowClass}">
+      <div class="array-cell ${highlightClass} ${pointerClasses} ${windowClass}">
         <span class="cell-value">${escapeHtml(String(val))}</span>
       </div>
       <div class="cell-index">${i}</div>
-      ${hasPointer ? `<div class="cell-pointers">${pointers.map(p => `<span class="pointer-label pointer-${p}">${p}</span>`).join('')}</div>` : ''}
+      ${hasPointer ? `<div class="cell-pointers">${pointerList.map(p => `<span class="pointer-label pointer-${p}">${p}</span>`).join('')}</div>` : ''}
     </div>`;
   });
 
-  html += `</div></div></div>`;
+  html += `</div></div>`;
+
+  // Add window size indicator if window exists
+  if (window) {
+    const windowSize = window.end - window.start + 1;
+    html += `<div class="window-info">Window: [${window.start}..${window.end}] (size: ${windowSize})</div>`;
+  }
+
+  html += `</div>`;
   return html;
 }
 

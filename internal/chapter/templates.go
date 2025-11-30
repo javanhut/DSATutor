@@ -22,7 +22,14 @@ func DefaultChapters() []Chapter {
 				{
 					Name:        "Binary Search",
 					Description: "Narrow a sorted list by halving.",
-					CoreIdeas:   []string{"Requires sorted data", "Logarithmic steps"},
+					WhyItWorks:  "Binary search works because the data is sorted. When you check the middle element, you instantly know which half contains the target (if it exists). Since you eliminate half the remaining elements with each comparison, you can search through a billion items in just 30 steps instead of a billion steps.",
+					Intuition:   "Think of finding a word in a dictionary. You don't start at page 1 and read every word. You open to the middle, see if your word comes before or after, then repeat with the correct half. Each time you halve your search space.",
+					CoreIdeas:   []string{"Requires sorted data", "Logarithmic steps", "Eliminates half each iteration"},
+					CommonMistakes: []string{
+						"Using on unsorted data - always sort first or use a different algorithm",
+						"Off-by-one errors with low/high bounds - use <= not <",
+						"Integer overflow when computing mid - use low + (high - low) // 2",
+					},
 					Examples: []CodeExample{
 						{
 							ID:       "binary_search",
@@ -47,7 +54,14 @@ func DefaultChapters() []Chapter {
 				{
 					Name:        "Big O Notation",
 					Description: "Describe how work scales with input size.",
-					CoreIdeas:   []string{"Worst-case framing", "Compare shapes, not constants"},
+					WhyItWorks:  "Big O notation works because it focuses on the dominant term - the part of the algorithm that grows fastest as input increases. Constants and lower-order terms become negligible at scale. An O(n) algorithm with a slow constant is still better than O(n^2) with a fast constant for large enough n.",
+					Intuition:   "Imagine timing two runners: one walks 1 meter per second, one runs but has to do a pushup every step. For a 10-meter race, the pushup runner might win. For a marathon, the walker wins easily. Big O tells you who wins the marathon.",
+					CoreIdeas:   []string{"Worst-case framing", "Compare shapes, not constants", "Focus on dominant term"},
+					CommonMistakes: []string{
+						"Confusing average case with worst case - Big O typically describes worst case",
+						"Comparing raw milliseconds instead of growth patterns",
+						"Ignoring space complexity - memory usage matters too",
+					},
 					Examples: []CodeExample{
 						{
 							ID:       "big_o_loop",
@@ -66,6 +80,15 @@ for item in items:
 					ID:    "binary-search",
 					Title: "Binary Search Walkthrough",
 					Goal:  "Show halving a sorted array until the target is found or missed.",
+					MemoryTips: []string{
+						"Check if the array is SORTED - binary search only works on sorted data",
+						"Set LOW to 0 and HIGH to length-1 to define your search bounds",
+						"Calculate MID as (low + high) / 2 to find the middle element",
+						"Compare: if target equals mid value, you found it!",
+						"If target is GREATER, search RIGHT half (low = mid + 1)",
+						"If target is SMALLER, search LEFT half (high = mid - 1)",
+						"Repeat until low > high (not found) or element found",
+					},
 					Steps: []StoryboardStep{
 						{Cue: "sorted-lineup", Narration: "Start with a sorted list of numbers.", VisualHint: "Array laid out left to right", Duration: Duration(2 * time.Second), CodeRef: "binary_search: init low/high"},
 						{Cue: "pick-middle", Narration: "Inspect the middle item; compare against the target.", VisualHint: "Highlight mid index", Duration: Duration(3 * time.Second), CodeRef: "binary_search: mid calc"},
@@ -120,7 +143,14 @@ for item in items:
 				{
 					Name:        "Arrays",
 					Description: "Contiguous memory with O(1) index lookup.",
-					CoreIdeas:   []string{"Fast reads", "Slow middle insertions"},
+					WhyItWorks:  "Arrays store elements in contiguous memory slots. Because each slot has the same size, the computer can calculate any element's exact memory address using simple math: base_address + (index * element_size). This makes lookups instant regardless of array size.",
+					Intuition:   "Think of a parking lot with numbered spaces. To find car #47, you don't walk past spaces 1-46. You just go directly to space 47 because you know exactly where it is. That's O(1) access.",
+					CoreIdeas:   []string{"Fast reads O(1)", "Slow middle insertions O(n)", "Fixed-size memory blocks"},
+					CommonMistakes: []string{
+						"Inserting in the middle frequently - use linked list instead",
+						"Not pre-allocating when size is known - causes repeated resizing",
+						"Index out of bounds - always check boundaries",
+					},
 					Examples: []CodeExample{
 						{
 							ID:       "array_index",
@@ -135,7 +165,14 @@ second = vals[1]  # O(1) read`,
 				{
 					Name:        "Linked Lists",
 					Description: "Nodes linked by pointers.",
-					CoreIdeas:   []string{"Fast inserts/removals", "Sequential reads"},
+					WhyItWorks:  "Linked lists work because each node stores a pointer to the next node. To insert or remove, you just change a few pointers - no shifting required. The tradeoff is that finding the nth element requires walking through n-1 nodes since there's no direct access.",
+					Intuition:   "Think of a treasure hunt where each clue tells you where to find the next clue. Adding a new clue in the middle is easy - just update two papers. But finding the 50th clue means following 49 clues first.",
+					CoreIdeas:   []string{"Fast inserts/removals O(1)", "Sequential reads O(n)", "Dynamic size"},
+					CommonMistakes: []string{
+						"Losing the head pointer - always keep a reference to the start",
+						"Not handling None/null at list end - check before accessing .next",
+						"Creating cycles accidentally - ensure last node points to None",
+					},
 					Examples: []CodeExample{
 						{
 							ID:       "linked_list_insert",
@@ -237,39 +274,281 @@ def insert_after(node, val):
 				"Identify base vs. recursive cases in code",
 				"Trace call stacks and unwinding",
 				"Recognize when recursion is a good fit",
+				"Convert iterative solutions to recursive ones",
+				"Understand tail recursion optimization",
 			},
 			Concepts: []Concept{
 				{
 					Name:        "Base Case",
-					Description: "The simplest input handled directly.",
-					CoreIdeas:   []string{"Stops recursion", "Often size 0 or 1"},
+					Description: "The simplest input handled directly without further recursion.",
+					CoreIdeas:   []string{"Stops recursion", "Often size 0 or 1", "Must be reachable"},
 					Examples: []CodeExample{
 						{
 							ID:       "factorial",
-							Title:    "Base case for factorial",
+							Title:    "Factorial - Classic recursion",
 							Language: "python",
-							Snippet: `def fact(n):
+							Snippet: `def factorial(n):
     if n <= 1:  # base case
         return 1
-    return n * fact(n - 1)`,
+    return n * factorial(n - 1)
+
+# factorial(5) = 5 * 4 * 3 * 2 * 1 = 120`,
 							Notes: "Base case must be reachable to avoid infinite recursion.",
+						},
+						{
+							ID:       "fibonacci",
+							Title:    "Fibonacci sequence",
+							Language: "python",
+							Snippet: `def fib(n):
+    if n <= 1:  # base cases: fib(0)=0, fib(1)=1
+        return n
+    return fib(n - 1) + fib(n - 2)
+
+# fib(6) = 8  (0, 1, 1, 2, 3, 5, 8...)`,
+							Notes: "Two base cases (n=0 and n=1). Two recursive calls create exponential time complexity.",
 						},
 					},
 				},
 				{
 					Name:        "Recursive Case",
-					Description: "Reduces the problem size and calls itself.",
-					CoreIdeas:   []string{"Moves toward base case", "Accumulates work"},
+					Description: "Reduces the problem size and calls itself with smaller input.",
+					CoreIdeas:   []string{"Moves toward base case", "Accumulates or combines results", "Each call must make progress"},
 					Examples: []CodeExample{
 						{
 							ID:       "recursive_sum",
-							Title:    "Recursive sum",
+							Title:    "Sum a list recursively",
 							Language: "python",
 							Snippet: `def sum_list(nums):
-    if len(nums) == 0:  # base
+    if len(nums) == 0:  # base case
         return 0
-    return nums[0] + sum_list(nums[1:])  # recursive case`,
-							Notes: "Each call shrinks the input, ensuring termination.",
+    return nums[0] + sum_list(nums[1:])
+
+# sum_list([1,2,3,4]) = 1 + 2 + 3 + 4 = 10`,
+							Notes: "Each call shrinks the input by one element.",
+						},
+						{
+							ID:       "reverse_string",
+							Title:    "Reverse a string",
+							Language: "python",
+							Snippet: `def reverse(s):
+    if len(s) <= 1:  # base case
+        return s
+    return reverse(s[1:]) + s[0]
+
+# reverse("hello") = "olleh"`,
+							Notes: "Move first char to end, reverse the rest.",
+						},
+						{
+							ID:       "count_digits",
+							Title:    "Count digits in a number",
+							Language: "python",
+							Snippet: `def count_digits(n):
+    n = abs(n)
+    if n < 10:  # base case: single digit
+        return 1
+    return 1 + count_digits(n // 10)
+
+# count_digits(12345) = 5`,
+							Notes: "Remove last digit each call until single digit remains.",
+						},
+					},
+				},
+				{
+					Name:        "Multiple Recursive Calls",
+					Description: "Some problems require calling recursion multiple times per call.",
+					CoreIdeas:   []string{"Tree-like call structure", "Often exponential without memoization", "Common in divide-and-conquer"},
+					Examples: []CodeExample{
+						{
+							ID:       "binary_search_recursive",
+							Title:    "Binary search (recursive)",
+							Language: "python",
+							Snippet: `def binary_search(arr, target, lo, hi):
+    if lo > hi:  # base case: not found
+        return -1
+    mid = (lo + hi) // 2
+    if arr[mid] == target:
+        return mid  # base case: found
+    elif arr[mid] < target:
+        return binary_search(arr, target, mid + 1, hi)
+    else:
+        return binary_search(arr, target, lo, mid - 1)`,
+							Notes: "Only one recursive call per invocation - O(log n) depth.",
+						},
+						{
+							ID:       "power_recursive",
+							Title:    "Exponentiation (fast power)",
+							Language: "python",
+							Snippet: `def power(base, exp):
+    if exp == 0:  # base case
+        return 1
+    if exp % 2 == 0:
+        half = power(base, exp // 2)
+        return half * half
+    else:
+        return base * power(base, exp - 1)
+
+# power(2, 10) = 1024 in O(log n) calls`,
+							Notes: "Divide exponent by 2 when even for O(log n) complexity.",
+						},
+						{
+							ID:       "merge_sort",
+							Title:    "Merge sort",
+							Language: "python",
+							Snippet: `def merge_sort(arr):
+    if len(arr) <= 1:  # base case
+        return arr
+    mid = len(arr) // 2
+    left = merge_sort(arr[:mid])   # recurse left
+    right = merge_sort(arr[mid:])  # recurse right
+    return merge(left, right)      # combine
+
+def merge(left, right):
+    result = []
+    i = j = 0
+    while i < len(left) and j < len(right):
+        if left[i] <= right[j]:
+            result.append(left[i])
+            i += 1
+        else:
+            result.append(right[j])
+            j += 1
+    result.extend(left[i:])
+    result.extend(right[j:])
+    return result`,
+							Notes: "Divide-and-conquer: split, sort halves, merge results.",
+						},
+					},
+				},
+				{
+					Name:        "Recursion on Data Structures",
+					Description: "Recursion naturally fits tree and linked list traversal.",
+					CoreIdeas:   []string{"Trees are recursive structures", "Process node, then children", "Linked lists are linear recursion"},
+					Examples: []CodeExample{
+						{
+							ID:       "tree_sum",
+							Title:    "Sum all nodes in a binary tree",
+							Language: "python",
+							Snippet: `def tree_sum(node):
+    if node is None:  # base case
+        return 0
+    return node.val + tree_sum(node.left) + tree_sum(node.right)`,
+							Notes: "Each node adds its value plus sums of both subtrees.",
+						},
+						{
+							ID:       "tree_height",
+							Title:    "Height of a binary tree",
+							Language: "python",
+							Snippet: `def height(node):
+    if node is None:  # base case
+        return 0
+    left_h = height(node.left)
+    right_h = height(node.right)
+    return 1 + max(left_h, right_h)`,
+							Notes: "Height is 1 plus the maximum height of children.",
+						},
+						{
+							ID:       "linked_list_length",
+							Title:    "Length of a linked list",
+							Language: "python",
+							Snippet: `def length(node):
+    if node is None:  # base case
+        return 0
+    return 1 + length(node.next)`,
+							Notes: "Count current node (1) plus length of remaining list.",
+						},
+						{
+							ID:       "reverse_linked_list",
+							Title:    "Reverse a linked list",
+							Language: "python",
+							Snippet: `def reverse_list(head, prev=None):
+    if head is None:  # base case
+        return prev
+    next_node = head.next
+    head.next = prev
+    return reverse_list(next_node, head)`,
+							Notes: "Pass reversed portion as accumulator parameter.",
+						},
+					},
+				},
+				{
+					Name:        "Tail Recursion",
+					Description: "A recursive call is tail-recursive if it's the last operation.",
+					CoreIdeas:   []string{"Can be optimized to iteration", "Uses accumulator pattern", "Avoids stack overflow in some languages"},
+					Examples: []CodeExample{
+						{
+							ID:       "factorial_tail",
+							Title:    "Tail-recursive factorial",
+							Language: "python",
+							Snippet: `def factorial_tail(n, acc=1):
+    if n <= 1:  # base case
+        return acc
+    return factorial_tail(n - 1, n * acc)
+
+# factorial_tail(5) = factorial_tail(4, 5)
+#                   = factorial_tail(3, 20)
+#                   = factorial_tail(2, 60)
+#                   = factorial_tail(1, 120) = 120`,
+							Notes: "Accumulator carries the result; no work after recursive call.",
+						},
+						{
+							ID:       "sum_tail",
+							Title:    "Tail-recursive sum",
+							Language: "python",
+							Snippet: `def sum_tail(nums, acc=0):
+    if len(nums) == 0:
+        return acc
+    return sum_tail(nums[1:], acc + nums[0])`,
+							Notes: "Accumulator pattern transforms head-recursive to tail-recursive.",
+						},
+					},
+				},
+				{
+					Name:        "Recursion vs Iteration",
+					Description: "Any recursion can be converted to iteration and vice versa.",
+					CoreIdeas:   []string{"Recursion uses call stack implicitly", "Iteration needs explicit stack for same effect", "Choose based on clarity and constraints"},
+					Examples: []CodeExample{
+						{
+							ID:       "factorial_iterative",
+							Title:    "Factorial: recursive vs iterative",
+							Language: "python",
+							Snippet: `# Recursive
+def fact_rec(n):
+    if n <= 1:
+        return 1
+    return n * fact_rec(n - 1)
+
+# Iterative
+def fact_iter(n):
+    result = 1
+    for i in range(2, n + 1):
+        result *= i
+    return result`,
+							Notes: "Iterative avoids call stack overhead but may be less intuitive.",
+						},
+						{
+							ID:       "tree_iterative",
+							Title:    "Tree traversal: recursive vs iterative",
+							Language: "python",
+							Snippet: `# Recursive inorder
+def inorder_rec(node, result):
+    if node:
+        inorder_rec(node.left, result)
+        result.append(node.val)
+        inorder_rec(node.right, result)
+
+# Iterative inorder
+def inorder_iter(root):
+    result, stack = [], []
+    current = root
+    while current or stack:
+        while current:
+            stack.append(current)
+            current = current.left
+        current = stack.pop()
+        result.append(current.val)
+        current = current.right
+    return result`,
+							Notes: "Iterative version explicitly manages the call stack.",
 						},
 					},
 				},
@@ -285,6 +564,16 @@ def insert_after(node, val):
 						{Cue: "pop", Narration: "Frames pop as results return.", VisualHint: "Stack shrinks upward", Duration: Duration(3 * time.Second), CodeRef: "recursion: return unwind"},
 					},
 				},
+				{
+					ID:    "fibonacci-tree",
+					Title: "Fibonacci Call Tree",
+					Goal:  "Visualize the exponential branching of naive Fibonacci.",
+					Steps: []StoryboardStep{
+						{Cue: "branch", Narration: "Each fib(n) spawns two calls: fib(n-1) and fib(n-2).", VisualHint: "Binary tree of calls", Duration: Duration(3 * time.Second), CodeRef: "fib: double recursion"},
+						{Cue: "overlap", Narration: "Notice repeated subproblems like fib(2) computed multiple times.", VisualHint: "Highlight duplicate nodes", Duration: Duration(3 * time.Second), CodeRef: "fib: redundant work"},
+						{Cue: "optimize", Narration: "Memoization stores results to avoid recomputation.", VisualHint: "Cache lookup arrows", Duration: Duration(3 * time.Second), CodeRef: "fib: memoized"},
+					},
+				},
 			},
 			Tutorials: []Tutorial{
 				{
@@ -296,12 +585,25 @@ def insert_after(node, val):
 						{Prompt: "Define the recursive step.", Guidance: "First element plus sum of the rest.", CodeFocus: "nums[0] + sum(nums[1:])", Checkpoint: "Problem size shrinks each call."},
 					},
 				},
+				{
+					ID:      "tree-max-depth",
+					Title:   "Maximum Depth of Binary Tree",
+					Outcome: "Use recursion to find the height of a tree.",
+					Steps: []TutorialStep{
+						{Prompt: "What is the base case?", Guidance: "An empty tree (None) has depth 0.", CodeFocus: "if not node: return 0", Checkpoint: "Null check prevents errors."},
+						{Prompt: "How do we combine results?", Guidance: "1 + max of left and right depths.", CodeFocus: "1 + max(depth(left), depth(right))", Checkpoint: "We count current level and take deeper subtree."},
+					},
+				},
 			},
 			Exercises: []Exercise{
 				{ID: "recursion-proof", Prompt: "Explain why every recursive algorithm needs a base case.", Difficulty: "Easy", Outcome: "Connects base cases to termination."},
+				{ID: "fib-complexity", Prompt: "What is the time complexity of naive recursive Fibonacci? Why?", Difficulty: "Medium", Outcome: "Understands exponential growth from overlapping subproblems."},
+				{ID: "tail-convert", Prompt: "Convert this recursive function to tail-recursive form: def product(nums): return 1 if not nums else nums[0] * product(nums[1:])", Difficulty: "Medium", Outcome: "Practices accumulator pattern."},
+				{ID: "recursion-to-iteration", Prompt: "Write an iterative version of binary search without using recursion.", Difficulty: "Medium", Outcome: "Understands recursion-iteration equivalence."},
 			},
 			Visualizers: []Visualizer{
 				{ID: "stack-tracer", Title: "Stack Tracer", Goal: "Step through recursive calls with a visible stack.", DataModel: "function frames", Interactions: []string{"step", "rewind", "auto"}, Hooks: []string{"onStep", "onReset", "onFrameChange"}},
+				{ID: "call-tree", Title: "Call Tree Visualizer", Goal: "See the tree structure of recursive calls.", DataModel: "call nodes", Interactions: []string{"expand", "collapse", "highlight-path"}, Hooks: []string{"onNodeClick", "onExpand"}},
 			},
 		},
 		{
@@ -429,7 +731,14 @@ pivot = nums[random.randrange(len(nums))]`,
 				{
 					Name:        "Hash Function",
 					Description: "Map keys to bucket indexes.",
-					CoreIdeas:   []string{"Uniform distribution", "Deterministic"},
+					WhyItWorks:  "Hash functions convert any key into a fixed-size number (the hash). This number determines which 'bucket' to store or find the data. Because the same key always produces the same hash, lookups are instant - you compute the hash, go directly to that bucket, and find your data. No searching required.",
+					Intuition:   "Think of a library that assigns books by the first letter of the author's last name. To find 'Smith', you don't search every shelf - you go directly to the 'S' section. The hash function is like that first-letter rule, but with more buckets and better distribution.",
+					CoreIdeas:   []string{"Uniform distribution", "Deterministic output", "O(1) average lookup"},
+					CommonMistakes: []string{
+						"Using mutable objects as keys - the hash changes if the object changes",
+						"Poor hash function causing clustering - all items end up in few buckets",
+						"Not handling hash collisions - different keys can have same hash",
+					},
 					Examples: []CodeExample{
 						{
 							ID:       "hash_lookup",
@@ -444,7 +753,14 @@ _ = emails["ada"]  # hash + bucket lookup`,
 				{
 					Name:        "Collisions",
 					Description: "Two keys can land in the same bucket.",
-					CoreIdeas:   []string{"Chaining", "Open addressing"},
+					WhyItWorks:  "With finite buckets but infinite possible keys, collisions are inevitable (pigeonhole principle). Chaining handles this by storing a list at each bucket - when you look up a key, you check all items in that bucket's list. Open addressing finds another empty slot using a probe sequence. Both work because they provide a fallback when the ideal bucket is occupied.",
+					Intuition:   "Imagine a coat check with 100 hooks but 150 guests. Some hooks must hold multiple coats. Chaining puts all coats on the same hook (stack them). Open addressing says 'try the next hook' until you find an empty one.",
+					CoreIdeas:   []string{"Chaining - lists in buckets", "Open addressing - probe for empty slots", "Load factor triggers resizing"},
+					CommonMistakes: []string{
+						"Not resizing when load factor is high - performance degrades to O(n)",
+						"Deleting incorrectly with open addressing - must mark as 'deleted' not empty",
+						"Choosing wrong strategy - chaining handles high load better, open addressing has better cache locality",
+					},
 					Examples: []CodeExample{
 						{
 							ID:       "hash_chaining",
@@ -772,7 +1088,14 @@ for c in classes:
 				{
 					Name:        "Subproblem Overlap",
 					Description: "Solutions depend on repeated smaller cases.",
-					CoreIdeas:   []string{"Memoization", "Bottom-up"},
+					WhyItWorks:  "Many problems have optimal substructure - the best solution contains best solutions to subproblems. When these subproblems overlap (get solved multiple times), storing their results avoids redundant computation. Fibonacci without memoization is O(2^n) because fib(3) is computed thousands of times. With memoization, each subproblem is solved once: O(n).",
+					Intuition:   "Imagine calculating directions from A to Z. If you've already found the best route from M to Z, and later need A to Z passing through M, you reuse M-to-Z instead of recalculating. DP stores these 'partial routes' so you never redo the same work.",
+					CoreIdeas:   []string{"Memoization - top-down with cache", "Tabulation - bottom-up table filling", "Trade memory for time"},
+					CommonMistakes: []string{
+						"Missing base cases - always define what happens at the smallest subproblem",
+						"Wrong state definition - if results differ, you need more state dimensions",
+						"Not recognizing when DP applies - look for 'optimal' and 'overlapping subproblems'",
+					},
 					Examples: []CodeExample{
 						{
 							ID:       "fib_memo",
@@ -791,7 +1114,14 @@ def fib(n):
 				{
 					Name:        "State",
 					Description: "Minimal data needed to describe a subproblem.",
-					CoreIdeas:   []string{"Indices", "Capacity", "Suffix/Prefix"},
+					WhyItWorks:  "The 'state' captures everything you need to uniquely identify a subproblem. For Fibonacci, state is just n. For knapsack, state is (item_index, remaining_capacity). If two situations have the same state, they have the same optimal solution - that's why you can reuse cached results. Choosing minimal state keeps memory low.",
+					Intuition:   "State is like a 'save point' in a video game. It contains exactly what's needed to resume play. You don't save the entire game history - just current position, health, inventory. DP state is the same: just enough info to solve from this point forward.",
+					CoreIdeas:   []string{"Indices mark progress", "Capacity tracks constraints", "Suffix/Prefix defines remaining work"},
+					CommonMistakes: []string{
+						"Too much state - wastes memory and makes table huge",
+						"Too little state - same state gives different answers (bug!)",
+						"Forgetting state order matters - [i][j] means something different than [j][i]",
+					},
 					Examples: []CodeExample{
 						{
 							ID:       "knapsack_dp",

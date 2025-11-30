@@ -3,51 +3,8 @@ package practice
 // SlidingWindowProblems contains all sliding-window category problems
 var SlidingWindowProblems = []*Problem{
 	{
-		ID:         "best-time-to-buy-and-sell-stock",
-		Number:     15,
-		Title:      "Best Time to Buy and Sell Stock",
-		Difficulty: "Easy",
-		Category:   "sliding-window",
-		Tags:       []string{"Array", "Dynamic Programming"},
-		RelatedChapters: []int{5},
-		Description: `You are given an array prices where prices[i] is the price of a given stock on the ith day.
-
-You want to maximize your profit by choosing a single day to buy one stock and choosing a different day in the future to sell that stock.
-
-Return the maximum profit you can achieve from this transaction. If you cannot achieve any profit, return 0.`,
-		Constraints: []string{
-			"1 <= prices.length <= 10^5",
-			"0 <= prices[i] <= 10^4",
-		},
-		Examples: []Example{
-			{Input: "prices = [7,1,5,3,6,4]", Output: "5", Explanation: "Buy on day 2 (price = 1) and sell on day 5 (price = 6), profit = 6-1 = 5."},
-			{Input: "prices = [7,6,4,3,1]", Output: "0", Explanation: "No profit possible."},
-		},
-		TestCases: []TestCase{
-			{Input: map[string]interface{}{"prices": []int{7, 1, 5, 3, 6, 4}}, Expected: 5},
-			{Input: map[string]interface{}{"prices": []int{7, 6, 4, 3, 1}}, Expected: 0},
-		},
-		TimeComplexity:  "O(n)",
-		SpaceComplexity: "O(1)",
-		StarterCode:     "def maxProfit(prices):\n    # Write your solution here\n    pass",
-		Hints: []Hint{
-			{Level: 1, Type: "approach", Content: "Track the minimum price seen so far."},
-			{Level: 2, Type: "algorithm", Content: "For each price, calculate profit if selling today, update max profit."},
-		},
-		Solution: Solution{
-			Code: `def maxProfit(prices):
-    min_price = float('inf')
-    max_profit = 0
-    for price in prices:
-        min_price = min(min_price, price)
-        max_profit = max(max_profit, price - min_price)
-    return max_profit`,
-			Explanation: "Track minimum price seen. At each step, calculate potential profit and update max.",
-		},
-	},
-	{
 		ID:         "longest-substring-without-repeating",
-		Number:     16,
+		Number:     15,
 		Title:      "Longest Substring Without Repeating Characters",
 		Difficulty: "Medium",
 		Category:   "sliding-window",
@@ -92,7 +49,7 @@ Return the maximum profit you can achieve from this transaction. If you cannot a
 	},
 	{
 		ID:         "longest-repeating-character-replacement",
-		Number:     17,
+		Number:     16,
 		Title:      "Longest Repeating Character Replacement",
 		Difficulty: "Medium",
 		Category:   "sliding-window",
@@ -143,7 +100,7 @@ Return the length of the longest substring containing the same letter you can ge
 	},
 	{
 		ID:         "permutation-in-string",
-		Number:     18,
+		Number:     17,
 		Title:      "Permutation in String",
 		Difficulty: "Medium",
 		Category:   "sliding-window",
@@ -199,7 +156,7 @@ In other words, return true if one of s1's permutations is the substring of s2.`
 	},
 	{
 		ID:         "minimum-window-substring",
-		Number:     19,
+		Number:     18,
 		Title:      "Minimum Window Substring",
 		Difficulty: "Hard",
 		Category:   "sliding-window",
@@ -268,7 +225,7 @@ In other words, return true if one of s1's permutations is the substring of s2.`
 	},
 	{
 		ID:         "sliding-window-maximum",
-		Number:     20,
+		Number:     19,
 		Title:      "Sliding Window Maximum",
 		Difficulty: "Hard",
 		Category:   "sliding-window",

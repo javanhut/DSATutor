@@ -5082,6 +5082,95 @@ button.ghost:hover {
   background: rgba(56, 189, 248, 0.1);
 }
 
+/* Sliding Window Visualization */
+.array-annotations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: var(--panel);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.annotation {
+  font-size: 12px;
+  font-family: var(--mono);
+}
+
+.ann-label {
+  color: var(--text-dim);
+}
+
+.ann-value {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Window highlighting */
+.array-cell-wrapper.in-window .array-cell {
+  background: rgba(139, 92, 246, 0.15);
+  border-color: rgba(139, 92, 246, 0.4);
+}
+
+.array-cell-wrapper.window-start .array-cell {
+  border-left: 3px solid #8b5cf6;
+  border-top-left-radius: 6px;
+  border-bottom-left-radius: 6px;
+}
+
+.array-cell-wrapper.window-end .array-cell {
+  border-right: 3px solid #8b5cf6;
+  border-top-right-radius: 6px;
+  border-bottom-right-radius: 6px;
+}
+
+/* Window bracket visualization */
+.array-cell-wrapper.window-start::before,
+.array-cell-wrapper.window-end::after {
+  position: absolute;
+  top: -8px;
+  font-size: 18px;
+  color: #8b5cf6;
+  font-weight: bold;
+}
+
+.array-cell-wrapper.window-start::before {
+  content: '[';
+  left: 0;
+}
+
+.array-cell-wrapper.window-end::after {
+  content: ']';
+  right: 0;
+}
+
+.array-cell-wrapper {
+  position: relative;
+}
+
+.window-info {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #8b5cf6;
+  font-family: var(--mono);
+  font-weight: 500;
+}
+
+/* Pointer labels for l/r */
+.pointer-label.pointer-l {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+
+.pointer-label.pointer-r {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
 /* Matrix (2D Array) Visualization */
 .matrix-viz {
   margin-bottom: 16px;
@@ -5465,4 +5554,602 @@ button.ghost:hover {
   font-size: 11px;
   color: var(--text-dim);
   overflow-x: auto;
+}
+
+/* ================================
+   Chapter Content - Tutorial Layout
+   ================================ */
+
+.chapter-content {
+  padding: 0 24px 24px;
+}
+
+/* Section Cards - Shared Styles */
+.overview-card,
+.tutorial-card,
+.viz-card,
+.memory-card,
+.examples-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.overview-card h2,
+.tutorial-card h2,
+.viz-card h2,
+.memory-card h2,
+.examples-card h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Chapter Overview Section */
+.chapter-overview .summary-text {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text-dim);
+  margin-bottom: 20px;
+}
+
+.objectives-inline h4 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  margin-bottom: 12px;
+}
+
+.objectives-inline ul {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 8px;
+}
+
+.objectives-inline li {
+  padding: 8px 12px;
+  background: var(--panel-alt);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text);
+  border-left: 3px solid var(--accent);
+}
+
+/* Algorithm Tutorial Section */
+.tutorial-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.concept-block {
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.concept-header {
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.1), rgba(168, 85, 247, 0.05));
+  border-bottom: 1px solid var(--border);
+}
+
+.concept-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.concept-header .concept-desc {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.concept-body {
+  padding: 20px;
+}
+
+/* WHY IT WORKS - Key insight */
+.why-section {
+  margin-bottom: 20px;
+}
+
+.why-section h4 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+
+.why-section p {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--text);
+  background: rgba(56, 189, 248, 0.05);
+  padding: 16px;
+  border-radius: 8px;
+  border-left: 3px solid var(--accent);
+}
+
+/* Intuition - Mental Model */
+.intuition-section {
+  margin-bottom: 20px;
+}
+
+.intuition-section h4 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent-2);
+  margin-bottom: 10px;
+}
+
+.intuition-section p {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--text);
+  background: rgba(34, 197, 94, 0.05);
+  padding: 16px;
+  border-radius: 8px;
+  border-left: 3px solid var(--accent-2);
+}
+
+/* Core Ideas */
+.core-ideas {
+  margin-bottom: 20px;
+}
+
+.core-ideas h4 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+
+.core-ideas ul {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.core-ideas li {
+  padding: 6px 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+/* Common Mistakes */
+.mistakes-section {
+  margin-bottom: 20px;
+}
+
+.mistakes-section h4 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--warning);
+  margin-bottom: 10px;
+}
+
+.mistakes-section ul {
+  list-style: none;
+}
+
+.mistakes-section li {
+  padding: 8px 12px;
+  background: rgba(245, 158, 11, 0.05);
+  border-left: 3px solid var(--warning);
+  border-radius: 0 6px 6px 0;
+  font-size: 13px;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.mistakes-section li:last-child {
+  margin-bottom: 0;
+}
+
+/* Visualization Section */
+.viz-card .viz-controls-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--panel-alt);
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.viz-workspace {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 16px;
+  min-height: 400px;
+}
+
+.viz-main-panel {
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.viz-main-panel .viz-canvas {
+  flex: 1;
+  min-height: 300px;
+}
+
+.viz-main-panel .state-text {
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--panel);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.viz-side-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.viz-side-panel .code-section,
+.viz-side-panel .vars-section {
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  flex: 1;
+  overflow: auto;
+}
+
+.viz-side-panel h4 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+.viz-side-panel .code-display {
+  font-size: 12px;
+  max-height: none;
+}
+
+/* Memory Steps Section */
+.memory-card .memory-intro {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 16px;
+}
+
+.memory-tips-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.memory-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.1), rgba(56, 189, 248, 0.05));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.memory-tip-num {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, var(--accent-3), var(--accent));
+  color: var(--bg);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.memory-tip-content {
+  flex: 1;
+}
+
+.memory-tip-content p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.storyboard-detail {
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+}
+
+.storyboard-detail h3 {
+  font-size: 14px;
+  color: var(--text);
+  margin-bottom: 16px;
+}
+
+/* Examples Section */
+.examples-card .examples-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 16px;
+}
+
+/* Responsive adjustments for chapter content */
+@media (max-width: 900px) {
+  .viz-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .viz-side-panel {
+    flex-direction: row;
+  }
+
+  .viz-side-panel .code-section,
+  .viz-side-panel .vars-section {
+    flex: 1;
+    max-height: 200px;
+  }
+
+  .examples-card .examples-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ================================
+   Runtime Shapes Visualizer
+   ================================ */
+
+.runtime-viz-layout {
+  display: grid;
+  grid-template-columns: 1fr 350px;
+  gap: 24px;
+  min-height: 450px;
+}
+
+.runtime-graph-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.runtime-svg {
+  width: 100%;
+  height: auto;
+  background: var(--panel-alt);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.runtime-info-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Operations Table */
+.ops-table-wrapper {
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.ops-table-wrapper h4 {
+  font-size: 14px;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+
+.ops-n-value {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.ops-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.ops-table th {
+  text-align: left;
+  padding: 8px 10px;
+  color: var(--text-dim);
+  font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border);
+}
+
+.ops-table td {
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ops-table tr:last-child td {
+  border-bottom: none;
+}
+
+.ops-table tr.selected {
+  background: rgba(56, 189, 248, 0.1);
+}
+
+.ops-table tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.ops-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.ops-count {
+  font-family: var(--mono);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ops-time {
+  font-family: var(--mono);
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+/* Complexity Explanation Panel */
+.complexity-explanation {
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  flex: 1;
+}
+
+.explanation-prompt {
+  text-align: center;
+  padding: 20px;
+  color: var(--text-dim);
+}
+
+.explanation-prompt p {
+  margin-bottom: 8px;
+}
+
+.explanation-hint {
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.explanation-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.explanation-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 12px;
+  border-left: 3px solid var(--accent);
+}
+
+.complexity-badge {
+  padding: 4px 10px;
+  border-radius: 4px;
+  color: var(--bg);
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.complexity-name {
+  font-size: 14px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.explanation-why {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+  background: rgba(56, 189, 248, 0.05);
+  padding: 12px;
+  border-radius: 6px;
+}
+
+.explanation-why strong {
+  color: var(--accent);
+}
+
+.explanation-examples {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.explanation-examples strong {
+  color: var(--text-dim);
+  display: block;
+  margin-bottom: 6px;
+}
+
+.explanation-examples ul {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.explanation-examples li {
+  background: var(--panel);
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+}
+
+.explanation-calc {
+  font-size: 13px;
+  padding: 10px 12px;
+  background: var(--panel);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.explanation-calc strong {
+  color: var(--accent);
+}
+
+/* Responsive */
+@media (max-width: 1000px) {
+  .runtime-viz-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .runtime-info-section {
+    flex-direction: row;
+  }
+
+  .ops-table-wrapper,
+  .complexity-explanation {
+    flex: 1;
+  }
+}
+
+@media (max-width: 700px) {
+  .runtime-info-section {
+    flex-direction: column;
+  }
 }
