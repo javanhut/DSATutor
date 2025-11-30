@@ -57,6 +57,16 @@ class GraphNode:
 class DSATracer:
     """Traces Python code execution and captures state at each line."""
 
+    # Pre-defined symbols to exclude from variable display
+    EXCLUDED_SYMBOLS = {
+        # Helper classes
+        'ListNode', 'TreeNode', 'GraphNode',
+        # Pre-imported modules
+        'math', 'random', 'itertools', 'functools', 'heapq', 'collections',
+        # Common imports from collections
+        'deque', 'defaultdict', 'Counter', 'OrderedDict',
+    }
+
     def __init__(self, user_code: str, user_filename: str = "<user_code>"):
         self.user_code = user_code
         self.user_filename = user_filename
@@ -99,10 +109,10 @@ class DSATracer:
         line_num = frame.f_lineno
         func_name = frame.f_code.co_name
 
-        # Get local variables (excluding internal variables)
+        # Get local variables (excluding internal and pre-defined symbols)
         locals_dict = {
             k: v for k, v in frame.f_locals.items()
-            if not k.startswith('_') and k not in ('self', 'cls')
+            if not k.startswith('_') and k not in ('self', 'cls') and k not in self.EXCLUDED_SYMBOLS
         }
 
         # Serialize variables
@@ -128,8 +138,12 @@ class DSATracer:
 
     def serialize_variables(self, variables: Dict[str, Any]) -> Dict[str, Any]:
         """Serialize variables to JSON-safe format."""
+        import types
         result = {}
         for name, value in variables.items():
+            # Skip modules and class types - only show actual data
+            if isinstance(value, (types.ModuleType, type)):
+                continue
             try:
                 result[name] = self.serialize_value(value, depth=0)
             except Exception:
@@ -147,8 +161,14 @@ class DSATracer:
         if isinstance(value, bool):
             return value
         if isinstance(value, (int, float)):
-            if isinstance(value, float) and (value != value):  # NaN check
-                return "NaN"
+            if isinstance(value, float):
+                # Handle special float values that aren't valid JSON
+                if value != value:  # NaN check
+                    return "NaN"
+                if value == float('inf'):
+                    return "Infinity"
+                if value == float('-inf'):
+                    return "-Infinity"
             return value
         if isinstance(value, str):
             return value[:200] + "..." if len(value) > 200 else value

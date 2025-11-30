@@ -5946,10 +5946,13 @@ class SandboxAnimator extends AlgorithmAnimator {
 // Editor helper functions (work with CodeMirror or fallback to textarea)
 function getEditorCode(editorId) {
   // Try CodeMirror first
-  if (window.getEditorContent) {
-    const content = window.getEditorContent(editorId + '-container');
-    if (content !== undefined && content !== '') {
-      return content;
+  if (window.dsaEditors && window.dsaEditors[editorId + '-container']) {
+    const editor = window.dsaEditors[editorId + '-container'];
+    if (editor && editor.getValue) {
+      const content = editor.getValue();
+      if (content !== undefined && content !== '') {
+        return content;
+      }
     }
   }
   // Fallback to textarea
@@ -5998,8 +6001,18 @@ function toggleSandboxMode() {
   const detailEmpty = document.getElementById('detail-empty');
   const detail = document.getElementById('detail');
   const toggleBtn = document.getElementById('sandbox-toggle');
+  const practiceToggleBtn = document.getElementById('practice-toggle');
+  const practiceListEl = document.getElementById('practice-list');
+  const practiceModeEl = document.getElementById('practice-mode');
 
   if (sandboxState.isActive) {
+    // Deactivate practice mode if active
+    if (practiceToggleBtn && practiceToggleBtn.classList.contains('active')) {
+      practiceToggleBtn.classList.remove('active');
+      if (practiceListEl) practiceListEl.classList.add('hidden');
+      if (practiceModeEl) practiceModeEl.classList.add('hidden');
+    }
+
     // Activate sandbox mode
     sandboxMode.classList.remove('hidden');
     detailEmpty.classList.add('hidden');
@@ -6069,10 +6082,17 @@ arr = [1, 3, 5, 7, 9, 11, 13]
 result = binary_search(arr, 7)
 print(f'Found at index: {result}')`;
 
+  // Always set the textarea as fallback
+  const textarea = document.getElementById('sandbox-code');
+  if (textarea) {
+    textarea.value = sampleCode;
+  }
+
+  // Initialize CodeMirror editor
   initEditor('sandbox-editor-container', sampleCode, {
     onChange: (content) => {
-      const textarea = document.getElementById('sandbox-code');
-      if (textarea) textarea.value = content;
+      const ta = document.getElementById('sandbox-code');
+      if (ta) ta.value = content;
     },
   });
 }
@@ -7052,6 +7072,20 @@ async function openProblem(problemId) {
 
 // Reset all practice panels to initial state when switching problems
 function resetPracticePanels() {
+  // Stop any running visualization
+  if (practiceState.vizPlaying) {
+    practiceState.vizPlaying = false;
+    if (practiceState.vizTimer) {
+      clearInterval(practiceState.vizTimer);
+      practiceState.vizTimer = null;
+    }
+  }
+
+  // Reset visualization state
+  practiceState.vizSteps = null;
+  practiceState.currentVizStep = 0;
+  practiceState.vizCode = '';
+
   // Reset solution panel - hide content, show locked state
   const solutionLocked = el('solution-locked');
   const solutionContent = el('solution-content');
@@ -7069,22 +7103,32 @@ function resetPracticePanels() {
   }
 
   // Reset visualization panel
-  const vizCanvas = el('practice-viz-canvas');
-  const vizCode = el('practice-viz-code');
-  const vizControls = el('practice-viz-controls');
-  const vizState = el('practice-viz-state');
+  const vizCanvas = el('practice-canvas');
+  const vizCodeEl = el('practice-code-lines');
+  const vizVars = el('practice-vars');
+  const vizState = el('practice-state');
+  const stepCounter = el('practice-step-counter');
 
   if (vizCanvas) {
     vizCanvas.innerHTML = '<div class="viz-placeholder">Run your code or visualize the solution to see the algorithm in action.</div>';
   }
-  if (vizCode) {
-    vizCode.innerHTML = '';
+  if (vizCodeEl) {
+    vizCodeEl.innerHTML = '';
   }
-  if (vizControls) {
-    vizControls.classList.add('hidden');
+  if (vizVars) {
+    vizVars.innerHTML = '<div class="vars-empty">No variables tracked</div>';
   }
   if (vizState) {
     vizState.textContent = '';
+  }
+  if (stepCounter) {
+    stepCounter.textContent = 'Step 0/0';
+  }
+
+  // Reset play button state
+  const playBtn = el('practice-play');
+  if (playBtn) {
+    playBtn.textContent = 'Play';
   }
 
   // Reset test output
@@ -8025,15 +8069,25 @@ function setupPracticeControls() {
       const detailEl = el('detail');
       const detailEmptyEl = el('detail-empty');
       const sandboxEl = el('sandbox-mode');
+      const sandboxToggleBtn = el('sandbox-toggle');
       const practiceListEl = el('practice-list');
       const practiceModeEl = el('practice-mode');
 
       if (isActive) {
+        // Deactivate sandbox mode if active
+        if (sandboxState.isActive) {
+          sandboxState.isActive = false;
+          if (sandboxEl) sandboxEl.classList.add('hidden');
+          if (sandboxToggleBtn) sandboxToggleBtn.classList.remove('active');
+          if (sandboxState.animator) {
+            sandboxState.animator.pause();
+          }
+        }
+
         // Entering practice mode - hide chapter content, show practice
         if (chaptersEl) chaptersEl.classList.add('hidden');
         if (detailEl) detailEl.classList.add('hidden');
         if (detailEmptyEl) detailEmptyEl.classList.add('hidden');
-        if (sandboxEl) sandboxEl.classList.add('hidden');
 
         if (practiceState.problems.length === 0) {
           await loadProblems();
