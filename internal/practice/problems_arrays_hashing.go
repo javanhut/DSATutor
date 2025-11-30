@@ -318,7 +318,28 @@ You must write an algorithm that runs in O(n) time and without using the divisio
 			{Input: "board = [[\"5\",\"3\",\".\",\".\",\"7\",\".\",\".\",\".\",\".\"],[\"6\",\".\",\".\",\"1\",\"9\",\"5\",\".\",\".\",\".\"],[\".\",\"9\",\"8\",\".\",\".\",\".\",\".\",\"6\",\".\"],[\"8\",\".\",\".\",\".\",\"6\",\".\",\".\",\".\",\"3\"],[\"4\",\".\",\".\",\"8\",\".\",\"3\",\".\",\".\",\"1\"],[\"7\",\".\",\".\",\".\",\"2\",\".\",\".\",\".\",\"6\"],[\".\",\"6\",\".\",\".\",\".\",\".\",\"2\",\"8\",\".\"],[\".\",\".\",\".\",\"4\",\"1\",\"9\",\".\",\".\",\"5\"],[\".\",\".\",\".\",\".\",\"8\",\".\",\".\",\"7\",\"9\"]]", Output: "true"},
 		},
 		TestCases: []TestCase{
-			{Input: map[string]interface{}{"board": [][]string{{"5", "3", "."}, {"6", ".", "."}, {".", "9", "8"}}}, Expected: true},
+			{Input: map[string]interface{}{"board": [][]string{
+				{"5", "3", ".", ".", "7", ".", ".", ".", "."},
+				{"6", ".", ".", "1", "9", "5", ".", ".", "."},
+				{".", "9", "8", ".", ".", ".", ".", "6", "."},
+				{"8", ".", ".", ".", "6", ".", ".", ".", "3"},
+				{"4", ".", ".", "8", ".", "3", ".", ".", "1"},
+				{"7", ".", ".", ".", "2", ".", ".", ".", "6"},
+				{".", "6", ".", ".", ".", ".", "2", "8", "."},
+				{".", ".", ".", "4", "1", "9", ".", ".", "5"},
+				{".", ".", ".", ".", "8", ".", ".", "7", "9"},
+			}}, Expected: true},
+			{Input: map[string]interface{}{"board": [][]string{
+				{"8", "3", ".", ".", "7", ".", ".", ".", "."},
+				{"6", ".", ".", "1", "9", "5", ".", ".", "."},
+				{".", "9", "8", ".", ".", ".", ".", "6", "."},
+				{"8", ".", ".", ".", "6", ".", ".", ".", "3"},
+				{"4", ".", ".", "8", ".", "3", ".", ".", "1"},
+				{"7", ".", ".", ".", "2", ".", ".", ".", "6"},
+				{".", "6", ".", ".", ".", ".", "2", "8", "."},
+				{".", ".", ".", "4", "1", "9", ".", ".", "5"},
+				{".", ".", ".", ".", "8", ".", ".", "7", "9"},
+			}}, Expected: false},
 		},
 		TimeComplexity:  "O(81)",
 		SpaceComplexity: "O(81)",
@@ -371,7 +392,31 @@ Implement encode and decode methods.`,
 			{Input: `strs = [""]`, Output: `[""]`},
 		},
 		TestCases: []TestCase{
+			// Basic case
 			{Input: map[string]interface{}{"strs": []string{"hello", "world"}}, Expected: []string{"hello", "world"}},
+			// Empty string in list
+			{Input: map[string]interface{}{"strs": []string{""}}, Expected: []string{""}},
+			// Multiple empty strings
+			{Input: map[string]interface{}{"strs": []string{"", "", ""}}, Expected: []string{"", "", ""}},
+			// Empty list
+			{Input: map[string]interface{}{"strs": []string{}}, Expected: []string{}},
+			// Strings containing common delimiters - will fail naive delimiter solutions
+			{Input: map[string]interface{}{"strs": []string{"hello~world", "foo~bar"}}, Expected: []string{"hello~world", "foo~bar"}},
+			{Input: map[string]interface{}{"strs": []string{"a,b,c", "d,e,f"}}, Expected: []string{"a,b,c", "d,e,f"}},
+			{Input: map[string]interface{}{"strs": []string{"split|by|pipe", "more|pipes"}}, Expected: []string{"split|by|pipe", "more|pipes"}},
+			// Strings containing the # character (used in length-prefix solution)
+			{Input: map[string]interface{}{"strs": []string{"test#with#hash", "another#one"}}, Expected: []string{"test#with#hash", "another#one"}},
+			// Strings with numbers (could confuse length-prefix parsing)
+			{Input: map[string]interface{}{"strs": []string{"123", "456#789", "10#hello"}}, Expected: []string{"123", "456#789", "10#hello"}},
+			// Strings with special characters
+			{Input: map[string]interface{}{"strs": []string{"hello\nworld", "tab\there"}}, Expected: []string{"hello\nworld", "tab\there"}},
+			{Input: map[string]interface{}{"strs": []string{"space in middle", "  leading", "trailing  "}}, Expected: []string{"space in middle", "  leading", "trailing  "}},
+			// Mixed edge cases
+			{Input: map[string]interface{}{"strs": []string{"", "nonempty", ""}}, Expected: []string{"", "nonempty", ""}},
+			// Single string
+			{Input: map[string]interface{}{"strs": []string{"onlyone"}}, Expected: []string{"onlyone"}},
+			// Unicode characters
+			{Input: map[string]interface{}{"strs": []string{"cafe", "naive", "resume"}}, Expected: []string{"cafe", "naive", "resume"}},
 		},
 		TimeComplexity:  "O(n)",
 		SpaceComplexity: "O(1)",

@@ -212,7 +212,18 @@ class DSATracer:
     def classify_and_serialize_structure(self, name: str, value: Any, all_locals: Dict) -> Optional[Dict]:
         """Classify a value and serialize it as a visualizable structure."""
 
-        # Array detection
+        # Matrix (2D array) detection - check before 1D array
+        if isinstance(value, list) and len(value) > 0 and all(isinstance(row, list) for row in value[:20]):
+            # Check if it's a proper 2D matrix with primitive elements
+            is_matrix = True
+            for row in value[:20]:
+                if not all(isinstance(v, (int, float, str, bool, type(None))) for v in row[:20]):
+                    is_matrix = False
+                    break
+            if is_matrix:
+                return self.serialize_matrix(name, value, all_locals)
+
+        # Array detection (1D)
         if isinstance(value, list) and all(isinstance(v, (int, float, str, bool, type(None))) for v in value[:20]):
             highlights = self.detect_array_highlights(name, value, all_locals)
             return {
@@ -273,6 +284,61 @@ class DSATracer:
                 val = all_locals[var_name]
                 if isinstance(val, int) and 0 <= val < len(array):
                     highlights[var_name] = val
+
+        return highlights
+
+    def serialize_matrix(self, name: str, matrix: List[List], all_locals: Dict) -> Dict:
+        """Serialize a 2D matrix for visualization."""
+        # Limit matrix size for display
+        max_rows = min(len(matrix), 20)
+        max_cols = 20
+
+        data = []
+        for row in matrix[:max_rows]:
+            row_data = [self.serialize_value(v, 0) for v in row[:max_cols]]
+            data.append(row_data)
+
+        # Detect row/column pointer highlights
+        highlights = self.detect_matrix_highlights(name, matrix, all_locals)
+
+        return {
+            "name": name,
+            "type": "matrix",
+            "data": data,
+            "rows": len(matrix),
+            "cols": len(matrix[0]) if matrix else 0,
+            "highlights": highlights
+        }
+
+    def detect_matrix_highlights(self, matrix_name: str, matrix: List[List], all_locals: Dict) -> Dict:
+        """Detect row/column pointer variables for matrix highlighting."""
+        highlights = {"row": {}, "col": {}, "cell": []}
+
+        # Common row index variable names
+        row_vars = ['r', 'row', 'i']
+        # Common column index variable names
+        col_vars = ['c', 'col', 'j']
+
+        rows = len(matrix)
+        cols = len(matrix[0]) if matrix else 0
+
+        for var_name in row_vars:
+            if var_name in all_locals:
+                val = all_locals[var_name]
+                if isinstance(val, int) and 0 <= val < rows:
+                    highlights["row"][var_name] = val
+
+        for var_name in col_vars:
+            if var_name in all_locals:
+                val = all_locals[var_name]
+                if isinstance(val, int) and 0 <= val < cols:
+                    highlights["col"][var_name] = val
+
+        # If we have both row and column pointers, mark the cell
+        if highlights["row"] and highlights["col"]:
+            for r_name, r_val in highlights["row"].items():
+                for c_name, c_val in highlights["col"].items():
+                    highlights["cell"].append({"row": r_val, "col": c_val, "label": f"{r_name},{c_name}"})
 
         return highlights
 

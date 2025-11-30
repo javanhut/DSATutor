@@ -476,6 +476,9 @@ The animation workspace provides:
 | `.state-display` | Current state text |
 | `.array-viz` | Array visualization |
 | `.array-cell` | Array element |
+| `.matrix-viz` | Matrix (2D array) visualization |
+| `.matrix-table` | Matrix table element |
+| `.matrix-cell` | Matrix cell element |
 | `.graph-viz` | Graph SVG |
 | `.graph-node` | Graph node circle |
 | `.stack-viz` | Stack visualization |

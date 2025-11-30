@@ -607,11 +607,15 @@ func (ps *PracticeServer) handleImportProgress(w http.ResponseWriter, r *http.Re
 
 // generateTestWrapper creates code that runs with test input.
 func generateTestWrapper(userCode string, problem *practice.Problem, tc *practice.TestCase) string {
-	// Extract function name and parameters from starter code
-	funcName, funcParams := extractFunctionSignature(problem.StarterCode)
-	if funcName == "" {
+	// Extract all function signatures from starter code
+	funcSignatures := extractAllFunctionSignatures(problem.StarterCode)
+	if len(funcSignatures) == 0 {
 		return userCode + "\n# Could not extract function name\n"
 	}
+
+	// Use first function for single-function problems
+	funcName := funcSignatures[0].Name
+	funcParams := funcSignatures[0].Params
 
 	// Build input assignment from test case
 	inputAssignments := ""
@@ -657,10 +661,102 @@ func generateTestWrapper(userCode string, problem *practice.Problem, tc *practic
 
 	// Generate wrapper code
 	wrapper := userCode + "\n\n# Test execution\n" + inputAssignments
-	wrapper += "\n__result__ = " + funcName + "(" + strings.Join(callArgs, ", ") + ")\n"
+
+	// Special handling for encode/decode pattern (two complementary functions)
+	if len(funcSignatures) == 2 && isEncodeDecodePair(funcSignatures) {
+		// For encode/decode problems, we need to call decode(encode(input))
+		encodeFn, decodeFn := getEncodeDecodeFunctions(funcSignatures)
+		wrapper += "\n__encoded__ = " + encodeFn + "(" + strings.Join(callArgs, ", ") + ")\n"
+		wrapper += "__result__ = " + decodeFn + "(__encoded__)\n"
+	} else {
+		wrapper += "\n__result__ = " + funcName + "(" + strings.Join(callArgs, ", ") + ")\n"
+	}
+
 	wrapper += "print(__result__)\n"
 
 	return wrapper
+}
+
+// FunctionSignature holds extracted function name and parameters
+type FunctionSignature struct {
+	Name   string
+	Params []string
+}
+
+// isEncodeDecodePair checks if the two functions form an encode/decode pair
+func isEncodeDecodePair(sigs []FunctionSignature) bool {
+	if len(sigs) != 2 {
+		return false
+	}
+	names := []string{strings.ToLower(sigs[0].Name), strings.ToLower(sigs[1].Name)}
+	hasEncode := false
+	hasDecode := false
+	for _, n := range names {
+		if strings.Contains(n, "encode") || strings.Contains(n, "serialize") {
+			hasEncode = true
+		}
+		if strings.Contains(n, "decode") || strings.Contains(n, "deserialize") {
+			hasDecode = true
+		}
+	}
+	return hasEncode && hasDecode
+}
+
+// getEncodeDecodeFunctions returns the encode and decode function names in order
+func getEncodeDecodeFunctions(sigs []FunctionSignature) (string, string) {
+	var encodeFn, decodeFn string
+	for _, sig := range sigs {
+		lower := strings.ToLower(sig.Name)
+		if strings.Contains(lower, "encode") || strings.Contains(lower, "serialize") {
+			encodeFn = sig.Name
+		}
+		if strings.Contains(lower, "decode") || strings.Contains(lower, "deserialize") {
+			decodeFn = sig.Name
+		}
+	}
+	return encodeFn, decodeFn
+}
+
+// extractAllFunctionSignatures extracts all function signatures from starter code
+func extractAllFunctionSignatures(starterCode string) []FunctionSignature {
+	signatures := make([]FunctionSignature, 0)
+	lines := strings.Split(starterCode, "\n")
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "def ") {
+			// Extract: def funcName(param1, param2, ...):
+			line = strings.TrimPrefix(line, "def ")
+			parenStart := strings.Index(line, "(")
+			parenEnd := strings.Index(line, ")")
+			if parenStart == -1 || parenEnd == -1 {
+				continue
+			}
+			funcName := strings.TrimSpace(line[:parenStart])
+			paramsStr := line[parenStart+1 : parenEnd]
+
+			// Parse parameters
+			params := make([]string, 0)
+			if paramsStr != "" {
+				for _, p := range strings.Split(paramsStr, ",") {
+					p = strings.TrimSpace(p)
+					// Remove type hints if present
+					if colonIdx := strings.Index(p, ":"); colonIdx != -1 {
+						p = strings.TrimSpace(p[:colonIdx])
+					}
+					// Remove default values if present
+					if eqIdx := strings.Index(p, "="); eqIdx != -1 {
+						p = strings.TrimSpace(p[:eqIdx])
+					}
+					if p != "" && p != "self" {
+						params = append(params, p)
+					}
+				}
+			}
+			signatures = append(signatures, FunctionSignature{Name: funcName, Params: params})
+		}
+	}
+	return signatures
 }
 
 // extractFunctionSignature extracts the function name and parameter names from starter code.

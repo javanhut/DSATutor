@@ -7030,16 +7030,100 @@ async function openProblem(problemId) {
     return;
   }
 
+  // Reset all practice state for new problem
   practiceState.currentProblem = problem;
   practiceState.hintsRevealed = 0;
   practiceState.currentTestCase = 0;
 
+  // Reset UI panels to initial state before rendering
+  resetPracticePanels();
+
+  // Render new problem content
   renderProblemDescription();
   renderTestCases();
   renderHints();
   renderStarterCode();
 
+  // Switch to Description tab
+  activatePracticeTab('description');
+
   showProblem();
+}
+
+// Reset all practice panels to initial state when switching problems
+function resetPracticePanels() {
+  // Reset solution panel - hide content, show locked state
+  const solutionLocked = el('solution-locked');
+  const solutionContent = el('solution-content');
+  const solutionWalkthrough = el('solution-walkthrough');
+
+  if (solutionLocked) {
+    solutionLocked.classList.remove('hidden');
+  }
+  if (solutionContent) {
+    solutionContent.classList.add('hidden');
+    solutionContent.innerHTML = '';
+  }
+  if (solutionWalkthrough) {
+    solutionWalkthrough.innerHTML = '';
+  }
+
+  // Reset visualization panel
+  const vizCanvas = el('practice-viz-canvas');
+  const vizCode = el('practice-viz-code');
+  const vizControls = el('practice-viz-controls');
+  const vizState = el('practice-viz-state');
+
+  if (vizCanvas) {
+    vizCanvas.innerHTML = '<div class="viz-placeholder">Run your code or visualize the solution to see the algorithm in action.</div>';
+  }
+  if (vizCode) {
+    vizCode.innerHTML = '';
+  }
+  if (vizControls) {
+    vizControls.classList.add('hidden');
+  }
+  if (vizState) {
+    vizState.textContent = '';
+  }
+
+  // Reset test output
+  const testOutput = el('current-test-output');
+  if (testOutput) {
+    testOutput.innerHTML = '';
+  }
+
+  // Reset submit results
+  const submitResults = el('submit-results');
+  if (submitResults) {
+    submitResults.innerHTML = '';
+  }
+}
+
+// Activate a specific tab in the practice panel
+function activatePracticeTab(tabName) {
+  const tabs = document.querySelectorAll('.practice-tab');
+  const panels = document.querySelectorAll('.practice-tab-content');
+
+  tabs.forEach(tab => {
+    const target = tab.dataset.tab;
+    if (target === tabName) {
+      tab.classList.add('active');
+    } else {
+      tab.classList.remove('active');
+    }
+  });
+
+  panels.forEach(panel => {
+    const panelId = panel.id;
+    // Map panel IDs like 'problem-description' to tab names like 'description'
+    const panelTabName = panelId.replace('problem-', '');
+    if (panelTabName === tabName) {
+      panel.classList.remove('hidden');
+    } else {
+      panel.classList.add('hidden');
+    }
+  });
 }
 
 function renderProblemDescription() {
@@ -7242,15 +7326,33 @@ function renderStarterCode() {
   if (!problem) return;
 
   const starterCode = problem.starterCode || '# Write your solution here\n';
-  setEditorCode('practice-code', starterCode);
 
-  // Initialize CodeMirror editor if available
-  initEditor('practice-editor-container', starterCode, {
-    onChange: (content) => {
-      const textarea = document.getElementById('practice-code');
-      if (textarea) textarea.value = content;
-    },
-  });
+  // Update textarea first
+  const textarea = document.getElementById('practice-code');
+  if (textarea) {
+    textarea.value = starterCode;
+  }
+
+  // Initialize or update CodeMirror editor
+  const containerId = 'practice-editor-container';
+  if (window.dsaEditors && window.dsaEditors[containerId]) {
+    // Editor exists - update content and refresh
+    const editor = window.dsaEditors[containerId];
+    editor.setValue(starterCode);
+    // Refresh to ensure proper rendering after content change
+    setTimeout(() => {
+      editor.refresh();
+      editor.setCursor(0, 0);
+    }, 50);
+  } else {
+    // Create new editor
+    initEditor(containerId, starterCode, {
+      onChange: (content) => {
+        const ta = document.getElementById('practice-code');
+        if (ta) ta.value = content;
+      },
+    });
+  }
 }
 
 async function runPracticeCode() {
@@ -7500,6 +7602,8 @@ function renderStructure(struct) {
   switch (struct.type) {
     case 'array':
       return renderArrayViz(struct);
+    case 'matrix':
+      return renderMatrixViz(struct);
     case 'linked_list':
       return renderLinkedListViz(struct);
     case 'binary_tree':
@@ -7565,6 +7669,67 @@ function renderArrayViz(struct) {
   });
 
   html += `</div></div></div>`;
+  return html;
+}
+
+function renderMatrixViz(struct) {
+  const data = struct.data || [];
+  const highlights = struct.highlights || { row: {}, col: {}, cell: [] };
+  const rows = struct.rows || data.length;
+  const cols = struct.cols || (data[0] ? data[0].length : 0);
+
+  // Build a set of highlighted cells for quick lookup
+  const highlightedCells = new Set();
+  (highlights.cell || []).forEach(c => {
+    highlightedCells.add(`${c.row},${c.col}`);
+  });
+
+  // Get highlighted row/col indices
+  const highlightedRows = new Set(Object.values(highlights.row || {}));
+  const highlightedCols = new Set(Object.values(highlights.col || {}));
+
+  let html = `<div class="matrix-viz">
+    <div class="struct-label">${escapeHtml(struct.name)} <span class="matrix-dims">${rows}x${cols}</span></div>
+    <div class="matrix-container">
+      <table class="matrix-table">`;
+
+  // Column header row with indices
+  html += '<tr><td class="matrix-corner"></td>';
+  for (let c = 0; c < data[0]?.length || 0; c++) {
+    const colHighlight = highlightedCols.has(c) ? 'col-highlight' : '';
+    html += `<td class="matrix-col-header ${colHighlight}">${c}</td>`;
+  }
+  html += '</tr>';
+
+  // Data rows
+  data.forEach((row, r) => {
+    const rowHighlight = highlightedRows.has(r) ? 'row-highlight' : '';
+    html += `<tr class="${rowHighlight}">`;
+    html += `<td class="matrix-row-header ${rowHighlight}">${r}</td>`;
+
+    row.forEach((val, c) => {
+      const cellKey = `${r},${c}`;
+      const isCellHighlight = highlightedCells.has(cellKey);
+      const isRowHighlight = highlightedRows.has(r);
+      const isColHighlight = highlightedCols.has(c);
+
+      let cellClass = 'matrix-cell';
+      if (isCellHighlight) {
+        cellClass += ' cell-highlight';
+      } else if (isRowHighlight && isColHighlight) {
+        cellClass += ' cross-highlight';
+      } else if (isRowHighlight) {
+        cellClass += ' row-highlight';
+      } else if (isColHighlight) {
+        cellClass += ' col-highlight';
+      }
+
+      html += `<td class="${cellClass}">${escapeHtml(String(val))}</td>`;
+    });
+    html += '</tr>';
+  });
+
+  html += `</table></div></div>`;
   return html;
 }
 
