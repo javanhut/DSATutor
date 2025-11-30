@@ -7,6 +7,7 @@ const state = {
   storyboardIndex: 0,
   visualizerIndex: 0,
   editMode: false,
+  fullPageVisualizer: null,
 };
 
 // Complexity functions for Big-O curves
@@ -26,6 +27,9 @@ const curveConfig = {
     name: 'Constant',
     examples: ['Array index lookup', 'Hash table access', 'Push/pop from stack'],
     why: 'Operations take the same time regardless of input size. Direct memory address calculation.',
+    spaceExample: 'Storing a single variable or fixed-size buffer',
+    codePattern: 'return arr[index]',
+    realWorld: 'Looking up a phone contact by tapping their name',
   },
   'O(log n)': {
     color: '#38bdf8',
@@ -33,6 +37,9 @@ const curveConfig = {
     name: 'Logarithmic',
     examples: ['Binary search', 'Balanced BST lookup', 'Finding in sorted array'],
     why: 'Each step eliminates half the remaining data. Doubling input only adds one more step.',
+    spaceExample: 'Recursive binary search call stack depth',
+    codePattern: 'while (lo <= hi) { mid = (lo+hi)/2; ... }',
+    realWorld: 'Finding a word in a dictionary by opening to the middle',
   },
   'O(n)': {
     color: '#f59e0b',
@@ -40,6 +47,9 @@ const curveConfig = {
     name: 'Linear',
     examples: ['Linear search', 'Array traversal', 'Finding max/min'],
     why: 'Must examine each element once. Time grows directly with input size.',
+    spaceExample: 'Creating a copy of an array',
+    codePattern: 'for (item in items) { process(item) }',
+    realWorld: 'Reading every page of a book to find a quote',
   },
   'O(n log n)': {
     color: '#a855f7',
@@ -47,6 +57,9 @@ const curveConfig = {
     name: 'Linearithmic',
     examples: ['Merge sort', 'Quick sort (avg)', 'Heap sort'],
     why: 'Divide-and-conquer: split into halves (log n levels), process all n items at each level.',
+    spaceExample: 'Merge sort auxiliary array',
+    codePattern: 'split(arr); sort(left); sort(right); merge()',
+    realWorld: 'Organizing a shuffled deck by repeatedly splitting and merging',
   },
   'O(n^2)': {
     color: '#ef4444',
@@ -54,7 +67,36 @@ const curveConfig = {
     name: 'Quadratic',
     examples: ['Bubble sort', 'Selection sort', 'Nested loops over same data'],
     why: 'For each element, examine all other elements. Nested iteration over input.',
+    spaceExample: 'Adjacency matrix for a graph',
+    codePattern: 'for (i in items) { for (j in items) { ... } }',
+    realWorld: 'Comparing every person in a room with every other person',
   },
+};
+
+// Asymptotic analysis educational content
+const asymptoticContent = {
+  title: 'Understanding Asymptotic Analysis',
+  sections: [
+    {
+      heading: 'What is Big O?',
+      content: 'Big O notation describes how an algorithm\'s runtime or space requirements grow as input size increases. It focuses on the dominant term and ignores constants because at large scales, the shape of growth matters more than fixed overhead.',
+    },
+    {
+      heading: 'Why Ignore Constants?',
+      content: 'An O(n) algorithm that takes 100n milliseconds is still faster than an O(n^2) algorithm taking 0.1n^2 milliseconds for large n. At n=10,000: 100n = 1 second, but 0.1n^2 = 16.7 minutes.',
+    },
+    {
+      heading: 'Time vs Space Complexity',
+      content: 'Time complexity measures operations performed. Space complexity measures memory used. Often you trade one for the other - memoization uses more space to save time.',
+    },
+  ],
+  inputExamples: [
+    { n: 10, label: 'Small list (10 items)' },
+    { n: 100, label: 'Medium list (100 items)' },
+    { n: 1000, label: 'Large list (1,000 items)' },
+    { n: 10000, label: 'Very large (10,000 items)' },
+    { n: 1000000, label: 'Massive (1 million items)' },
+  ],
 };
 
 // Step to N-value mapping for storyboard progression
@@ -85,10 +127,18 @@ class RuntimeShapesVisualizer {
   mount() {
     this.container.innerHTML = '';
 
-    // Create main layout - side by side
+    // Create main wrapper for all content
+    const wrapper = document.createElement('div');
+    wrapper.className = 'runtime-shapes-wrapper';
+    this.container.appendChild(wrapper);
+
+    // Create asymptotic analysis intro section
+    this.createAsymptoticIntro(wrapper);
+
+    // Create main layout - side by side (graph + info)
     const layout = document.createElement('div');
     layout.className = 'runtime-viz-layout';
-    this.container.appendChild(layout);
+    wrapper.appendChild(layout);
 
     // Left side: graph
     const graphSection = document.createElement('div');
@@ -119,6 +169,12 @@ class RuntimeShapesVisualizer {
 
     // Create explanation panel
     this.createExplanationPanel(infoSection);
+
+    // Create input scaling comparison section
+    this.createInputScalingSection(wrapper);
+
+    // Create time vs space comparison section
+    this.createTimeSpaceSection(wrapper);
 
     // Initial render
     this.render();
@@ -261,6 +317,138 @@ class RuntimeShapesVisualizer {
     panel.innerHTML = defaultContent;
     this.explanationPanel = panel;
     container.appendChild(panel);
+  }
+
+  createAsymptoticIntro(container) {
+    const intro = document.createElement('div');
+    intro.className = 'asymptotic-intro';
+
+    const sectionsHtml = asymptoticContent.sections.map(s => `
+      <div class="asymptotic-section">
+        <h4>${s.heading}</h4>
+        <p>${s.content}</p>
+      </div>
+    `).join('');
+
+    intro.innerHTML = `
+      <h3 class="asymptotic-title">${asymptoticContent.title}</h3>
+      <div class="asymptotic-sections">
+        ${sectionsHtml}
+      </div>
+    `;
+
+    container.appendChild(intro);
+  }
+
+  createInputScalingSection(container) {
+    const section = document.createElement('div');
+    section.className = 'input-scaling-section';
+
+    section.innerHTML = `
+      <h3 class="scaling-title">How Complexity Changes with Input Size</h3>
+      <p class="scaling-subtitle">See how different algorithms scale as data grows - the same algorithm can go from instant to impossible</p>
+      <div class="scaling-table-wrapper">
+        <table class="scaling-table">
+          <thead>
+            <tr>
+              <th>Input Size</th>
+              <th style="color: ${curveConfig['O(1)'].color}">O(1)</th>
+              <th style="color: ${curveConfig['O(log n)'].color}">O(log n)</th>
+              <th style="color: ${curveConfig['O(n)'].color}">O(n)</th>
+              <th style="color: ${curveConfig['O(n log n)'].color}">O(n log n)</th>
+              <th style="color: ${curveConfig['O(n^2)'].color}">O(n^2)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${asymptoticContent.inputExamples.map(ex => {
+              const o1 = this.formatTimeDetailed(complexityFunctions['O(1)'](ex.n));
+              const olog = this.formatTimeDetailed(complexityFunctions['O(log n)'](ex.n));
+              const on = this.formatTimeDetailed(complexityFunctions['O(n)'](ex.n));
+              const onlogn = this.formatTimeDetailed(complexityFunctions['O(n log n)'](ex.n));
+              const on2 = this.formatTimeDetailed(complexityFunctions['O(n^2)'](ex.n));
+              return `
+                <tr>
+                  <td class="input-label">${ex.label}</td>
+                  <td class="time-cell time-fast">${o1}</td>
+                  <td class="time-cell time-fast">${olog}</td>
+                  <td class="time-cell ${ex.n > 1000 ? 'time-medium' : 'time-fast'}">${on}</td>
+                  <td class="time-cell ${ex.n > 1000 ? 'time-medium' : 'time-fast'}">${onlogn}</td>
+                  <td class="time-cell ${ex.n > 100 ? (ex.n > 1000 ? 'time-slow' : 'time-medium') : 'time-fast'}">${on2}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div class="scaling-insight">
+        <strong>Key Insight:</strong> At n=1,000,000, O(n^2) would take over 31 years if each operation took 1ms.
+        This is why algorithm choice matters at scale.
+      </div>
+    `;
+
+    container.appendChild(section);
+  }
+
+  createTimeSpaceSection(container) {
+    const section = document.createElement('div');
+    section.className = 'time-space-section';
+
+    const comparisonRows = Object.entries(curveConfig).map(([key, cfg]) => `
+      <tr style="--row-color: ${cfg.color}">
+        <td>
+          <span class="complexity-dot" style="background: ${cfg.color}"></span>
+          <strong>${cfg.label}</strong>
+        </td>
+        <td>${cfg.name}</td>
+        <td><code>${cfg.codePattern}</code></td>
+        <td>${cfg.spaceExample}</td>
+        <td class="real-world-cell">${cfg.realWorld}</td>
+      </tr>
+    `).join('');
+
+    section.innerHTML = `
+      <h3 class="time-space-title">Time vs Space Complexity Reference</h3>
+      <div class="time-space-table-wrapper">
+        <table class="time-space-table">
+          <thead>
+            <tr>
+              <th>Complexity</th>
+              <th>Name</th>
+              <th>Code Pattern</th>
+              <th>Space Example</th>
+              <th>Real World Analogy</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${comparisonRows}
+          </tbody>
+        </table>
+      </div>
+      <div class="time-space-tips">
+        <div class="tip-card">
+          <h4>Time-Space Tradeoff</h4>
+          <p>You can often trade memory for speed. Memoization stores computed results (more space) to avoid recomputation (less time). Hash tables use O(n) space to achieve O(1) lookups instead of O(n) linear search.</p>
+        </div>
+        <div class="tip-card">
+          <h4>Practical Considerations</h4>
+          <p>Big O describes worst-case growth, not actual speed. An O(n) algorithm with a large constant might be slower than O(n log n) for small inputs. Always profile with real data when performance matters.</p>
+        </div>
+      </div>
+    `;
+
+    container.appendChild(section);
+  }
+
+  formatTimeDetailed(ops) {
+    const ms = ops;
+    if (ms < 0.001) return '< 1 us';
+    if (ms < 1) return (ms * 1000).toFixed(0) + ' us';
+    if (ms < 1000) return ms.toFixed(0) + ' ms';
+    if (ms < 60000) return (ms / 1000).toFixed(1) + ' sec';
+    if (ms < 3600000) return (ms / 60000).toFixed(1) + ' min';
+    if (ms < 86400000) return (ms / 3600000).toFixed(1) + ' hrs';
+    if (ms < 31536000000) return (ms / 86400000).toFixed(0) + ' days';
+    return (ms / 31536000000).toFixed(0) + ' yrs';
   }
 
   selectCurve(key) {
@@ -7057,6 +7245,61 @@ function drawVisualizerStage(v, stateInfo = {}) {
   `;
 }
 
+// Topics that render as full-page experiences (hide standard chapter content)
+const fullPageTopics = ['runtime-shapes'];
+
+function isFullPageTopic(storyboardId) {
+  return fullPageTopics.includes(storyboardId);
+}
+
+function showFullPageTopic(sb) {
+  const topicContainer = el("topic-full-page");
+  const standardContent = el("standard-chapter-content");
+
+  // Hide standard chapter content, show topic container
+  standardContent.classList.add("hidden");
+  topicContainer.classList.remove("hidden");
+  topicContainer.innerHTML = '';
+
+  // Mount the appropriate full-page visualizer
+  if (sb.id === 'runtime-shapes') {
+    const visualizer = new RuntimeShapesVisualizer(topicContainer, {});
+    visualizer.mount();
+    state.fullPageVisualizer = visualizer;
+  }
+}
+
+function hideFullPageTopic() {
+  const topicContainer = el("topic-full-page");
+  const standardContent = el("standard-chapter-content");
+
+  // Unmount any existing full-page visualizer
+  if (state.fullPageVisualizer && state.fullPageVisualizer.unmount) {
+    state.fullPageVisualizer.unmount();
+    state.fullPageVisualizer = null;
+  }
+
+  // Show standard chapter content, hide topic container
+  topicContainer.classList.add("hidden");
+  topicContainer.innerHTML = '';
+  standardContent.classList.remove("hidden");
+}
+
+function handleTopicChange(sb) {
+  if (sb && isFullPageTopic(sb.id)) {
+    showFullPageTopic(sb);
+  } else {
+    hideFullPageTopic();
+    // Render standard content
+    renderMemoryTips(sb);
+    renderStoryboard(sb);
+    renderEditor();
+    if (sb && sb.id) {
+      mountAnimation(sb.id);
+    }
+  }
+}
+
 function populateSelectors() {
   const sbSelect = el("storyboard-select");
   const visSelect = el("visualizer-select");
@@ -7072,20 +7315,12 @@ function populateSelectors() {
   sbSelect.onchange = () => {
     state.storyboardIndex = Number(sbSelect.value);
     const sb = getStoryboard();
-    renderMemoryTips(sb);
-    renderStoryboard(sb);
-    renderEditor();
-    // Mount animation if available
-    if (sb && sb.id) {
-      mountAnimation(sb.id);
-    }
+    handleTopicChange(sb);
   };
 
-  // Mount initial animation
+  // Handle initial topic
   const initialSb = getStoryboard();
-  if (initialSb && initialSb.id) {
-    mountAnimation(initialSb.id);
-  }
+  handleTopicChange(initialSb);
 
   visSelect.innerHTML = "";
   (ch.visualizers || []).forEach((v, idx) => {

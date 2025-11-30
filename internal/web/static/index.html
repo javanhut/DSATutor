@@ -376,6 +376,13 @@
 
         <!-- Chapter Content - Tutorial-First Layout -->
         <div class="chapter-content">
+          <!-- Topic-specific full page content (hidden by default) -->
+          <div id="topic-full-page" class="topic-full-page hidden">
+            <!-- Full-page topic content rendered here by specific visualizers -->
+          </div>
+
+          <!-- Standard chapter content wrapper (hidden when topic-full-page is shown) -->
+          <div id="standard-chapter-content">
           <!-- 1. Chapter Overview (Brief Summary at Top) -->
           <section class="chapter-overview">
             <div class="overview-card">
@@ -486,6 +493,7 @@
               </div>
             </details>
           </div>
+          </div><!-- end standard-chapter-content -->
         </div>
 
         <!-- Edit Panel (Hidden by default) -->

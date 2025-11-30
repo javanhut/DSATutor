@@ -9,6 +9,31 @@ The DSA Tutor provides two visualization systems:
 
 Both systems use a registry pattern to map IDs (defined in the backend) to JavaScript handler classes.
 
+### Full-Page Topics
+
+Some topics render as completely standalone pages that replace the standard chapter content. When a full-page topic is selected from the topic dropdown, the standard chapter sections (overview, tutorial, examples, etc.) are hidden and the topic renders its own complete educational experience.
+
+**Full-page topics are defined in:**
+```javascript
+const fullPageTopics = ['runtime-shapes'];
+```
+
+**Key functions:**
+- `isFullPageTopic(storyboardId)` - Check if a topic is full-page
+- `showFullPageTopic(sb)` - Mount full-page content into `#topic-full-page`
+- `hideFullPageTopic()` - Unmount and restore standard content
+- `handleTopicChange(sb)` - Main handler that routes between full-page and standard
+
+**HTML Structure:**
+```html
+<div id="topic-full-page" class="topic-full-page hidden">
+  <!-- Full-page topic content -->
+</div>
+<div id="standard-chapter-content">
+  <!-- Standard chapter sections -->
+</div>
+```
+
 ### Key Components
 
 1. **Visualizer Registry** (`visualizerRegistry` in `app.js`)
@@ -63,25 +88,77 @@ class MyVisualizer {
 
 ### RuntimeShapesVisualizer (`timeline-big-o`)
 
-Displays Big-O complexity curves comparing growth rates.
+A comprehensive educational visualizer for understanding asymptotic complexity (Big O notation). When accessed via the "Runtime Shapes" topic in the Introduction to Algorithms chapter, it provides a complete learning experience about algorithm complexity.
 
 **Features:**
 - SVG rendering with logarithmic Y-axis scaling
 - Toggle buttons to show/hide individual curves
 - Interactive N-value slider for scrubbing
 - Animated transitions during storyboard playback
+- Comprehensive asymptotic analysis explanation
+- Input scaling comparison table showing concrete operation counts
+- Time vs Space complexity reference table
+- Real-world analogies for each complexity class
+- Code pattern examples for each complexity
+
+**Educational Sections:**
+
+1. **Asymptotic Analysis Intro**
+   - What is Big O: Description of growth rate notation
+   - Why Ignore Constants: Explanation of why constants don't matter at scale
+   - Time vs Space Complexity: Covers the difference and tradeoffs
+
+2. **Interactive Complexity Graph**
+   - Curves for O(1), O(log n), O(n), O(n log n), O(n^2)
+   - Operations table showing concrete numbers at current N
+   - Time estimates (if 1ms per operation)
+   - Click curves for detailed explanations
+
+3. **Input Scaling Table**
+   - Shows operation counts at n=10, 100, 1000, 10000, 1000000
+   - Color-coded cells: green (fast), orange (medium), red (slow)
+   - Demonstrates how algorithms diverge at scale
+
+4. **Time vs Space Reference**
+   - Each complexity with its name, code pattern, space example
+   - Real-world analogies for intuitive understanding
+   - Tip cards for time-space tradeoff and practical considerations
 
 **Curves displayed:**
-- O(1) - Constant (green)
-- O(log n) - Logarithmic (cyan)
-- O(n) - Linear (orange)
-- O(n log n) - Linearithmic (purple)
-- O(n^2) - Quadratic (red)
+- O(1) - Constant (green) - Array lookup, hash access
+- O(log n) - Logarithmic (cyan) - Binary search
+- O(n) - Linear (orange) - Array traversal
+- O(n log n) - Linearithmic (purple) - Merge sort
+- O(n^2) - Quadratic (red) - Nested loops
+
+**Configuration (`curveConfig`):**
+Each curve includes:
+- `color`: Display color
+- `label`: Short label
+- `name`: Full name (e.g., "Constant")
+- `examples`: Array of algorithm examples
+- `why`: Explanation of why this complexity occurs
+- `spaceExample`: Typical space usage at this complexity
+- `codePattern`: Representative code pattern
+- `realWorld`: Real-world analogy
 
 **Hooks:**
 - `onStep`: Animates to target N value based on step index
 - `onReset`: Resets visualization to n=1
 - `onCurveSelect`: Toggles curve visibility
+
+**CSS Classes:**
+| Class | Description |
+|-------|-------------|
+| `.runtime-shapes-wrapper` | Main container for all sections |
+| `.asymptotic-intro` | Intro section with gradient background |
+| `.asymptotic-sections` | Grid of explanation cards |
+| `.input-scaling-section` | Scaling comparison table section |
+| `.scaling-table` | Table showing ops at different N |
+| `.time-fast` / `.time-medium` / `.time-slow` | Color-coded cells |
+| `.time-space-section` | Reference table section |
+| `.time-space-table` | Complexity reference table |
+| `.tip-card` | Educational tip cards |
 
 ## Adding a New Visualizer
 
