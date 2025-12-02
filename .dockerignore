@@ -1,0 +1,30 @@
+# Git
+.git/
+.gitignore
+
+# Go cache
+.gocache/
+*.cache/
+
+# Documentation (not needed in image)
+*.md
+docs/
+
+# PDFs and books
+*.pdf
+*Grokking*
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Local development files
+.claude/
+docker-compose.yml
+
+# OS files
+.DS_Store
+Thumbs.db
