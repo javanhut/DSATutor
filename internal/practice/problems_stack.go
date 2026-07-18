@@ -3,12 +3,12 @@ package practice
 // StackProblems contains all stack category problems
 var StackProblems = []*Problem{
 	{
-		ID:         "valid-parentheses",
-		Number:     19,
-		Title:      "Valid Parentheses",
-		Difficulty: "Easy",
-		Category:   "stack",
-		Tags:       []string{"String", "Stack"},
+		ID:              "valid-parentheses",
+		Number:          22,
+		Title:           "Valid Parentheses",
+		Difficulty:      "Easy",
+		Category:        "stack",
+		Tags:            []string{"String", "Stack"},
 		RelatedChapters: []int{8},
 		Description: `Given a string s containing just the characters '(', ')', '{', '}', '[' and ']', determine if the input string is valid.
 
@@ -217,7 +217,7 @@ Note that:
 		Category:        "stack",
 		Tags:            []string{"String", "Dynamic Programming", "Backtracking"},
 		RelatedChapters: []int{3, 4, 12},
-		Description: `Given n pairs of parentheses, write a function to generate all combinations of well-formed parentheses.`,
+		Description:     `Given n pairs of parentheses, write a function to generate all combinations of well-formed parentheses.`,
 		Constraints: []string{
 			"1 <= n <= 8",
 		},
@@ -272,7 +272,7 @@ Note that:
 		Category:        "stack",
 		Tags:            []string{"Array", "Stack", "Monotonic Stack"},
 		RelatedChapters: []int{3, 8},
-		Description: `Given an array of integers temperatures represents the daily temperatures, return an array answer such that answer[i] is the number of days you have to wait after the ith day to get a warmer temperature. If there is no future day for which this is possible, keep answer[i] == 0 instead.`,
+		Description:     `Given an array of integers temperatures represents the daily temperatures, return an array answer such that answer[i] is the number of days you have to wait after the ith day to get a warmer temperature. If there is no future day for which this is possible, keep answer[i] == 0 instead.`,
 		Constraints: []string{
 			"1 <= temperatures.length <= 10^5",
 			"30 <= temperatures[i] <= 100",
@@ -395,7 +395,7 @@ Return the number of car fleets that will arrive at the destination.`,
 		Category:        "stack",
 		Tags:            []string{"Array", "Stack", "Monotonic Stack"},
 		RelatedChapters: []int{3, 8, 12},
-		Description: `Given an array of integers heights representing the histogram's bar height where the width of each bar is 1, return the area of the largest rectangle in the histogram.`,
+		Description:     `Given an array of integers heights representing the histogram's bar height where the width of each bar is 1, return the area of the largest rectangle in the histogram.`,
 		Constraints: []string{
 			"1 <= heights.length <= 10^5",
 			"0 <= heights[i] <= 10^4",
@@ -441,7 +441,6 @@ Return the number of car fleets that will arrive at the destination.`,
 			},
 		},
 	},
-
 }
 
 func init() {

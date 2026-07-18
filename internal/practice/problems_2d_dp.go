@@ -608,7 +608,59 @@ Note: You may not engage in multiple transactions simultaneously (i.e., you must
 			},
 		},
 	},
+	{
+		ID:              "unique-paths",
+		Number:          147,
+		Title:           "Unique Paths",
+		Slug:            "unique-paths",
+		Difficulty:      "Medium",
+		Category:        "2d-dp",
+		Tags:            []string{"Math", "Dynamic Programming", "Combinatorics"},
+		RelatedChapters: []int{9},
+		Description: `There is a robot on an m x n grid. The robot is initially located at the top-left corner. The robot tries to move to the bottom-right corner. The robot can only move either down or right at any point in time.
 
+Given the two integers m and n, return the number of possible unique paths that the robot can take to reach the bottom-right corner.`,
+		Constraints: []string{
+			"1 <= m, n <= 100",
+		},
+		Examples: []Example{
+			{Input: "m = 3, n = 7", Output: "28"},
+			{Input: "m = 3, n = 2", Output: "3", Explanation: "Right->Down->Down, Down->Down->Right, Down->Right->Down."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"m": 3, "n": 7}, Expected: 28},
+			{Input: map[string]interface{}{"m": 3, "n": 2}, Expected: 3},
+			{Input: map[string]interface{}{"m": 1, "n": 1}, Expected: 1, Hidden: true},
+			{Input: map[string]interface{}{"m": 10, "n": 10}, Expected: 48620, Hidden: true},
+		},
+		TimeComplexity:  "O(m * n)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def uniquePaths(m, n):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Paths to any cell = paths to the cell above + paths to the cell on the left. The first row and column each have exactly one path.", ChapterRef: 9},
+			{Level: 2, Type: "algorithm", Content: "DP over the grid. You only ever need the previous row, so a single 1-D row array is enough: row[j] += row[j-1]."},
+			{Level: 3, Type: "code", Content: "row = [1] * n. Repeat m-1 times: for j in range(1, n): row[j] += row[j-1]. Answer is row[-1]."},
+		},
+		Solution: Solution{
+			Code: `def uniquePaths(m, n):
+    # row[j] = number of paths to cell (current_row, j)
+    row = [1] * n
+
+    for _ in range(m - 1):
+        for j in range(1, n):
+            row[j] += row[j - 1]
+
+    return row[-1]`,
+			Explanation:     "Each cell is reachable only from above or the left, so paths(i, j) = paths(i-1, j) + paths(i, j-1). Rolling a single row keeps space at O(n): row[j] already holds the value from the row above, and row[j-1] is the value to the left.",
+			TimeComplexity:  "O(m * n)",
+			SpaceComplexity: "O(n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "First row baseline", Explanation: "Only one way to reach any cell in the top row: keep moving right", CodeSnippet: "row = [1] * n", LineStart: 3, LineEnd: 3},
+				{Title: "Add top and left", Explanation: "row[j] holds paths-from-above, row[j-1] holds paths-from-left", CodeSnippet: "row[j] += row[j - 1]", LineStart: 7, LineEnd: 7},
+				{Title: "Bottom-right answer", Explanation: "After m-1 updates the row represents the last grid row", CodeSnippet: "return row[-1]", LineStart: 9, LineEnd: 9},
+			},
+		},
+	},
 }
 
 func init() {

@@ -3,12 +3,12 @@ package practice
 // TwoPointersProblems contains all two-pointers category problems
 var TwoPointersProblems = []*Problem{
 	{
-		ID:         "valid-palindrome",
-		Number:     10,
-		Title:      "Valid Palindrome",
-		Difficulty: "Easy",
-		Category:   "two-pointers",
-		Tags:       []string{"Two Pointers", "String"},
+		ID:              "valid-palindrome",
+		Number:          10,
+		Title:           "Valid Palindrome",
+		Difficulty:      "Easy",
+		Category:        "two-pointers",
+		Tags:            []string{"Two Pointers", "String"},
 		RelatedChapters: []int{4},
 		Description: `A phrase is a palindrome if, after converting all uppercase letters into lowercase letters and removing all non-alphanumeric characters, it reads the same forward and backward.
 
@@ -50,12 +50,12 @@ Given a string s, return true if it is a palindrome, or false otherwise.`,
 		},
 	},
 	{
-		ID:         "3sum",
-		Number:     12,
-		Title:      "3Sum",
-		Difficulty: "Medium",
-		Category:   "two-pointers",
-		Tags:       []string{"Array", "Two Pointers", "Sorting"},
+		ID:              "3sum",
+		Number:          12,
+		Title:           "3Sum",
+		Difficulty:      "Medium",
+		Category:        "two-pointers",
+		Tags:            []string{"Array", "Two Pointers", "Sorting"},
 		RelatedChapters: []int{4},
 		Description: `Given an integer array nums, return all the triplets [nums[i], nums[j], nums[k]] such that i != j, i != k, and j != k, and nums[i] + nums[j] + nums[k] == 0.
 
@@ -107,12 +107,12 @@ Notice that the solution set must not contain duplicate triplets.`,
 		},
 	},
 	{
-		ID:         "container-with-most-water",
-		Number:     13,
-		Title:      "Container With Most Water",
-		Difficulty: "Medium",
-		Category:   "two-pointers",
-		Tags:       []string{"Array", "Two Pointers", "Greedy"},
+		ID:              "container-with-most-water",
+		Number:          13,
+		Title:           "Container With Most Water",
+		Difficulty:      "Medium",
+		Category:        "two-pointers",
+		Tags:            []string{"Array", "Two Pointers", "Greedy"},
 		RelatedChapters: []int{4},
 		Description: `You are given an integer array height of length n. There are n vertical lines drawn such that the two endpoints of the ith line are (i, 0) and (i, height[i]).
 
@@ -202,12 +202,12 @@ Return the indices of the two numbers, index1 and index2, added by one as an int
 		},
 	},
 	{
-		ID:         "trapping-rain-water",
-		Number:     14,
-		Title:      "Trapping Rain Water",
-		Difficulty: "Hard",
-		Category:   "two-pointers",
-		Tags:       []string{"Array", "Two Pointers", "Dynamic Programming", "Stack"},
+		ID:          "trapping-rain-water",
+		Number:      14,
+		Title:       "Trapping Rain Water",
+		Difficulty:  "Hard",
+		Category:    "two-pointers",
+		Tags:        []string{"Array", "Two Pointers", "Dynamic Programming", "Stack"},
 		Description: `Given n non-negative integers representing an elevation map where the width of each bar is 1, compute how much water it can trap after raining.`,
 		Constraints: []string{
 			"n == height.length",
@@ -252,7 +252,6 @@ Return the indices of the two numbers, index1 and index2, added by one as an int
 			Explanation: "Two pointers with max heights. Water at position = min(left_max, right_max) - height.",
 		},
 	},
-
 }
 
 func init() {

@@ -3,14 +3,14 @@ package practice
 // SlidingWindowProblems contains all sliding-window category problems
 var SlidingWindowProblems = []*Problem{
 	{
-		ID:         "longest-substring-without-repeating",
-		Number:     15,
-		Title:      "Longest Substring Without Repeating Characters",
-		Difficulty: "Medium",
-		Category:   "sliding-window",
-		Tags:       []string{"Hash Table", "String", "Sliding Window"},
+		ID:              "longest-substring-without-repeating",
+		Number:          15,
+		Title:           "Longest Substring Without Repeating Characters",
+		Difficulty:      "Medium",
+		Category:        "sliding-window",
+		Tags:            []string{"Hash Table", "String", "Sliding Window"},
 		RelatedChapters: []int{5},
-		Description: `Given a string s, find the length of the longest substring without repeating characters.`,
+		Description:     `Given a string s, find the length of the longest substring without repeating characters.`,
 		Constraints: []string{
 			"0 <= s.length <= 5 * 10^4",
 			"s consists of English letters, digits, symbols and spaces",
@@ -155,12 +155,12 @@ In other words, return true if one of s1's permutations is the substring of s2.`
 		},
 	},
 	{
-		ID:         "minimum-window-substring",
-		Number:     18,
-		Title:      "Minimum Window Substring",
-		Difficulty: "Hard",
-		Category:   "sliding-window",
-		Tags:       []string{"Hash Table", "String", "Sliding Window"},
+		ID:          "minimum-window-substring",
+		Number:      18,
+		Title:       "Minimum Window Substring",
+		Difficulty:  "Hard",
+		Category:    "sliding-window",
+		Tags:        []string{"Hash Table", "String", "Sliding Window"},
 		Description: `Given two strings s and t of lengths m and n respectively, return the minimum window substring of s such that every character in t (including duplicates) is included in the window. If there is no such substring, return the empty string "".`,
 		Constraints: []string{
 			"m == s.length",
@@ -277,7 +277,6 @@ def maxSlidingWindow(nums, k):
 			Explanation: "Monotonic decreasing deque. Front always has max for current window.",
 		},
 	},
-
 }
 
 func init() {

@@ -62,7 +62,7 @@ You have to rotate the image in-place, which means you have to modify the input 
 		Category:        "math-geometry",
 		Tags:            []string{"Array", "Matrix", "Simulation"},
 		RelatedChapters: []int{1},
-		Description: `Given an m x n matrix, return all elements of the matrix in spiral order.`,
+		Description:     `Given an m x n matrix, return all elements of the matrix in spiral order.`,
 		Constraints: []string{
 			"m == matrix.length",
 			"n == matrix[i].length",
@@ -317,7 +317,7 @@ Increment the large integer by one and return the resulting array of digits.`,
 		Category:        "math-geometry",
 		Tags:            []string{"Math", "Recursion"},
 		RelatedChapters: []int{1, 4},
-		Description: `Implement pow(x, n), which calculates x raised to the power n (i.e., x^n).`,
+		Description:     `Implement pow(x, n), which calculates x raised to the power n (i.e., x^n).`,
 		Constraints: []string{
 			"-100.0 < x < 100.0",
 			"-2^31 <= n <= 2^31 - 1",
@@ -451,7 +451,7 @@ An axis-aligned square is a square whose edges are all the same length and are e
 [[], [[3, 10]], [[11, 2]], [[3, 2]], [[11, 10]], [[14, 8]], [[11, 2]], [[11, 10]]]`, Output: "[null, null, null, null, 1, 0, null, 2]"},
 		},
 		TestCases: []TestCase{
-			{Input: map[string]interface{}{"operations": []string{"DetectSquares", "add", "add", "add", "count"}, "args": [][]int{{}, {3, 10}, {11, 2}, {3, 2}, {11, 10}}}, Expected: []interface{}{nil, nil, nil, nil, 1}},
+			{Input: map[string]interface{}{"operations": []string{"DetectSquares", "add", "add", "add", "count"}, "args": []interface{}{[]interface{}{}, []interface{}{[]int{3, 10}}, []interface{}{[]int{11, 2}}, []interface{}{[]int{3, 2}}, []interface{}{[]int{11, 10}}}}, Expected: []interface{}{nil, nil, nil, nil, 1}},
 		},
 		TimeComplexity:  "O(n) for count",
 		SpaceComplexity: "O(n)",
@@ -497,7 +497,6 @@ An axis-aligned square is a square whose edges are all the same length and are e
 			},
 		},
 	},
-
 }
 
 func init() {

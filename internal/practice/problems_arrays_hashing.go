@@ -3,12 +3,12 @@ package practice
 // ArraysHashingProblems contains all arrays-hashing category problems
 var ArraysHashingProblems = []*Problem{
 	{
-		ID:         "two-sum",
-		Number:     1,
-		Title:      "Two Sum",
-		Difficulty: "Easy",
-		Category:   "arrays-hashing",
-		Tags:       []string{"Array", "Hash Table"},
+		ID:              "two-sum",
+		Number:          1,
+		Title:           "Two Sum",
+		Difficulty:      "Easy",
+		Category:        "arrays-hashing",
+		Tags:            []string{"Array", "Hash Table"},
 		RelatedChapters: []int{2, 3},
 		Description: `Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.
 
@@ -48,7 +48,7 @@ You can return the answer in any order.`,
             return [seen[complement], i]
         seen[num] = i
     return []`,
-			Explanation: "Use a hash map to store each number's index. For each number, check if its complement exists.",
+			Explanation:     "Use a hash map to store each number's index. For each number, check if its complement exists.",
 			TimeComplexity:  "O(n)",
 			SpaceComplexity: "O(n)",
 			Walkthrough: []WalkthroughStep{
@@ -59,14 +59,14 @@ You can return the answer in any order.`,
 		},
 	},
 	{
-		ID:         "contains-duplicate",
-		Number:     2,
-		Title:      "Contains Duplicate",
-		Difficulty: "Easy",
-		Category:   "arrays-hashing",
-		Tags:       []string{"Array", "Hash Table", "Sorting"},
+		ID:              "contains-duplicate",
+		Number:          2,
+		Title:           "Contains Duplicate",
+		Difficulty:      "Easy",
+		Category:        "arrays-hashing",
+		Tags:            []string{"Array", "Hash Table", "Sorting"},
 		RelatedChapters: []int{2, 3},
-		Description: `Given an integer array nums, return true if any value appears at least twice in the array, and return false if every element is distinct.`,
+		Description:     `Given an integer array nums, return true if any value appears at least twice in the array, and return false if every element is distinct.`,
 		Constraints: []string{
 			"1 <= nums.length <= 10^5",
 			"-10^9 <= nums[i] <= 10^9",
@@ -100,12 +100,12 @@ You can return the answer in any order.`,
 		},
 	},
 	{
-		ID:         "valid-anagram",
-		Number:     3,
-		Title:      "Valid Anagram",
-		Difficulty: "Easy",
-		Category:   "arrays-hashing",
-		Tags:       []string{"Hash Table", "String", "Sorting"},
+		ID:              "valid-anagram",
+		Number:          3,
+		Title:           "Valid Anagram",
+		Difficulty:      "Easy",
+		Category:        "arrays-hashing",
+		Tags:            []string{"Hash Table", "String", "Sorting"},
 		RelatedChapters: []int{2, 3},
 		Description: `Given two strings s and t, return true if t is an anagram of s, and false otherwise.
 
@@ -145,12 +145,12 @@ An Anagram is a word or phrase formed by rearranging the letters of a different 
 		},
 	},
 	{
-		ID:         "group-anagrams",
-		Number:     4,
-		Title:      "Group Anagrams",
-		Difficulty: "Medium",
-		Category:   "arrays-hashing",
-		Tags:       []string{"Array", "Hash Table", "String", "Sorting"},
+		ID:              "group-anagrams",
+		Number:          4,
+		Title:           "Group Anagrams",
+		Difficulty:      "Medium",
+		Category:        "arrays-hashing",
+		Tags:            []string{"Array", "Hash Table", "String", "Sorting"},
 		RelatedChapters: []int{2, 3},
 		Description: `Given an array of strings strs, group the anagrams together. You can return the answer in any order.
 
@@ -193,14 +193,14 @@ def groupAnagrams(strs):
 		},
 	},
 	{
-		ID:         "top-k-frequent-elements",
-		Number:     5,
-		Title:      "Top K Frequent Elements",
-		Difficulty: "Medium",
-		Category:   "arrays-hashing",
-		Tags:       []string{"Array", "Hash Table", "Heap", "Bucket Sort"},
+		ID:              "top-k-frequent-elements",
+		Number:          5,
+		Title:           "Top K Frequent Elements",
+		Difficulty:      "Medium",
+		Category:        "arrays-hashing",
+		Tags:            []string{"Array", "Hash Table", "Heap", "Bucket Sort"},
 		RelatedChapters: []int{2, 3, 8},
-		Description: `Given an integer array nums and an integer k, return the k most frequent elements. You may return the answer in any order.`,
+		Description:     `Given an integer array nums and an integer k, return the k most frequent elements. You may return the answer in any order.`,
 		Constraints: []string{
 			"1 <= nums.length <= 10^5",
 			"-10^4 <= nums[i] <= 10^4",
@@ -493,7 +493,7 @@ You must write an algorithm that runs in O(n) time.`,
 	},
 	{
 		ID:         "best-time-to-buy-and-sell-stock",
-		Number:     10,
+		Number:     21,
 		Title:      "Best Time to Buy and Sell Stock",
 		Difficulty: "Easy",
 		Category:   "arrays-hashing",
@@ -535,7 +535,6 @@ Return the maximum profit you can achieve from this transaction. If you cannot a
 			Explanation: "Track minimum price seen. At each step, calculate potential profit and update max.",
 		},
 	},
-
 }
 
 func init() {

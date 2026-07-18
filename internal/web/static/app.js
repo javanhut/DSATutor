@@ -6054,17 +6054,18 @@ class SandboxAnimator extends AlgorithmAnimator {
 
       const result = await response.json();
 
-      if (result.success) {
-        this.executionTrace = result;
-        this.buildStepsFromTrace();
-        this.updateStepCounter();
-        if (this.steps.length > 0) {
-          this.goToStep(0);
-        }
-        return { success: true, output: result.output, stepCount: this.steps.length };
-      } else {
-        return { success: false, error: result.error };
+      // Keep any partial trace (e.g. run errored midway or hit the step cap)
+      // so the user can still step through what did execute.
+      this.executionTrace = result;
+      this.buildStepsFromTrace();
+      this.updateStepCounter();
+      if (this.steps.length > 0) {
+        this.goToStep(0);
       }
+      if (result.success) {
+        return { success: true, output: result.output, stepCount: this.steps.length };
+      }
+      return { success: false, error: result.error, stepCount: this.steps.length };
     } catch (err) {
       return { success: false, error: err.message };
     }
@@ -6113,6 +6114,9 @@ class SandboxAnimator extends AlgorithmAnimator {
         case 'array':
           html += this.renderArray(struct.data, struct.highlights);
           break;
+        case 'matrix':
+          html += this.renderMatrix(struct.data, struct.highlights);
+          break;
         case 'linked_list':
           html += this.renderLinkedList(struct.data);
           break;
@@ -6142,36 +6146,59 @@ class SandboxAnimator extends AlgorithmAnimator {
   renderArray(data, highlights) {
     if (!Array.isArray(data)) return '<div class="error">Invalid array data</div>';
 
+    // Tracer emits { pointers: {name: idx}, window: {start, end}, annotations: [...] }
+    const pointers = (highlights && highlights.pointers) || {};
+    const win = highlights && highlights.window;
+    const annotations = (highlights && highlights.annotations) || [];
+
     let html = '<div class="array-viz">';
     data.forEach((val, idx) => {
       let classes = ['array-cell'];
-
-      if (highlights) {
-        Object.entries(highlights).forEach(([name, hIdx]) => {
-          if (hIdx === idx) {
-            classes.push('highlight');
-            classes.push(`ptr-${name}`);
-          }
-        });
+      const labels = Object.entries(pointers)
+        .filter(([, hIdx]) => hIdx === idx)
+        .map(([name]) => name);
+      if (labels.length > 0) {
+        classes.push('highlight');
+        labels.forEach(name => classes.push(`ptr-${name}`));
+      }
+      if (win && idx >= win.start && idx <= win.end) {
+        classes.push('in-window');
       }
 
       html += `<div class="${classes.join(' ')}">`;
       html += `<div class="cell-value">${escapeHtml(String(val))}</div>`;
       html += `<div class="cell-index">${idx}</div>`;
-
-      // Show pointer labels
-      if (highlights) {
-        const pointers = Object.entries(highlights)
-          .filter(([_, hIdx]) => hIdx === idx)
-          .map(([name, _]) => name);
-        if (pointers.length > 0) {
-          html += `<div class="cell-pointers">${pointers.join(', ')}</div>`;
-        }
+      if (labels.length > 0) {
+        html += `<div class="cell-pointers">${labels.join(', ')}</div>`;
       }
-
       html += '</div>';
     });
     html += '</div>';
+
+    if (annotations.length > 0) {
+      html += '<div class="array-annotations">';
+      annotations.forEach(a => {
+        html += `<span class="annotation"><strong>${escapeHtml(String(a.label))}:</strong> ${escapeHtml(String(a.value))}</span>`;
+      });
+      html += '</div>';
+    }
+    return html;
+  }
+
+  renderMatrix(data, highlights) {
+    if (!Array.isArray(data)) return '<div class="error">Invalid matrix data</div>';
+
+    const cells = (highlights && highlights.cell) || [];
+    let html = '<div class="matrix-viz"><table class="matrix-table">';
+    data.forEach((row, r) => {
+      html += '<tr>';
+      (row || []).forEach((val, c) => {
+        const hit = cells.some(cell => cell.row === r && cell.col === c);
+        html += `<td class="matrix-cell${hit ? ' highlight' : ''}">${escapeHtml(String(val))}</td>`;
+      });
+      html += '</tr>';
+    });
+    html += '</table></div>';
     return html;
   }
 
@@ -6450,10 +6477,11 @@ function toggleSandboxMode() {
 
 function initSandboxAnimator() {
   const canvas = document.getElementById('sandbox-canvas');
-  const codeEl = document.getElementById('code-lines');
   const stateEl = document.getElementById('sandbox-state');
 
-  sandboxState.animator = new SandboxAnimator(canvas, codeEl, stateEl, {});
+  // No code panel: sandbox shows code in its CodeMirror editor. Passing the
+  // chapter panel's #code-lines here would clobber the chapter animator.
+  sandboxState.animator = new SandboxAnimator(canvas, null, stateEl, {});
 
   // Initialize CodeMirror editor with sample code
   const sampleCode = `# Write your Python code here
@@ -6780,6 +6808,8 @@ animationRegistry['car-fleet'] = CarFleetAnimator;
 animationRegistry['median-two-arrays'] = MedianTwoArraysAnimator;
 animationRegistry['kth-largest'] = KthLargestAnimator;
 animationRegistry['n-queens'] = NQueensAnimator;
+// Storyboards without a bespoke animator, mapped to the closest existing one
+animationRegistry['fibonacci-tree'] = MemoizationAnimator;
 
 // Current animation instance
 let currentAnimator = null;
@@ -6841,6 +6871,12 @@ function mountAnimation(storyboardId) {
 
   const AnimatorClass = animationRegistry[storyboardId];
   if (!AnimatorClass) {
+    // No interactive animation for this storyboard (e.g. knn, mapreduce-mini):
+    // clear stale content instead of leaving the previous animation behind.
+    const canvas = document.getElementById('visualizer-canvas');
+    const stateEl = document.getElementById('visualizer-state');
+    if (canvas) canvas.innerHTML = '<div class="sandbox-empty">No interactive animation for this storyboard yet — follow the narrated steps above.</div>';
+    if (stateEl) stateEl.textContent = '';
     return false;
   }
 
@@ -7111,20 +7147,20 @@ function mountVisualizer(v) {
   const meta = el("visualizer-meta");
   const log = el("visualizer-log");
   const panel = el("visualizer-panel");
-  log.innerHTML = "";
+  if (log) log.innerHTML = "";
 
   if (!v) {
-    meta.textContent = "No visualizer attached to this chapter.";
-    panel.innerHTML = "";
+    if (meta) meta.textContent = "No visualizer attached to this chapter.";
+    if (panel) panel.innerHTML = "";
     return;
   }
 
-  meta.textContent = `${v.title} - hooks: ${v.hooks?.join(", ") || "none"}`;
+  if (meta) meta.textContent = `${v.title} - hooks: ${v.hooks?.join(", ") || "none"}`;
   logMessage("Visualizer mounted.");
 
   // Check if we have a registered handler for this visualizer
   const HandlerClass = visualizerRegistry[v.id];
-  if (HandlerClass) {
+  if (HandlerClass && panel) {
     state.visualizerHandler = new HandlerClass(panel, v);
     state.visualizerHandler.mount();
   } else {
@@ -7150,17 +7186,11 @@ function playStoryboard() {
   let offset = 0;
   steps.forEach((step, idx) => {
     const delay = parseDuration(step.duration);
-    const start = setTimeout(() => setActiveStep(idx), offset);
+    const start = setTimeout(() => {
+      setActiveStep(idx);
+      emitVisualizerHook("onStep", { step: idx, cue: step.cue });
+    }, offset);
     state.timers.push(start);
-    offset += delay;
-  });
-
-  // Fire onStep hooks if present.
-  let hookOffset = 0;
-  steps.forEach((step, idx) => {
-    const delay = parseDuration(step.duration);
-    const timer = setTimeout(() => emitVisualizerHook("onStep", { step: idx, cue: step.cue }), hookOffset);
-    state.timers.push(timer);
     offset += delay;
   });
 }
@@ -7714,27 +7744,21 @@ function resetPracticePanels() {
 
 // Activate a specific tab in the practice panel
 function activatePracticeTab(tabName) {
-  const tabs = document.querySelectorAll('.practice-tab');
-  const panels = document.querySelectorAll('.practice-tab-content');
+  // Scoped to the problem panel; the right panel has its own tab set.
+  const root = document.querySelector('#practice-mode .problem-panel');
+  if (!root) return;
 
-  tabs.forEach(tab => {
-    const target = tab.dataset.tab;
-    if (target === tabName) {
-      tab.classList.add('active');
-    } else {
-      tab.classList.remove('active');
-    }
+  root.querySelectorAll('.tab-btn').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.tab === tabName);
   });
 
-  panels.forEach(panel => {
-    const panelId = panel.id;
-    // Map panel IDs like 'problem-description' to tab names like 'description'
-    const panelTabName = panelId.replace('problem-', '');
-    if (panelTabName === tabName) {
-      panel.classList.remove('hidden');
-    } else {
-      panel.classList.add('hidden');
-    }
+  root.querySelectorAll('.tab-content').forEach(panel => {
+    // Same ID mapping as the tab click handler:
+    // problem-description -> description, visualization-tab -> visualization
+    const panelTabName = panel.id.replace('-tab', '').replace('problem-', '').replace(/-/g, '');
+    const isMatch = panelTabName === tabName;
+    panel.classList.toggle('hidden', !isMatch);
+    panel.classList.toggle('active', isMatch);
   });
 }
 
@@ -8057,24 +8081,25 @@ async function submitPracticeCode() {
     const result = await response.json();
 
     let html = '';
-    if (result.error) {
-      html = `<div class="test-error">${escapeHtml(result.error)}</div>`;
+    if (!response.ok || result.error || !result.results) {
+      html = `<div class="test-error">${escapeHtml(result.error || result.status || 'Submission failed')}</div>`;
     } else {
-      const allPassed = result.results?.every(r => r.passed);
+      const allPassed = result.status === 'Accepted';
 
       html = `
         <div class="submit-result ${allPassed ? 'all-passed' : 'some-failed'}">
-          <div class="submit-status">${allPassed ? 'All Tests Passed!' : 'Some Tests Failed'}</div>
-          <div class="submit-summary">Passed: ${result.passed}/${result.total}</div>
+          <div class="submit-status">${allPassed ? 'All Tests Passed!' : escapeHtml(result.status || 'Some Tests Failed')}</div>
+          <div class="submit-summary">Passed: ${result.passedCount}/${result.totalCount}</div>
           <div class="submit-details">
       `;
 
       result.results?.forEach((r, i) => {
+        const got = r.error ? r.error : (r.actual !== undefined && r.actual !== null ? JSON.stringify(r.actual) : '');
         html += `
           <div class="submit-test ${r.passed ? 'passed' : 'failed'}">
-            <span class="test-num">Test ${i + 1}</span>
+            <span class="test-num">Test ${i + 1}${r.hidden ? ' (hidden)' : ''}</span>
             <span class="test-status">${r.passed ? 'Passed' : 'Failed'}</span>
-            ${!r.passed && r.output ? `<div class="test-output">Got: <code>${escapeHtml(r.output)}</code></div>` : ''}
+            ${!r.passed && got ? `<div class="test-output">Got: <code>${escapeHtml(got)}</code></div>` : ''}
           </div>
         `;
       });
@@ -8715,7 +8740,7 @@ function setupPracticeControls() {
 
         if (chaptersEl) chaptersEl.classList.remove('hidden');
         // Show detail-empty or detail depending on whether a chapter is selected
-        if (state.currentChapter) {
+        if (state.current) {
           if (detailEl) detailEl.classList.remove('hidden');
           if (detailEmptyEl) detailEmptyEl.classList.add('hidden');
         } else {
@@ -8846,7 +8871,7 @@ function filterProblems() {
 
     if (status === 'solved' && !progress.solved) {
       show = false;
-    } else if (status === 'unsolved' && progress.solved) {
+    } else if (status === 'not_started' && (progress.solved || progress.attempts)) {
       show = false;
     } else if (status === 'attempted' && (!progress.attempts || progress.solved)) {
       show = false;

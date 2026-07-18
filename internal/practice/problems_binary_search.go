@@ -3,12 +3,12 @@ package practice
 // BinarySearchProblems contains all binary-search category problems
 var BinarySearchProblems = []*Problem{
 	{
-		ID:         "binary-search",
-		Number:     20,
-		Title:      "Binary Search",
-		Difficulty: "Easy",
-		Category:   "binary-search",
-		Tags:       []string{"Array", "Binary Search"},
+		ID:              "binary-search",
+		Number:          20,
+		Title:           "Binary Search",
+		Difficulty:      "Easy",
+		Category:        "binary-search",
+		Tags:            []string{"Array", "Binary Search"},
 		RelatedChapters: []int{6},
 		Description: `Given an array of integers nums which is sorted in ascending order, and an integer target, write a function to search target in nums. If target exists, then return its index. Otherwise, return -1.
 
@@ -471,7 +471,6 @@ The overall run time complexity should be O(log (m+n)).`,
 			},
 		},
 	},
-
 }
 
 func init() {

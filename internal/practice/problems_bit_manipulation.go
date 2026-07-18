@@ -58,7 +58,7 @@ You must implement a solution with a linear runtime complexity and use only cons
 		Category:        "bit-manipulation",
 		Tags:            []string{"Dynamic Programming", "Bit Manipulation"},
 		RelatedChapters: []int{1, 9},
-		Description: `Given an integer n, return an array ans of length n + 1 such that for each i (0 <= i <= n), ans[i] is the number of 1's in the binary representation of i.`,
+		Description:     `Given an integer n, return an array ans of length n + 1 such that for each i (0 <= i <= n), ans[i] is the number of 1's in the binary representation of i.`,
 		Constraints: []string{
 			"0 <= n <= 10^5",
 		},
@@ -104,7 +104,7 @@ You must implement a solution with a linear runtime complexity and use only cons
 		Category:        "bit-manipulation",
 		Tags:            []string{"Array", "Hash Table", "Math", "Binary Search", "Bit Manipulation", "Sorting"},
 		RelatedChapters: []int{1},
-		Description: `Given an array nums containing n distinct numbers in the range [0, n], return the only number in the range that is missing from the array.`,
+		Description:     `Given an array nums containing n distinct numbers in the range [0, n], return the only number in the range that is missing from the array.`,
 		Constraints: []string{
 			"n == nums.length",
 			"1 <= n <= 10^4",
@@ -151,7 +151,7 @@ You must implement a solution with a linear runtime complexity and use only cons
 		Category:        "bit-manipulation",
 		Tags:            []string{"Divide and Conquer", "Bit Manipulation"},
 		RelatedChapters: []int{1},
-		Description: `Write a function that takes the binary representation of an unsigned integer and returns the number of '1' bits it has (also known as the Hamming weight).`,
+		Description:     `Write a function that takes the binary representation of an unsigned integer and returns the number of '1' bits it has (also known as the Hamming weight).`,
 		Constraints: []string{
 			"The input must be a binary string of length 32",
 		},
@@ -196,7 +196,7 @@ You must implement a solution with a linear runtime complexity and use only cons
 		Category:        "bit-manipulation",
 		Tags:            []string{"Divide and Conquer", "Bit Manipulation"},
 		RelatedChapters: []int{1},
-		Description: `Reverse bits of a given 32 bits unsigned integer.`,
+		Description:     `Reverse bits of a given 32 bits unsigned integer.`,
 		Constraints: []string{
 			"The input must be a binary string of length 32",
 		},
@@ -239,7 +239,7 @@ You must implement a solution with a linear runtime complexity and use only cons
 		Category:        "bit-manipulation",
 		Tags:            []string{"Math", "Bit Manipulation"},
 		RelatedChapters: []int{1},
-		Description: `Given two integers a and b, return the sum of the two integers without using the operators + and -.`,
+		Description:     `Given two integers a and b, return the sum of the two integers without using the operators + and -.`,
 		Constraints: []string{
 			"-1000 <= a, b <= 1000",
 		},
@@ -282,7 +282,6 @@ You must implement a solution with a linear runtime complexity and use only cons
 			},
 		},
 	},
-
 }
 
 func init() {

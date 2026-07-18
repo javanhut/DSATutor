@@ -23,7 +23,7 @@ The solution set must not contain duplicate subsets. Return the solution in any 
 			{Input: "nums = [0]", Output: "[[],[0]]"},
 		},
 		TestCases: []TestCase{
-			{Input: map[string]interface{}{"nums": []int{1, 2, 3}}, Expected: [][]int{{}, {1}, {2}, {1, 2}, {3}, {1, 3}, {2, 3}, {1, 2, 3}}},
+			{Input: map[string]interface{}{"nums": []int{1, 2, 3}}, Expected: [][]int{{}, {1}, {2}, {1, 2}, {3}, {1, 3}, {2, 3}, {1, 2, 3}}, OrderIndependent: true},
 		},
 		TimeComplexity:  "O(n * 2^n)",
 		SpaceComplexity: "O(n)",
@@ -401,7 +401,7 @@ A mapping of digits to letters (just like on the telephone buttons) is given bel
 		Category:        "backtracking",
 		Tags:            []string{"String", "Backtracking", "Dynamic Programming"},
 		RelatedChapters: []int{4, 9, 12},
-		Description: `Given a string s, partition s such that every substring of the partition is a palindrome. Return all possible palindrome partitioning of s.`,
+		Description:     `Given a string s, partition s such that every substring of the partition is a palindrome. Return all possible palindrome partitioning of s.`,
 		Constraints: []string{
 			"1 <= s.length <= 16",
 			"s contains only lowercase English letters",
@@ -456,7 +456,135 @@ A mapping of digits to letters (just like on the telephone buttons) is given bel
 			},
 		},
 	},
+	{
+		ID:              "combination-sum",
+		Number:          145,
+		Title:           "Combination Sum",
+		Slug:            "combination-sum",
+		Difficulty:      "Medium",
+		Category:        "backtracking",
+		Tags:            []string{"Array", "Backtracking"},
+		RelatedChapters: []int{3, 4, 12},
+		Description: `Given an array of distinct integers candidates and a target integer target, return a list of all unique combinations of candidates where the chosen numbers sum to target. You may return the combinations in any order.
 
+The same number may be chosen from candidates an unlimited number of times. Two combinations are unique if the frequency of at least one of the chosen numbers is different.`,
+		Constraints: []string{
+			"1 <= candidates.length <= 30",
+			"2 <= candidates[i] <= 40",
+			"All elements of candidates are distinct",
+			"1 <= target <= 40",
+		},
+		Examples: []Example{
+			{Input: "candidates = [2,3,6,7], target = 7", Output: "[[2,2,3],[7]]", Explanation: "2+2+3 = 7 and 7 = 7 are the only combinations."},
+			{Input: "candidates = [2,3,5], target = 8", Output: "[[2,2,2,2],[2,3,3],[3,5]]"},
+			{Input: "candidates = [2], target = 1", Output: "[]"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"candidates": []int{2, 3, 6, 7}, "target": 7}, Expected: [][]int{{2, 2, 3}, {7}}, OrderIndependent: true},
+			{Input: map[string]interface{}{"candidates": []int{2, 3, 5}, "target": 8}, Expected: [][]int{{2, 2, 2, 2}, {2, 3, 3}, {3, 5}}, OrderIndependent: true},
+			{Input: map[string]interface{}{"candidates": []int{2}, "target": 1}, Expected: [][]int{}, Hidden: true},
+		},
+		TimeComplexity:  "O(2^target)",
+		SpaceComplexity: "O(target)",
+		StarterCode:     "def combinationSum(candidates, target):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Backtracking: at each candidate, either include it (and stay on it, since reuse is allowed) or move to the next candidate.", ChapterRef: 4},
+			{Level: 2, Type: "algorithm", Content: "DFS with (start index, remaining target, path). When remaining hits 0, record the path. Don't look back at earlier indices — that avoids duplicate combinations."},
+			{Level: 3, Type: "code", Content: "def backtrack(start, remaining, path): if remaining == 0: result.append(path[:]). for i in range(start, n): if candidates[i] <= remaining: path.append(candidates[i]); backtrack(i, remaining - candidates[i], path); path.pop()."},
+		},
+		Solution: Solution{
+			Code: `def combinationSum(candidates, target):
+    result = []
+
+    def backtrack(start, remaining, path):
+        if remaining == 0:
+            result.append(path[:])
+            return
+
+        for i in range(start, len(candidates)):
+            if candidates[i] > remaining:
+                continue
+            path.append(candidates[i])
+            # i (not i+1): the same candidate may be reused
+            backtrack(i, remaining - candidates[i], path)
+            path.pop()
+
+    backtrack(0, target, [])
+    return result`,
+			Explanation:     "Backtrack over candidates starting from a fixed index so each combination is generated once. Passing i (not i+1) allows unlimited reuse of the same candidate.",
+			TimeComplexity:  "O(2^target)",
+			SpaceComplexity: "O(target) for recursion",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Record complete combination", Explanation: "Remaining target of 0 means the path sums to target", CodeSnippet: "if remaining == 0:\n    result.append(path[:])", LineStart: 5, LineEnd: 6},
+				{Title: "Skip too-large candidates", Explanation: "A candidate bigger than the remaining target can't help", CodeSnippet: "if candidates[i] > remaining:\n    continue", LineStart: 10, LineEnd: 11},
+				{Title: "Reuse the same candidate", Explanation: "Recurse with i, not i+1, so a number can appear multiple times", CodeSnippet: "backtrack(i, remaining - candidates[i], path)", LineStart: 14, LineEnd: 14},
+			},
+		},
+	},
+	{
+		ID:              "permutations",
+		Number:          146,
+		Title:           "Permutations",
+		Slug:            "permutations",
+		Difficulty:      "Medium",
+		Category:        "backtracking",
+		Tags:            []string{"Array", "Backtracking"},
+		RelatedChapters: []int{3, 4, 12},
+		Description: `Given an array nums of distinct integers, return all the possible permutations. You can return the answer in any order.`,
+		Constraints: []string{
+			"1 <= nums.length <= 6",
+			"-10 <= nums[i] <= 10",
+			"All the integers of nums are unique",
+		},
+		Examples: []Example{
+			{Input: "nums = [1,2,3]", Output: "[[1,2,3],[1,3,2],[2,1,3],[2,3,1],[3,1,2],[3,2,1]]"},
+			{Input: "nums = [0,1]", Output: "[[0,1],[1,0]]"},
+			{Input: "nums = [1]", Output: "[[1]]"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"nums": []int{1, 2, 3}}, Expected: [][]int{{1, 2, 3}, {1, 3, 2}, {2, 1, 3}, {2, 3, 1}, {3, 1, 2}, {3, 2, 1}}, OrderIndependent: true},
+			{Input: map[string]interface{}{"nums": []int{0, 1}}, Expected: [][]int{{0, 1}, {1, 0}}, OrderIndependent: true},
+			{Input: map[string]interface{}{"nums": []int{1}}, Expected: [][]int{{1}}, Hidden: true},
+		},
+		TimeComplexity:  "O(n * n!)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def permute(nums):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Backtracking: build the permutation one position at a time, choosing any number not already used.", ChapterRef: 4},
+			{Level: 2, Type: "algorithm", Content: "Track which numbers are in the current path (a set or boolean array). When the path length equals len(nums), record a copy."},
+			{Level: 3, Type: "code", Content: "def backtrack(path, used): if len(path) == n: result.append(path[:]). for i in range(n): if not used[i]: mark, recurse, unmark."},
+		},
+		Solution: Solution{
+			Code: `def permute(nums):
+    result = []
+    used = [False] * len(nums)
+
+    def backtrack(path):
+        if len(path) == len(nums):
+            result.append(path[:])
+            return
+
+        for i in range(len(nums)):
+            if used[i]:
+                continue
+            used[i] = True
+            path.append(nums[i])
+            backtrack(path)
+            path.pop()
+            used[i] = False
+
+    backtrack([])
+    return result`,
+			Explanation:     "Build permutations position by position. The used array prevents picking the same element twice; undoing the choice after recursion explores every ordering.",
+			TimeComplexity:  "O(n * n!)",
+			SpaceComplexity: "O(n) for recursion and bookkeeping",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Complete permutation", Explanation: "Every element used exactly once", CodeSnippet: "if len(path) == len(nums):\n    result.append(path[:])", LineStart: 6, LineEnd: 7},
+				{Title: "Skip used elements", Explanation: "Each element appears once per permutation", CodeSnippet: "if used[i]:\n    continue", LineStart: 11, LineEnd: 12},
+				{Title: "Choose, recurse, undo", Explanation: "Backtracking core: try nums[i], then restore state", CodeSnippet: "used[i] = True\npath.append(nums[i])\nbacktrack(path)\npath.pop()\nused[i] = False", LineStart: 13, LineEnd: 17},
+			},
+		},
+	},
 }
 
 func init() {

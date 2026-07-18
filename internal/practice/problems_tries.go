@@ -206,7 +206,7 @@ Each word must be constructed from letters of sequentially adjacent cells, where
 			{Input: `board = [["a","b"],["c","d"]], words = ["abcb"]`, Output: "[]"},
 		},
 		TestCases: []TestCase{
-			{Input: map[string]interface{}{"board": [][]string{{"o", "a", "a", "n"}, {"e", "t", "a", "e"}, {"i", "h", "k", "r"}, {"i", "f", "l", "v"}}, "words": []string{"oath", "pea", "eat", "rain"}}, Expected: []string{"eat", "oath"}},
+			{Input: map[string]interface{}{"board": [][]string{{"o", "a", "a", "n"}, {"e", "t", "a", "e"}, {"i", "h", "k", "r"}, {"i", "f", "l", "v"}}, "words": []string{"oath", "pea", "eat", "rain"}}, Expected: []string{"eat", "oath"}, OrderIndependent: true},
 		},
 		TimeComplexity:  "O(m * n * 4^L)",
 		SpaceComplexity: "O(N)",
@@ -273,7 +273,6 @@ Each word must be constructed from letters of sequentially adjacent cells, where
 			},
 		},
 	},
-
 }
 
 func init() {

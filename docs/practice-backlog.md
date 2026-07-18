@@ -1,13 +1,15 @@
 # Practice Backlog (Blind 75 Gaps)
 
-This file tracks problems implemented in `internal/practice/embedded_problems.go`.
+This file tracks problems implemented in the `internal/practice/problems_*.go` category files.
 
 **Status Update**: ALL Blind 75 problems are now complete. Extended coverage includes NeetCode 150 and additional problems.
 
-- Current embedded problems: **144**
+- Current embedded problems: **139**
 - Blind 75: COMPLETE
 - NeetCode 150: Nearly Complete
 - All problems include 3-level hints, solutions with walkthroughs, and chapter links
+- Every reference solution is verified against its own test cases by
+  `internal/web/solutions_test.go` (`go test ./internal/web/ -run TestReferenceSolutionsPass`)
 
 ## Category Completion Status
 

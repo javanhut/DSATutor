@@ -24,10 +24,10 @@ type ExecuteRequest struct {
 
 // ExecuteResponse represents the result of code execution.
 type ExecuteResponse struct {
-	Success bool        `json:"success"`
-	Steps   []Step      `json:"steps"`
-	Output  string      `json:"output"`
-	Error   string      `json:"error,omitempty"`
+	Success bool   `json:"success"`
+	Steps   []Step `json:"steps"`
+	Output  string `json:"output"`
+	Error   string `json:"error,omitempty"`
 }
 
 // Step represents a single execution step captured by the tracer.
@@ -54,7 +54,8 @@ const DefaultTimeout = 10000
 const MaxTimeout = 10000
 
 // MaxCodeSize is the maximum allowed code size in bytes.
-const MaxCodeSize = 10240 // 10KB
+// Generous enough for user code plus the appended test harness (~4KB).
+const MaxCodeSize = 32768 // 32KB
 
 // Execute runs Python code with tracing and returns the execution trace.
 func Execute(req ExecuteRequest) (*ExecuteResponse, error) {

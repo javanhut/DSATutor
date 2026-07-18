@@ -106,8 +106,9 @@ var BlockedPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`\.__dict__`),
 	regexp.MustCompile(`\.__module__`),
 
-	// File operations via alternative methods
-	regexp.MustCompile(`Path\s*\(`),
+	// File operations via alternative methods (word-bounded: must not match
+	// user function names like longestIncreasingPath(...))
+	regexp.MustCompile(`\bPath\s*\(`),
 	regexp.MustCompile(`file\s*=`),
 }
 

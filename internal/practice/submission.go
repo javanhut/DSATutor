@@ -18,15 +18,15 @@ const (
 
 // Submission represents a user's code submission.
 type Submission struct {
-	ID          string           `json:"id"`
-	ProblemID   string           `json:"problemId"`
-	Code        string           `json:"code"`
-	Language    string           `json:"language"`
-	Status      SubmitStatus     `json:"status"`
-	Results     []TestResult     `json:"results"`
+	ID          string            `json:"id"`
+	ProblemID   string            `json:"problemId"`
+	Code        string            `json:"code"`
+	Language    string            `json:"language"`
+	Status      SubmitStatus      `json:"status"`
+	Results     []TestResult      `json:"results"`
 	Complexity  *ComplexityResult `json:"complexity,omitempty"`
-	SubmittedAt time.Time        `json:"submittedAt"`
-	Runtime     int              `json:"runtime"` // Total execution time (ms)
+	SubmittedAt time.Time         `json:"submittedAt"`
+	Runtime     int               `json:"runtime"` // Total execution time (ms)
 }
 
 // TestResult shows outcome for a single test case.
@@ -43,10 +43,10 @@ type TestResult struct {
 
 // ComplexityResult from complexity analysis.
 type ComplexityResult struct {
-	EstimatedTime   string `json:"estimatedTime"`
-	EstimatedSpace  string `json:"estimatedSpace"`
-	MeetsRequired   bool   `json:"meetsRequired"`
-	Analysis        string `json:"analysis"`
+	EstimatedTime  string `json:"estimatedTime"`
+	EstimatedSpace string `json:"estimatedSpace"`
+	MeetsRequired  bool   `json:"meetsRequired"`
+	Analysis       string `json:"analysis"`
 }
 
 // ProgressStatus indicates user progress on a problem.
@@ -121,21 +121,22 @@ func (up *UserProgress) recalculateTotals() {
 
 // RunRequest represents a request to run code on a test case.
 type RunRequest struct {
-	ProblemID  string `json:"problemId"`
-	Code       string `json:"code"`
-	TestCaseID string `json:"testCaseId,omitempty"`
+	ProblemID     string `json:"problemId"`
+	Code          string `json:"code"`
+	TestCaseID    string `json:"testCaseId,omitempty"`
+	TestCaseIndex *int   `json:"testCaseIndex,omitempty"`
 }
 
 // RunResponse includes execution trace for visualization.
 type RunResponse struct {
-	Success    bool         `json:"success"`
-	Passed     bool         `json:"passed"`
-	Output     string       `json:"output"`
-	Error      string       `json:"error,omitempty"`
-	Steps      interface{}  `json:"steps"`
-	Structures interface{}  `json:"structures"`
-	Result     *TestResult  `json:"result,omitempty"`
-	Runtime    int          `json:"runtime"`
+	Success    bool        `json:"success"`
+	Passed     bool        `json:"passed"`
+	Output     string      `json:"output"`
+	Error      string      `json:"error,omitempty"`
+	Steps      interface{} `json:"steps"`
+	Structures interface{} `json:"structures"`
+	Result     *TestResult `json:"result,omitempty"`
+	Runtime    int         `json:"runtime"`
 }
 
 // SubmitRequest represents a full submission for validation.

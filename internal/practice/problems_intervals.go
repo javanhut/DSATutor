@@ -10,7 +10,7 @@ var IntervalsProblems = []*Problem{
 		Category:        "intervals",
 		Tags:            []string{"Array", "Sorting"},
 		RelatedChapters: []int{8},
-		Description: `Given an array of intervals where intervals[i] = [starti, endi], merge all overlapping intervals, and return an array of the non-overlapping intervals that cover all the intervals in the input.`,
+		Description:     `Given an array of intervals where intervals[i] = [starti, endi], merge all overlapping intervals, and return an array of the non-overlapping intervals that cover all the intervals in the input.`,
 		Constraints: []string{
 			"1 <= intervals.length <= 10^4",
 			"intervals[i].length == 2",
@@ -62,7 +62,7 @@ var IntervalsProblems = []*Problem{
 		Category:        "intervals",
 		Tags:            []string{"Array", "Dynamic Programming", "Greedy", "Sorting"},
 		RelatedChapters: []int{8},
-		Description: `Given an array of intervals intervals where intervals[i] = [starti, endi], return the minimum number of intervals you need to remove to make the rest of the intervals non-overlapping.`,
+		Description:     `Given an array of intervals intervals where intervals[i] = [starti, endi], return the minimum number of intervals you need to remove to make the rest of the intervals non-overlapping.`,
 		Constraints: []string{
 			"1 <= intervals.length <= 10^5",
 			"intervals[i].length == 2",
@@ -187,7 +187,7 @@ Return intervals after the insertion.`,
 		Category:        "intervals",
 		Tags:            []string{"Array", "Two Pointers", "Greedy", "Sorting", "Heap"},
 		RelatedChapters: []int{7, 8},
-		Description: `Given an array of meeting time intervals intervals where intervals[i] = [starti, endi], return the minimum number of conference rooms required.`,
+		Description:     `Given an array of meeting time intervals intervals where intervals[i] = [starti, endi], return the minimum number of conference rooms required.`,
 		Constraints: []string{
 			"1 <= intervals.length <= 10^4",
 			"0 <= starti < endi <= 10^6",
@@ -244,7 +244,7 @@ Return intervals after the insertion.`,
 		Category:        "intervals",
 		Tags:            []string{"Array", "Sorting"},
 		RelatedChapters: []int{2, 8},
-		Description: `Given an array of meeting time intervals where intervals[i] = [starti, endi], determine if a person could attend all meetings.`,
+		Description:     `Given an array of meeting time intervals where intervals[i] = [starti, endi], determine if a person could attend all meetings.`,
 		Constraints: []string{
 			"0 <= intervals.length <= 10^4",
 			"intervals[i].length == 2",
@@ -284,7 +284,6 @@ Return intervals after the insertion.`,
 			},
 		},
 	},
-
 }
 
 func init() {

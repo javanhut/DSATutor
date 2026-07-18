@@ -10,7 +10,7 @@ var GreedyProblems = []*Problem{
 		Category:        "greedy",
 		Tags:            []string{"Array", "Divide and Conquer", "Dynamic Programming"},
 		RelatedChapters: []int{8, 9},
-		Description: `Given an integer array nums, find the subarray with the largest sum, and return its sum.`,
+		Description:     `Given an integer array nums, find the subarray with the largest sum, and return its sum.`,
 		Constraints: []string{
 			"1 <= nums.length <= 10^5",
 			"-10^4 <= nums[i] <= 10^4",
@@ -411,7 +411,60 @@ Return true if it is possible to obtain the target triplet [x, y, z] as an eleme
 			},
 		},
 	},
+	{
+		ID:              "jump-game",
+		Number:          148,
+		Title:           "Jump Game",
+		Slug:            "jump-game",
+		Difficulty:      "Medium",
+		Category:        "greedy",
+		Tags:            []string{"Array", "Greedy", "Dynamic Programming"},
+		RelatedChapters: []int{8},
+		Description: `You are given an integer array nums. You are initially positioned at the array's first index, and each element in the array represents your maximum jump length at that position.
 
+Return true if you can reach the last index, or false otherwise.`,
+		Constraints: []string{
+			"1 <= nums.length <= 10^4",
+			"0 <= nums[i] <= 10^5",
+		},
+		Examples: []Example{
+			{Input: "nums = [2,3,1,1,4]", Output: "true", Explanation: "Jump 1 step from index 0 to 1, then 3 steps to the last index."},
+			{Input: "nums = [3,2,1,0,4]", Output: "false", Explanation: "You will always arrive at index 3. Its maximum jump length is 0, so you can never reach the last index."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"nums": []int{2, 3, 1, 1, 4}}, Expected: true},
+			{Input: map[string]interface{}{"nums": []int{3, 2, 1, 0, 4}}, Expected: false},
+			{Input: map[string]interface{}{"nums": []int{0}}, Expected: true, Hidden: true},
+			{Input: map[string]interface{}{"nums": []int{2, 0, 0}}, Expected: true, Hidden: true},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def canJump(nums):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Track the farthest index you can reach while scanning left to right. If you ever stand on an index beyond that reach, you're stuck.", ChapterRef: 8},
+			{Level: 2, Type: "algorithm", Content: "Greedy: reach = max(reach, i + nums[i]) at each reachable i. Success when reach covers the last index."},
+			{Level: 3, Type: "code", Content: "reach = 0. for i, n in enumerate(nums): if i > reach: return False. reach = max(reach, i + n). return True."},
+		},
+		Solution: Solution{
+			Code: `def canJump(nums):
+    reach = 0
+
+    for i, n in enumerate(nums):
+        if i > reach:
+            return False
+        reach = max(reach, i + n)
+
+    return True`,
+			Explanation:     "Keep the farthest reachable index while scanning. Any index beyond the current reach is unreachable, so the last index is reachable iff the scan never falls behind.",
+			TimeComplexity:  "O(n)",
+			SpaceComplexity: "O(1)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Detect being stuck", Explanation: "Index i is past everything reachable so far", CodeSnippet: "if i > reach:\n    return False", LineStart: 5, LineEnd: 6},
+				{Title: "Extend the reach", Explanation: "From i you can jump up to i + nums[i]", CodeSnippet: "reach = max(reach, i + n)", LineStart: 7, LineEnd: 7},
+				{Title: "Reached the end", Explanation: "The scan finished without falling behind reach", CodeSnippet: "return True", LineStart: 9, LineEnd: 9},
+			},
+		},
+	},
 }
 
 func init() {

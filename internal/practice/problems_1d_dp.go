@@ -3,12 +3,12 @@ package practice
 // DP1DProblems contains all 1d-dp category problems
 var DP1DProblems = []*Problem{
 	{
-		ID:         "climbing-stairs",
-		Number:     36,
-		Title:      "Climbing Stairs",
-		Difficulty: "Easy",
-		Category:   "1d-dp",
-		Tags:       []string{"Dynamic Programming", "Math", "Memoization"},
+		ID:              "climbing-stairs",
+		Number:          36,
+		Title:           "Climbing Stairs",
+		Difficulty:      "Easy",
+		Category:        "1d-dp",
+		Tags:            []string{"Dynamic Programming", "Math", "Memoization"},
 		RelatedChapters: []int{12},
 		Description: `You are climbing a staircase. It takes n steps to reach the top.
 
@@ -44,12 +44,12 @@ Each time you can either climb 1 or 2 steps. In how many distinct ways can you c
 		},
 	},
 	{
-		ID:         "house-robber",
-		Number:     37,
-		Title:      "House Robber",
-		Difficulty: "Medium",
-		Category:   "1d-dp",
-		Tags:       []string{"Array", "Dynamic Programming"},
+		ID:              "house-robber",
+		Number:          37,
+		Title:           "House Robber",
+		Difficulty:      "Medium",
+		Category:        "1d-dp",
+		Tags:            []string{"Array", "Dynamic Programming"},
 		RelatedChapters: []int{12},
 		Description: `You are a professional robber planning to rob houses along a street. Each house has a certain amount of money stashed, the only constraint stopping you from robbing each of them is that adjacent houses have security systems connected and it will automatically contact the police if two adjacent houses were broken into on the same night.
 
@@ -145,7 +145,7 @@ Given an integer array nums representing the amount of money of each house, retu
 		Category:        "1d-dp",
 		Tags:            []string{"String", "Dynamic Programming"},
 		RelatedChapters: []int{9, 12},
-		Description: `Given a string s, return the longest palindromic substring in s.`,
+		Description:     `Given a string s, return the longest palindromic substring in s.`,
 		Constraints: []string{
 			"1 <= s.length <= 1000",
 			"s consist of only digits and English letters",
@@ -261,7 +261,7 @@ You may assume that you have an infinite number of each kind of coin.`,
 		Category:        "1d-dp",
 		Tags:            []string{"Array", "Binary Search", "Dynamic Programming"},
 		RelatedChapters: []int{1, 9, 12},
-		Description: `Given an integer array nums, return the length of the longest strictly increasing subsequence.`,
+		Description:     `Given an integer array nums, return the length of the longest strictly increasing subsequence.`,
 		Constraints: []string{
 			"1 <= nums.length <= 2500",
 			"-10^4 <= nums[i] <= 10^4",
@@ -558,7 +558,7 @@ The test cases are generated so that the answer will fit in a 32-bit integer.`,
 		Category:        "1d-dp",
 		Tags:            []string{"Array", "Dynamic Programming"},
 		RelatedChapters: []int{9, 12},
-		Description: `Given an integer array nums, return true if you can partition the array into two subsets such that the sum of the elements in both subsets is equal or false otherwise.`,
+		Description:     `Given an integer array nums, return true if you can partition the array into two subsets such that the sum of the elements in both subsets is equal or false otherwise.`,
 		Constraints: []string{
 			"1 <= nums.length <= 200",
 			"1 <= nums[i] <= 100",
@@ -604,7 +604,6 @@ The test cases are generated so that the answer will fit in a 32-bit integer.`,
 			},
 		},
 	},
-
 }
 
 func init() {

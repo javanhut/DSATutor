@@ -304,13 +304,13 @@ func (ca *ComplexityAnalyzer) hasTailRecursion() bool {
 // creates2DArray checks if code creates 2D arrays/matrices.
 func (ca *ComplexityAnalyzer) creates2DArray() bool {
 	patterns := []string{
-		`\[\s*\[`,                   // [[...]]
-		`\[\s*\]\s*\*`,              // [] * n
-		`for.*for.*\[\]`,            // nested loops creating arrays
-		`\[\[.*\]\s*for.*for.*\]`,   // list comprehension 2D
-		`dp\s*=\s*\[\[`,             // dp = [[
-		`matrix\s*=\s*\[\[`,         // matrix = [[
-		`grid\s*=\s*\[\[`,           // grid = [[
+		`\[\s*\[`,                 // [[...]]
+		`\[\s*\]\s*\*`,            // [] * n
+		`for.*for.*\[\]`,          // nested loops creating arrays
+		`\[\[.*\]\s*for.*for.*\]`, // list comprehension 2D
+		`dp\s*=\s*\[\[`,           // dp = [[
+		`matrix\s*=\s*\[\[`,       // matrix = [[
+		`grid\s*=\s*\[\[`,         // grid = [[
 	}
 
 	for _, pattern := range patterns {
@@ -325,10 +325,10 @@ func (ca *ComplexityAnalyzer) creates2DArray() bool {
 // createsArray checks if code creates arrays/lists.
 func (ca *ComplexityAnalyzer) createsArray() bool {
 	patterns := []string{
-		`\[\s*\]\s*$`,       // = []
-		`list\s*\(`,         // list()
-		`\[.*for.*in.*\]`,   // list comprehension
-		`\[\s*0\s*\]\s*\*`,  // [0] * n
+		`\[\s*\]\s*$`,      // = []
+		`list\s*\(`,        // list()
+		`\[.*for.*in.*\]`,  // list comprehension
+		`\[\s*0\s*\]\s*\*`, // [0] * n
 	}
 
 	for _, pattern := range patterns {
@@ -343,13 +343,13 @@ func (ca *ComplexityAnalyzer) createsArray() bool {
 // createsHashMap checks if code creates hash maps/dictionaries/sets.
 func (ca *ComplexityAnalyzer) createsHashMap() bool {
 	patterns := []string{
-		`\{\s*\}`,                    // {}
-		`dict\s*\(`,                  // dict()
-		`set\s*\(`,                   // set()
-		`defaultdict`,               // defaultdict
-		`Counter\s*\(`,              // Counter()
-		`\{.*:.*for.*in.*\}`,        // dict comprehension
-		`\{.*for.*in.*\}`,           // set comprehension
+		`\{\s*\}`,            // {}
+		`dict\s*\(`,          // dict()
+		`set\s*\(`,           // set()
+		`defaultdict`,        // defaultdict
+		`Counter\s*\(`,       // Counter()
+		`\{.*:.*for.*in.*\}`, // dict comprehension
+		`\{.*for.*in.*\}`,    // set comprehension
 	}
 
 	for _, pattern := range patterns {

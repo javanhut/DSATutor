@@ -3,14 +3,14 @@ package practice
 // TreesProblems contains all trees category problems
 var TreesProblems = []*Problem{
 	{
-		ID:         "invert-binary-tree",
-		Number:     26,
-		Title:      "Invert Binary Tree",
-		Difficulty: "Easy",
-		Category:   "trees",
-		Tags:       []string{"Tree", "Binary Tree", "DFS", "BFS"},
+		ID:              "invert-binary-tree",
+		Number:          26,
+		Title:           "Invert Binary Tree",
+		Difficulty:      "Easy",
+		Category:        "trees",
+		Tags:            []string{"Tree", "Binary Tree", "DFS", "BFS"},
 		RelatedChapters: []int{9, 10},
-		Description: `Given the root of a binary tree, invert the tree, and return its root.`,
+		Description:     `Given the root of a binary tree, invert the tree, and return its root.`,
 		Constraints: []string{
 			"The number of nodes in the tree is in the range [0, 100]",
 			"-100 <= Node.val <= 100",
@@ -41,12 +41,12 @@ var TreesProblems = []*Problem{
 		},
 	},
 	{
-		ID:         "maximum-depth-of-binary-tree",
-		Number:     27,
-		Title:      "Maximum Depth of Binary Tree",
-		Difficulty: "Easy",
-		Category:   "trees",
-		Tags:       []string{"Tree", "DFS", "BFS", "Binary Tree"},
+		ID:              "maximum-depth-of-binary-tree",
+		Number:          27,
+		Title:           "Maximum Depth of Binary Tree",
+		Difficulty:      "Easy",
+		Category:        "trees",
+		Tags:            []string{"Tree", "DFS", "BFS", "Binary Tree"},
 		RelatedChapters: []int{9, 10},
 		Description: `Given the root of a binary tree, return its maximum depth.
 
@@ -246,7 +246,7 @@ According to the definition of LCA on Wikipedia: "The lowest common ancestor is 
 		Category:        "trees",
 		Tags:            []string{"Tree", "BFS", "Binary Tree"},
 		RelatedChapters: []int{6, 9, 10, 11},
-		Description: `Given the root of a binary tree, return the level order traversal of its nodes' values. (i.e., from left to right, level by level).`,
+		Description:     `Given the root of a binary tree, return the level order traversal of its nodes' values. (i.e., from left to right, level by level).`,
 		Constraints: []string{
 			"The number of nodes in the tree is in the range [0, 2000]",
 			"-1000 <= Node.val <= 1000",
@@ -365,7 +365,7 @@ A valid BST is defined as follows:
 		Category:        "trees",
 		Tags:            []string{"Tree", "DFS", "Binary Search Tree", "Binary Tree"},
 		RelatedChapters: []int{9, 10, 11},
-		Description: `Given the root of a binary search tree, and an integer k, return the kth smallest value (1-indexed) of all the values of the nodes in the tree.`,
+		Description:     `Given the root of a binary search tree, and an integer k, return the kth smallest value (1-indexed) of all the values of the nodes in the tree.`,
 		Constraints: []string{
 			"The number of nodes in the tree is n",
 			"1 <= k <= n <= 10^4",
@@ -424,7 +424,7 @@ A valid BST is defined as follows:
 		Category:        "trees",
 		Tags:            []string{"Array", "Hash Table", "Divide and Conquer", "Tree", "Binary Tree"},
 		RelatedChapters: []int{4, 9, 10, 11},
-		Description: `Given two integer arrays preorder and inorder where preorder is the preorder traversal of a binary tree and inorder is the inorder traversal of the same tree, construct and return the binary tree.`,
+		Description:     `Given two integer arrays preorder and inorder where preorder is the preorder traversal of a binary tree and inorder is the inorder traversal of the same tree, construct and return the binary tree.`,
 		Constraints: []string{
 			"1 <= preorder.length <= 3000",
 			"inorder.length == preorder.length",
@@ -619,7 +619,6 @@ Design an algorithm to serialize and deserialize a binary tree.`,
 			},
 		},
 	},
-
 }
 
 func init() {

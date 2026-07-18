@@ -3,14 +3,14 @@ package practice
 // LinkedListProblems contains all linked-list category problems
 var LinkedListProblems = []*Problem{
 	{
-		ID:         "reverse-linked-list",
-		Number:     23,
-		Title:      "Reverse Linked List",
-		Difficulty: "Easy",
-		Category:   "linked-list",
-		Tags:       []string{"Linked List", "Recursion"},
+		ID:              "reverse-linked-list",
+		Number:          23,
+		Title:           "Reverse Linked List",
+		Difficulty:      "Easy",
+		Category:        "linked-list",
+		Tags:            []string{"Linked List", "Recursion"},
 		RelatedChapters: []int{7},
-		Description: `Given the head of a singly linked list, reverse the list, and return the reversed list.`,
+		Description:     `Given the head of a singly linked list, reverse the list, and return the reversed list.`,
 		Constraints: []string{
 			"The number of nodes in the list is the range [0, 5000]",
 			"-5000 <= Node.val <= 5000",
@@ -45,12 +45,12 @@ var LinkedListProblems = []*Problem{
 		},
 	},
 	{
-		ID:         "linked-list-cycle",
-		Number:     25,
-		Title:      "Linked List Cycle",
-		Difficulty: "Easy",
-		Category:   "linked-list",
-		Tags:       []string{"Hash Table", "Linked List", "Two Pointers"},
+		ID:              "linked-list-cycle",
+		Number:          25,
+		Title:           "Linked List Cycle",
+		Difficulty:      "Easy",
+		Category:        "linked-list",
+		Tags:            []string{"Hash Table", "Linked List", "Two Pointers"},
 		RelatedChapters: []int{7},
 		Description: `Given head, the head of a linked list, determine if the linked list has a cycle in it.
 
@@ -235,7 +235,7 @@ You may not modify the values in the list's nodes. Only nodes themselves may be 
 		Category:        "linked-list",
 		Tags:            []string{"Linked List", "Two Pointers"},
 		RelatedChapters: []int{2, 7},
-		Description: `Given the head of a linked list, remove the nth node from the end of the list and return its head.`,
+		Description:     `Given the head of a linked list, remove the nth node from the end of the list and return its head.`,
 		Constraints: []string{
 			"The number of nodes in the list is sz",
 			"1 <= sz <= 30",
@@ -591,7 +591,6 @@ class LRUCache:
 			},
 		},
 	},
-
 }
 
 func init() {

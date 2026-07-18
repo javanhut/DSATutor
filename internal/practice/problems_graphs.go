@@ -3,12 +3,12 @@ package practice
 // GraphsProblems contains all graphs category problems
 var GraphsProblems = []*Problem{
 	{
-		ID:         "number-of-islands",
-		Number:     32,
-		Title:      "Number of Islands",
-		Difficulty: "Medium",
-		Category:   "graphs",
-		Tags:       []string{"Graph", "BFS", "DFS", "Matrix"},
+		ID:              "number-of-islands",
+		Number:          32,
+		Title:           "Number of Islands",
+		Difficulty:      "Medium",
+		Category:        "graphs",
+		Tags:            []string{"Graph", "BFS", "DFS", "Matrix"},
 		RelatedChapters: []int{11},
 		Description: `Given an m x n 2D binary grid grid which represents a map of '1's (land) and '0's (water), return the number of islands.
 
@@ -61,12 +61,12 @@ An island is surrounded by water and is formed by connecting adjacent lands hori
 		},
 	},
 	{
-		ID:         "course-schedule",
-		Number:     35,
-		Title:      "Course Schedule",
-		Difficulty: "Medium",
-		Category:   "graphs",
-		Tags:       []string{"DFS", "BFS", "Graph", "Topological Sort"},
+		ID:              "course-schedule",
+		Number:          35,
+		Title:           "Course Schedule",
+		Difficulty:      "Medium",
+		Category:        "graphs",
+		Tags:            []string{"DFS", "BFS", "Graph", "Topological Sort"},
 		RelatedChapters: []int{11},
 		Description: `There are a total of numCourses courses you have to take, labeled from 0 to numCourses - 1. You are given an array prerequisites where prerequisites[i] = [ai, bi] indicates that you must take course bi first if you want to take course ai.
 
@@ -210,7 +210,7 @@ Return a 2D list of grid coordinates result where result[i] = [ri, ci] denotes t
 			{Input: "heights = [[1,2,2,3,5],[3,2,3,4,4],[2,4,5,3,1],[6,7,1,4,5],[5,1,1,2,4]]", Output: "[[0,4],[1,3],[1,4],[2,2],[3,0],[3,1],[4,0]]"},
 		},
 		TestCases: []TestCase{
-			{Input: map[string]interface{}{"heights": [][]int{{1, 2, 2, 3, 5}, {3, 2, 3, 4, 4}, {2, 4, 5, 3, 1}, {6, 7, 1, 4, 5}, {5, 1, 1, 2, 4}}}, Expected: [][]int{{0, 4}, {1, 3}, {1, 4}, {2, 2}, {3, 0}, {3, 1}, {4, 0}}},
+			{Input: map[string]interface{}{"heights": [][]int{{1, 2, 2, 3, 5}, {3, 2, 3, 4, 4}, {2, 4, 5, 3, 1}, {6, 7, 1, 4, 5}, {5, 1, 1, 2, 4}}}, Expected: [][]int{{0, 4}, {1, 3}, {1, 4}, {2, 2}, {3, 0}, {3, 1}, {4, 0}}, OrderIndependent: true},
 		},
 		TimeComplexity:  "O(m * n)",
 		SpaceComplexity: "O(m * n)",
@@ -1248,7 +1248,6 @@ Fill each empty room with the distance to its nearest gate. If it is impossible 
 			},
 		},
 	},
-
 }
 
 func init() {

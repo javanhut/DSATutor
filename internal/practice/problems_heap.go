@@ -28,7 +28,7 @@ Implement KthLargest class:
 [[3,[4,5,8,2]],[3],[5],[10],[9],[4]]`, Output: "[null,4,5,5,8,8]"},
 		},
 		TestCases: []TestCase{
-			{Input: map[string]interface{}{"operations": []string{"KthLargest", "add", "add", "add", "add", "add"}, "values": []interface{}{[]int{3, 4, 5, 8, 2}, 3, 5, 10, 9, 4}}, Expected: []interface{}{nil, 4, 5, 5, 8, 8}},
+			{Input: map[string]interface{}{"operations": []string{"KthLargest", "add", "add", "add", "add", "add"}, "values": []interface{}{[]interface{}{3, []int{4, 5, 8, 2}}, []int{3}, []int{5}, []int{10}, []int{9}, []int{4}}}, Expected: []interface{}{nil, 4, 5, 5, 8, 8}},
 		},
 		TimeComplexity:  "O(log k) per add",
 		SpaceComplexity: "O(k)",
@@ -153,7 +153,7 @@ You may return the answer in any order. The answer is guaranteed to be unique (e
 		},
 		TestCases: []TestCase{
 			{Input: map[string]interface{}{"points": [][]int{{1, 3}, {-2, 2}}, "k": 1}, Expected: [][]int{{-2, 2}}},
-			{Input: map[string]interface{}{"points": [][]int{{3, 3}, {5, -1}, {-2, 4}}, "k": 2}, Expected: [][]int{{3, 3}, {-2, 4}}},
+			{Input: map[string]interface{}{"points": [][]int{{3, 3}, {5, -1}, {-2, 4}}, "k": 2}, Expected: [][]int{{3, 3}, {-2, 4}}, OrderIndependent: true},
 		},
 		TimeComplexity:  "O(n log k)",
 		SpaceComplexity: "O(k)",
@@ -416,7 +416,6 @@ Implement the Twitter class:
 			},
 		},
 	},
-
 }
 
 func init() {

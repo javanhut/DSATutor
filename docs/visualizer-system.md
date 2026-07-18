@@ -268,6 +268,11 @@ The animation system provides detailed step-by-step algorithm walkthroughs with 
 
 ## Animation Registry
 
+The authoritative list is the `animationRegistry` assignments in
+`internal/web/static/app.js` (search for `animationRegistry[`); the snippet
+below is an abridged illustration. Storyboard IDs without a registered
+animator render a "no interactive animation" placeholder.
+
 ```javascript
 const animationRegistry = {
   'binary-search': BinarySearchAnimator,

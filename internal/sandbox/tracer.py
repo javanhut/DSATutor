@@ -62,7 +62,7 @@ class DSATracer:
         # Helper classes
         'ListNode', 'TreeNode', 'GraphNode',
         # Pre-imported modules
-        'math', 'random', 'itertools', 'functools', 'heapq', 'collections',
+        'math', 'random', 'itertools', 'functools', 'heapq', 'collections', 'json',
         # Common imports from collections
         'deque', 'defaultdict', 'Counter', 'OrderedDict',
     }
@@ -85,23 +85,20 @@ class DSATracer:
         if frame.f_code.co_filename != self.user_filename:
             return self.trace_function
 
-        # Only capture on 'line' events (not call, return, exception)
+        # Only capture on 'line' events (not call, return, exception).
+        # Exceptions are NOT treated as fatal here: user code may catch them.
+        # Uncaught exceptions surface via exec() in run().
         if event == 'line':
             self.capture_step(frame)
-
-        if event == 'exception':
-            exc_type, exc_value, exc_tb = arg
-            self.error = f"{exc_type.__name__}: {exc_value}"
-            self.stopped = True
-            return None
 
         return self.trace_function
 
     def capture_step(self, frame) -> None:
         """Capture the current execution state."""
         if self.step_count >= MAX_STEPS:
+            # Stop capturing steps but let execution continue untraced —
+            # exceeding the step cap must not fail an otherwise correct run.
             self.stopped = True
-            self.error = f"Execution stopped: exceeded {MAX_STEPS} steps"
             return
 
         self.step_count += 1
@@ -249,7 +246,8 @@ class DSATracer:
             return {
                 "name": name,
                 "type": "array",
-                "data": value[:MAX_COLLECTION_SIZE],
+                # serialize_value keeps inf/nan out of the JSON payload
+                "data": [self.serialize_value(v, 0) for v in value[:MAX_COLLECTION_SIZE]],
                 "highlights": highlights
             }
 
@@ -579,6 +577,7 @@ class DSATracer:
     def get_safe_builtins(self) -> Dict:
         """Return a restricted set of safe builtins."""
         import builtins
+        import bisect
         import collections
         import heapq as heapq_module
         import math
@@ -594,6 +593,8 @@ class DSATracer:
             'functools': functools,
             'collections': collections,
             'heapq': heapq_module,
+            'json': json,
+            'bisect': bisect,
         }
 
         def restricted_import(name, globals=None, locals=None, fromlist=(), level=0):
@@ -674,6 +675,7 @@ class DSATracer:
             'random': random,
             'itertools': itertools,
             'functools': functools,
+            'json': json,
 
             # Collections
             'deque': collections.deque,
@@ -689,6 +691,9 @@ class DSATracer:
 
             # Collections module (for from collections import ...)
             'collections': collections,
+
+            # Required for `class` statements to work
+            '__build_class__': builtins.__build_class__,
 
             # Restricted import function (allows only safe modules)
             '__import__': restricted_import,
