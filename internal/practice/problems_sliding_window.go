@@ -277,6 +277,59 @@ def maxSlidingWindow(nums, k):
 			Explanation: "Monotonic decreasing deque. Front always has max for current window.",
 		},
 	},
+	{
+		ID:              "minimum-size-subarray-sum",
+		Number:          163,
+		Title:           "Minimum Size Subarray Sum",
+		Difficulty:      "Medium",
+		Category:        "sliding-window",
+		Tags:            []string{"Array", "Sliding Window", "Prefix Sum"},
+		RelatedChapters: []int{2, 12},
+		Description:     `Given an array of positive integers nums and a positive integer target, return the minimal length of a subarray whose sum is greater than or equal to target. If there is no such subarray, return 0 instead.`,
+		Constraints: []string{
+			"1 <= target <= 10^9",
+			"1 <= nums.length <= 10^5",
+			"1 <= nums[i] <= 10^4",
+		},
+		Examples: []Example{
+			{Input: "target = 7, nums = [2,3,1,2,4,3]", Output: "2", Explanation: "The subarray [4,3] has the minimal length under the problem constraint."},
+			{Input: "target = 4, nums = [1,4,4]", Output: "1"},
+			{Input: "target = 11, nums = [1,1,1,1,1,1,1,1]", Output: "0"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"target": 7, "nums": []int{2, 3, 1, 2, 4, 3}}, Expected: 2},
+			{Input: map[string]interface{}{"target": 4, "nums": []int{1, 4, 4}}, Expected: 1},
+			{Input: map[string]interface{}{"target": 11, "nums": []int{1, 1, 1, 1, 1, 1, 1, 1}}, Expected: 0},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def minSubArrayLen(target, nums):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "All numbers are positive, so growing a window only increases its sum and shrinking only decreases it — exactly the property a sliding window needs.", ChapterRef: 2},
+			{Level: 2, Type: "algorithm", Content: "Expand the right edge, adding to a running sum. While the sum >= target, record the window length and shrink from the left to look for something shorter."},
+			{Level: 3, Type: "code", Content: "for right in range(n): total += nums[right]; while total >= target: best = min(best, right - left + 1); total -= nums[left]; left += 1."},
+		},
+		Solution: Solution{
+			Code: `def minSubArrayLen(target, nums):
+    left = 0
+    total = 0
+    best = float('inf')
+    for right in range(len(nums)):
+        total += nums[right]
+        while total >= target:
+            best = min(best, right - left + 1)
+            total -= nums[left]
+            left += 1
+    return 0 if best == float('inf') else best`,
+			Explanation:     "Classic shrinkable sliding window: every element enters and leaves the window at most once, so the two-pointer sweep is linear despite the nested loop.",
+			TimeComplexity:  "O(n)",
+			SpaceComplexity: "O(1)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Grow right", Explanation: "Extend the window until the sum reaches the target", CodeSnippet: "total += nums[right]"},
+				{Title: "Shrink left greedily", Explanation: "While still valid, a shorter window might exist — record and shrink", CodeSnippet: "while total >= target:"},
+			},
+		},
+	},
 }
 
 func init() {

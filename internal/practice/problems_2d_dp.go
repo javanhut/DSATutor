@@ -661,6 +661,61 @@ Given the two integers m and n, return the number of possible unique paths that 
 			},
 		},
 	},
+	{
+		ID:              "maximal-square",
+		Number:          166,
+		Title:           "Maximal Square",
+		Difficulty:      "Medium",
+		Category:        "2d-dp",
+		Tags:            []string{"Array", "Dynamic Programming", "Matrix"},
+		RelatedChapters: []int{9, 12},
+		Description:     `Given an m x n binary matrix filled with 0's and 1's, find the largest square containing only 1's and return its area.`,
+		Constraints: []string{
+			"m == matrix.length",
+			"n == matrix[i].length",
+			"1 <= m, n <= 300",
+			"matrix[i][j] is '0' or '1'",
+		},
+		Examples: []Example{
+			{Input: `matrix = [["1","0","1","0","0"],["1","0","1","1","1"],["1","1","1","1","1"],["1","0","0","1","0"]]`, Output: "4", Explanation: "The largest square of 1's is 2x2, so the area is 4."},
+			{Input: `matrix = [["0","1"],["1","0"]]`, Output: "1"},
+			{Input: `matrix = [["0"]]`, Output: "0"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"matrix": [][]string{{"1", "0", "1", "0", "0"}, {"1", "0", "1", "1", "1"}, {"1", "1", "1", "1", "1"}, {"1", "0", "0", "1", "0"}}}, Expected: 4},
+			{Input: map[string]interface{}{"matrix": [][]string{{"0", "1"}, {"1", "0"}}}, Expected: 1},
+			{Input: map[string]interface{}{"matrix": [][]string{{"0"}}}, Expected: 0},
+		},
+		TimeComplexity:  "O(m * n)",
+		SpaceComplexity: "O(m * n)",
+		StarterCode:     "def maximalSquare(matrix):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Define dp[i][j] as the side length of the largest square whose bottom-right corner is at (i, j). What limits that square?", ChapterRef: 9},
+			{Level: 2, Type: "algorithm", Content: "A square ending at (i, j) is bounded by the squares ending above, to the left, and diagonally up-left: dp[i][j] = 1 + min of those three, when the cell itself is '1'."},
+			{Level: 3, Type: "code", Content: "if matrix[i][j] == '1': dp[i][j] = 1 + min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]). Track the max side; return side * side."},
+		},
+		Solution: Solution{
+			Code: `def maximalSquare(matrix):
+    rows = len(matrix)
+    cols = len(matrix[0])
+    dp = [[0] * (cols + 1) for _ in range(rows + 1)]
+    best = 0
+    for i in range(1, rows + 1):
+        for j in range(1, cols + 1):
+            if matrix[i - 1][j - 1] == '1':
+                dp[i][j] = 1 + min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1])
+                best = max(best, dp[i][j])
+    return best * best`,
+			Explanation:     "dp[i][j] holds the largest square side ending at that cell; a padded first row and column remove all boundary checks. The answer is the largest side squared.",
+			TimeComplexity:  "O(m * n)",
+			SpaceComplexity: "O(m * n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Padded table", Explanation: "An extra zero row and column mean no edge special-casing", CodeSnippet: "dp = [[0] * (cols + 1) for _ in range(rows + 1)]"},
+				{Title: "Three-way minimum", Explanation: "The weakest neighbor bounds how far the square extends", CodeSnippet: "dp[i][j] = 1 + min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1])"},
+				{Title: "Side to area", Explanation: "The dp table tracks sides, the problem asks for area", CodeSnippet: "return best * best"},
+			},
+		},
+	},
 }
 
 func init() {

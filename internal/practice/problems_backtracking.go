@@ -152,7 +152,7 @@ Each solution contains a distinct board configuration of the n-queens' placement
 			{Input: "n = 1", Output: `[["Q"]]`},
 		},
 		TestCases: []TestCase{
-			{Input: map[string]interface{}{"n": 4}, Expected: [][]string{{".Q..", "...Q", "Q...", "..Q."}, {"..Q.", "Q...", "...Q", ".Q.."}}},
+			{Input: map[string]interface{}{"n": 4}, Expected: [][]string{{".Q..", "...Q", "Q...", "..Q."}, {"..Q.", "Q...", "...Q", ".Q.."}}, OrderIndependent: true},
 		},
 		TimeComplexity:  "O(n!)",
 		SpaceComplexity: "O(n^2)",
@@ -225,7 +225,7 @@ The solution set must not contain duplicate subsets. Return the solution in any 
 			{Input: "nums = [0]", Output: "[[],[0]]"},
 		},
 		TestCases: []TestCase{
-			{Input: map[string]interface{}{"nums": []int{1, 2, 2}}, Expected: [][]int{{}, {1}, {1, 2}, {1, 2, 2}, {2}, {2, 2}}},
+			{Input: map[string]interface{}{"nums": []int{1, 2, 2}}, Expected: [][]int{{}, {1}, {1, 2}, {1, 2, 2}, {2}, {2, 2}}, OrderIndependent: true},
 		},
 		TimeComplexity:  "O(n * 2^n)",
 		SpaceComplexity: "O(n)",
@@ -349,8 +349,8 @@ A mapping of digits to letters (just like on the telephone buttons) is given bel
 			{Input: `digits = "2"`, Output: `["a","b","c"]`},
 		},
 		TestCases: []TestCase{
-			{Input: map[string]interface{}{"digits": "23"}, Expected: []string{"ad", "ae", "af", "bd", "be", "bf", "cd", "ce", "cf"}},
-			{Input: map[string]interface{}{"digits": ""}, Expected: []string{}},
+			{Input: map[string]interface{}{"digits": "23"}, Expected: []string{"ad", "ae", "af", "bd", "be", "bf", "cd", "ce", "cf"}, OrderIndependent: true},
+			{Input: map[string]interface{}{"digits": ""}, Expected: []string{}, OrderIndependent: true},
 		},
 		TimeComplexity:  "O(4^n)",
 		SpaceComplexity: "O(n)",
@@ -530,7 +530,7 @@ The same number may be chosen from candidates an unlimited number of times. Two 
 		Category:        "backtracking",
 		Tags:            []string{"Array", "Backtracking"},
 		RelatedChapters: []int{3, 4, 12},
-		Description: `Given an array nums of distinct integers, return all the possible permutations. You can return the answer in any order.`,
+		Description:     `Given an array nums of distinct integers, return all the possible permutations. You can return the answer in any order.`,
 		Constraints: []string{
 			"1 <= nums.length <= 6",
 			"-10 <= nums[i] <= 10",

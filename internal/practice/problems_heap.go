@@ -416,6 +416,59 @@ Implement the Twitter class:
 			},
 		},
 	},
+	{
+		ID:              "kth-largest-element-in-an-array",
+		Number:          158,
+		Title:           "Kth Largest Element in an Array",
+		Difficulty:      "Medium",
+		Category:        "heap",
+		Tags:            []string{"Array", "Divide and Conquer", "Heap", "Quickselect"},
+		RelatedChapters: []int{4, 12},
+		Description: `Given an integer array nums and an integer k, return the kth largest element in the array.
+
+Note that it is the kth largest element in sorted order, not the kth distinct element.
+
+Can you solve it without fully sorting the array?`,
+		Constraints: []string{
+			"1 <= k <= nums.length <= 10^5",
+			"-10^4 <= nums[i] <= 10^4",
+		},
+		Examples: []Example{
+			{Input: "nums = [3,2,1,5,6,4], k = 2", Output: "5"},
+			{Input: "nums = [3,2,3,1,2,4,5,5,6], k = 4", Output: "4"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"nums": []int{3, 2, 1, 5, 6, 4}, "k": 2}, Expected: 5},
+			{Input: map[string]interface{}{"nums": []int{3, 2, 3, 1, 2, 4, 5, 5, 6}, "k": 4}, Expected: 4},
+			{Input: map[string]interface{}{"nums": []int{1}, "k": 1}, Expected: 1},
+		},
+		TimeComplexity:  "O(n log k)",
+		SpaceComplexity: "O(k)",
+		StarterCode:     "def findKthLargest(nums, k):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Sorting works in O(n log n), but you only care about the top k elements. A min-heap of size k, or quickselect partitioning, both beat a full sort.", ChapterRef: 4},
+			{Level: 2, Type: "algorithm", Content: "Min-heap approach: push each element; whenever the heap grows past k, pop the smallest. The root is then the kth largest. Quickselect: partition like quicksort, but only recurse into the side containing index n - k."},
+			{Level: 3, Type: "code", Content: "import heapq; heap = []; for num in nums: heapq.heappush(heap, num); if len(heap) > k: heapq.heappop(heap). Return heap[0]."},
+		},
+		Solution: Solution{
+			Code: `import heapq
+
+def findKthLargest(nums, k):
+    heap = []
+    for num in nums:
+        heapq.heappush(heap, num)
+        if len(heap) > k:
+            heapq.heappop(heap)
+    return heap[0]`,
+			Explanation:     "Maintain a min-heap of the k largest elements seen so far; anything smaller than the heap root can never be the answer, and the root itself is the kth largest at the end.",
+			TimeComplexity:  "O(n log k)",
+			SpaceComplexity: "O(k)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Bounded heap", Explanation: "Keep at most k elements — evict the smallest on overflow", CodeSnippet: "if len(heap) > k: heapq.heappop(heap)"},
+				{Title: "Read the answer", Explanation: "The smallest of the k largest is the kth largest", CodeSnippet: "return heap[0]"},
+			},
+		},
+	},
 }
 
 func init() {

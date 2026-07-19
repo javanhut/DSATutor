@@ -471,6 +471,69 @@ The overall run time complexity should be O(log (m+n)).`,
 			},
 		},
 	},
+	{
+		ID:              "find-first-and-last-position",
+		Number:          162,
+		Title:           "Find First and Last Position of Element in Sorted Array",
+		Difficulty:      "Medium",
+		Category:        "binary-search",
+		Tags:            []string{"Array", "Binary Search"},
+		RelatedChapters: []int{1, 12},
+		Description: `Given an array of integers nums sorted in non-decreasing order, find the starting and ending position of a given target value.
+
+If target is not found in the array, return [-1, -1].
+
+You must write an algorithm with O(log n) runtime complexity.`,
+		Constraints: []string{
+			"0 <= nums.length <= 10^5",
+			"-10^9 <= nums[i] <= 10^9",
+			"nums is a non-decreasing array",
+			"-10^9 <= target <= 10^9",
+		},
+		Examples: []Example{
+			{Input: "nums = [5,7,7,8,8,10], target = 8", Output: "[3,4]"},
+			{Input: "nums = [5,7,7,8,8,10], target = 6", Output: "[-1,-1]"},
+			{Input: "nums = [], target = 0", Output: "[-1,-1]"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"nums": []int{5, 7, 7, 8, 8, 10}, "target": 8}, Expected: []int{3, 4}},
+			{Input: map[string]interface{}{"nums": []int{5, 7, 7, 8, 8, 10}, "target": 6}, Expected: []int{-1, -1}},
+			{Input: map[string]interface{}{"nums": []int{}, "target": 0}, Expected: []int{-1, -1}},
+		},
+		TimeComplexity:  "O(log n)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def searchRange(nums, target):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "One binary search finds *a* target occurrence, not the boundary. Run two biased binary searches: one that keeps going left on equality, one that keeps going right.", ChapterRef: 1},
+			{Level: 2, Type: "algorithm", Content: "This is lower_bound / upper_bound: the leftmost index where target could be inserted, and the leftmost index where target + 1 could be inserted. The range is [lower, upper - 1] if non-empty."},
+			{Level: 3, Type: "code", Content: "from bisect import bisect_left, bisect_right; lo = bisect_left(nums, target); hi = bisect_right(nums, target); return [-1, -1] if lo == hi else [lo, hi - 1]."},
+		},
+		Solution: Solution{
+			Code: `def searchRange(nums, target):
+    def lower_bound(a, t):
+        lo, hi = 0, len(a)
+        while lo < hi:
+            mid = (lo + hi) // 2
+            if a[mid] < t:
+                lo = mid + 1
+            else:
+                hi = mid
+        return lo
+
+    lo = lower_bound(nums, target)
+    hi = lower_bound(nums, target + 1)
+    if lo == hi:
+        return [-1, -1]
+    return [lo, hi - 1]`,
+			Explanation:     "Two lower-bound searches: the first occurrence of target, and the first occurrence of anything greater. Equal results mean target is absent.",
+			TimeComplexity:  "O(log n)",
+			SpaceComplexity: "O(1)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Biased search", Explanation: "On equality, keep searching left — that finds the boundary, not just any match", CodeSnippet: "if a[mid] < t: lo = mid + 1 else: hi = mid"},
+				{Title: "Reuse for the end", Explanation: "The last occurrence of target is just before the first occurrence of target + 1", CodeSnippet: "hi = lower_bound(nums, target + 1)"},
+			},
+		},
+	},
 }
 
 func init() {

@@ -441,6 +441,141 @@ Return the number of car fleets that will arrive at the destination.`,
 			},
 		},
 	},
+	{
+		ID:              "decode-string",
+		Number:          164,
+		Title:           "Decode String",
+		Difficulty:      "Medium",
+		Category:        "stack",
+		Tags:            []string{"String", "Stack", "Recursion"},
+		RelatedChapters: []int{3, 12},
+		Description: `Given an encoded string, return its decoded string.
+
+The encoding rule is: k[encoded_string], where the encoded_string inside the square brackets is being repeated exactly k times. Note that k is guaranteed to be a positive integer.
+
+You may assume that the input string is always valid; there are no extra white spaces, square brackets are well-formed, etc. Furthermore, you may assume that the original data does not contain any digits and that digits are only for those repeat numbers, k.`,
+		Constraints: []string{
+			"1 <= s.length <= 30",
+			"s consists of lowercase English letters, digits, and square brackets '[]'",
+			"s is guaranteed to be a valid input",
+			"All the integers in s are in the range [1, 300]",
+		},
+		Examples: []Example{
+			{Input: `s = "3[a]2[bc]"`, Output: `"aaabcbc"`},
+			{Input: `s = "3[a2[c]]"`, Output: `"accaccacc"`},
+			{Input: `s = "2[abc]3[cd]ef"`, Output: `"abcabccdcdcdef"`},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"s": "3[a]2[bc]"}, Expected: "aaabcbc"},
+			{Input: map[string]interface{}{"s": "3[a2[c]]"}, Expected: "accaccacc"},
+			{Input: map[string]interface{}{"s": "2[abc]3[cd]ef"}, Expected: "abcabccdcdcdef"},
+		},
+		TimeComplexity:  "O(n * maxK)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def decodeString(s):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Nested brackets mean nested contexts — every '[' starts a new inner string that must be finished before the outer one continues. That nesting is a stack.", ChapterRef: 3},
+			{Level: 2, Type: "algorithm", Content: "Keep a current string and current number. On '[': push both and reset. On ']': pop (prev_string, k) and set current = prev_string + current * k."},
+			{Level: 3, Type: "code", Content: "if c.isdigit(): num = num * 10 + int(c). if c == '[': stack.append((cur, num)); cur, num = '', 0. if c == ']': prev, k = stack.pop(); cur = prev + cur * k. else: cur += c."},
+		},
+		Solution: Solution{
+			Code: `def decodeString(s):
+    stack = []
+    cur = ""
+    num = 0
+    for c in s:
+        if c.isdigit():
+            num = num * 10 + int(c)
+        elif c == '[':
+            stack.append((cur, num))
+            cur = ""
+            num = 0
+        elif c == ']':
+            prev, k = stack.pop()
+            cur = prev + cur * k
+        else:
+            cur += c
+    return cur`,
+			Explanation:     "A stack of (string_so_far, repeat_count) pairs handles arbitrary nesting: each ']' completes the innermost segment and splices it into the level above.",
+			TimeComplexity:  "O(n * maxK)",
+			SpaceComplexity: "O(n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Accumulate the count", Explanation: "Multi-digit numbers build up digit by digit", CodeSnippet: "num = num * 10 + int(c)"},
+				{Title: "Open a context", Explanation: "Save the outer string and count, start fresh inside the brackets", CodeSnippet: "stack.append((cur, num))"},
+				{Title: "Close and splice", Explanation: "Repeat the inner string and append it to the saved outer string", CodeSnippet: "cur = prev + cur * k"},
+			},
+		},
+	},
+	{
+		ID:              "basic-calculator-ii",
+		Number:          165,
+		Title:           "Basic Calculator II",
+		Difficulty:      "Medium",
+		Category:        "stack",
+		Tags:            []string{"Math", "String", "Stack"},
+		RelatedChapters: []int{3, 12},
+		Description: `Given a string s which represents an expression, evaluate this expression and return its value.
+
+The integer division should truncate toward zero.
+
+You may assume that the given expression is always valid. All intermediate results will be in the range [-2^31, 2^31 - 1].
+
+Note: You are not allowed to use any built-in function which evaluates strings as mathematical expressions, such as eval().`,
+		Constraints: []string{
+			"1 <= s.length <= 3 * 10^5",
+			"s consists of integers and operators ('+', '-', '*', '/') separated by some number of spaces",
+			"s represents a valid expression",
+			"The answer is guaranteed to fit in a 32-bit integer",
+		},
+		Examples: []Example{
+			{Input: `s = "3+2*2"`, Output: "7"},
+			{Input: `s = " 3/2 "`, Output: "1"},
+			{Input: `s = " 3+5 / 2 "`, Output: "5"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"s": "3+2*2"}, Expected: 7},
+			{Input: map[string]interface{}{"s": " 3/2 "}, Expected: 1},
+			{Input: map[string]interface{}{"s": " 3+5 / 2 "}, Expected: 5},
+			{Input: map[string]interface{}{"s": "14-3/2"}, Expected: 13},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def calculate(s):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Precedence is the whole problem: * and / bind tighter than + and -. Handle them immediately, and defer + and - by pushing signed terms onto a stack.", ChapterRef: 3},
+			{Level: 2, Type: "algorithm", Content: "Scan numbers; when you hit the next operator (or the end), apply the *previous* operator: '+' pushes num, '-' pushes -num, '*' and '/' pop, combine with num, and push back. Sum the stack at the end."},
+			{Level: 3, Type: "code", Content: "For '/': Python's // floors negatives, so use int(stack.pop() / num) to truncate toward zero."},
+		},
+		Solution: Solution{
+			Code: `def calculate(s):
+    stack = []
+    num = 0
+    op = '+'
+    for i, c in enumerate(s):
+        if c.isdigit():
+            num = num * 10 + int(c)
+        if (not c.isdigit() and c != ' ') or i == len(s) - 1:
+            if op == '+':
+                stack.append(num)
+            elif op == '-':
+                stack.append(-num)
+            elif op == '*':
+                stack.append(stack.pop() * num)
+            else:
+                stack.append(int(stack.pop() / num))
+            op = c
+            num = 0
+    return sum(stack)`,
+			Explanation:     "Each signed term lands on a stack; * and / are resolved immediately against the previous term, so the final answer is just the sum of the stack.",
+			TimeComplexity:  "O(n)",
+			SpaceComplexity: "O(n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Defer + and -", Explanation: "Push the term with its sign; addition is commutative so it can wait", CodeSnippet: "stack.append(-num)"},
+				{Title: "Resolve * and / now", Explanation: "Higher precedence combines with the previous term immediately", CodeSnippet: "stack.append(stack.pop() * num)"},
+				{Title: "Truncate toward zero", Explanation: "int(a / b) truncates; a // b would floor negatives the wrong way", CodeSnippet: "stack.append(int(stack.pop() / num))"},
+			},
+		},
+	},
 }
 
 func init() {

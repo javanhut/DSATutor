@@ -4,9 +4,11 @@ This file tracks problems implemented in the `internal/practice/problems_*.go` c
 
 **Status Update**: ALL Blind 75 problems are now complete. Extended coverage includes NeetCode 150 and additional problems.
 
-- Current embedded problems: **139**
+- Current embedded problems: **158**
 - Blind 75: COMPLETE
 - NeetCode 150: Nearly Complete
+- Interview-frequency extras (2026-07): Subarray Sum Equals K, Majority Element, Rotate Array, Range Sum Query - Immutable, Insert Delete GetRandom O(1), Diameter of Binary Tree, Balanced Binary Tree, Binary Tree Right Side View, Lowest Common Ancestor of a Binary Tree, Kth Largest Element in an Array, Sort Colors, Move Zeroes, Merge Sorted Array, Find First and Last Position, Minimum Size Subarray Sum, Decode String, Basic Calculator II, Maximal Square, Best Time to Buy and Sell Stock II
+- Deliberately skipped: Random Pick with Weight (pickIndex output is random; the equality-based grader cannot verify it)
 - All problems include 3-level hints, solutions with walkthroughs, and chapter links
 - Every reference solution is verified against its own test cases by
   `internal/web/solutions_test.go` (`go test ./internal/web/ -run TestReferenceSolutionsPass`)

@@ -619,6 +619,234 @@ Design an algorithm to serialize and deserialize a binary tree.`,
 			},
 		},
 	},
+	{
+		ID:              "diameter-of-binary-tree",
+		Number:          154,
+		Title:           "Diameter of Binary Tree",
+		Difficulty:      "Easy",
+		Category:        "trees",
+		Tags:            []string{"Tree", "Depth-First Search", "Binary Tree"},
+		RelatedChapters: []int{3, 12},
+		Description: `Given the root of a binary tree, return the length of the diameter of the tree.
+
+The diameter of a binary tree is the length of the longest path between any two nodes in a tree. This path may or may not pass through the root.
+
+The length of a path between two nodes is represented by the number of edges between them.`,
+		Constraints: []string{
+			"The number of nodes in the tree is in the range [1, 10^4]",
+			"-100 <= Node.val <= 100",
+		},
+		Examples: []Example{
+			{Input: "root = [1,2,3,4,5]", Output: "3", Explanation: "The longest path is [4,2,1,3] or [5,2,1,3], which has 3 edges."},
+			{Input: "root = [1,2]", Output: "1"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"root": []interface{}{1, 2, 3, 4, 5}}, Expected: 3},
+			{Input: map[string]interface{}{"root": []interface{}{1, 2}}, Expected: 1},
+			{Input: map[string]interface{}{"root": []interface{}{1}}, Expected: 0},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(h)",
+		StarterCode:     "def diameterOfBinaryTree(root):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "The longest path through any node is left_height + right_height. Compute heights recursively and track the best sum seen anywhere in the tree.", ChapterRef: 3},
+			{Level: 2, Type: "algorithm", Content: "Write a DFS that returns the height of a subtree. Before returning, update a shared maximum with left_height + right_height for the current node."},
+			{Level: 3, Type: "code", Content: "def height(node): if not node: return 0; l, r = height(node.left), height(node.right); best[0] = max(best[0], l + r); return 1 + max(l, r)."},
+		},
+		Solution: Solution{
+			Code: `def diameterOfBinaryTree(root):
+    best = [0]
+
+    def height(node):
+        if not node:
+            return 0
+        left = height(node.left)
+        right = height(node.right)
+        best[0] = max(best[0], left + right)
+        return 1 + max(left, right)
+
+    height(root)
+    return best[0]`,
+			Explanation:     "One DFS computes subtree heights; the diameter through each node is the sum of its children's heights, and the answer is the maximum over all nodes.",
+			TimeComplexity:  "O(n)",
+			SpaceComplexity: "O(h)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Height recursion", Explanation: "Each node's height is 1 plus the taller child", CodeSnippet: "return 1 + max(left, right)"},
+				{Title: "Track the diameter", Explanation: "The longest path through this node uses both child heights", CodeSnippet: "best[0] = max(best[0], left + right)"},
+			},
+		},
+	},
+	{
+		ID:              "balanced-binary-tree",
+		Number:          155,
+		Title:           "Balanced Binary Tree",
+		Difficulty:      "Easy",
+		Category:        "trees",
+		Tags:            []string{"Tree", "Depth-First Search", "Binary Tree"},
+		RelatedChapters: []int{3, 12},
+		Description: `Given a binary tree, determine if it is height-balanced.
+
+A height-balanced binary tree is a binary tree in which the depth of the two subtrees of every node never differs by more than one.`,
+		Constraints: []string{
+			"The number of nodes in the tree is in the range [0, 5000]",
+			"-10^4 <= Node.val <= 10^4",
+		},
+		Examples: []Example{
+			{Input: "root = [3,9,20,null,null,15,7]", Output: "true"},
+			{Input: "root = [1,2,2,3,3,null,null,4,4]", Output: "false"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"root": []interface{}{3, 9, 20, nil, nil, 15, 7}}, Expected: true},
+			{Input: map[string]interface{}{"root": []interface{}{1, 2, 2, 3, 3, nil, nil, 4, 4}}, Expected: false},
+			{Input: map[string]interface{}{"root": []interface{}{}}, Expected: true},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(h)",
+		StarterCode:     "def isBalanced(root):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Naively re-computing heights at every node is O(n^2). Compute height and balance in a single bottom-up pass instead.", ChapterRef: 3},
+			{Level: 2, Type: "algorithm", Content: "Have the DFS return the subtree height, but return -1 as a sentinel the moment any subtree is unbalanced, and propagate it straight up."},
+			{Level: 3, Type: "code", Content: "def height(node): if not node: return 0; l = height(node.left); r = height(node.right); if l == -1 or r == -1 or abs(l - r) > 1: return -1; return 1 + max(l, r)."},
+		},
+		Solution: Solution{
+			Code: `def isBalanced(root):
+    def height(node):
+        if not node:
+            return 0
+        left = height(node.left)
+        if left == -1:
+            return -1
+        right = height(node.right)
+        if right == -1:
+            return -1
+        if abs(left - right) > 1:
+            return -1
+        return 1 + max(left, right)
+
+    return height(root) != -1`,
+			Explanation:     "A single bottom-up DFS returns each subtree's height, using -1 as an 'unbalanced' sentinel that short-circuits the rest of the traversal.",
+			TimeComplexity:  "O(n)",
+			SpaceComplexity: "O(h)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Bottom-up heights", Explanation: "Compute child heights before judging the current node", CodeSnippet: "left = height(node.left); right = height(node.right)"},
+				{Title: "Sentinel on imbalance", Explanation: "Any imbalance anywhere makes the whole tree unbalanced", CodeSnippet: "if abs(left - right) > 1: return -1"},
+			},
+		},
+	},
+	{
+		ID:              "binary-tree-right-side-view",
+		Number:          156,
+		Title:           "Binary Tree Right Side View",
+		Difficulty:      "Medium",
+		Category:        "trees",
+		Tags:            []string{"Tree", "Breadth-First Search", "Binary Tree"},
+		RelatedChapters: []int{6, 12},
+		Description:     `Given the root of a binary tree, imagine yourself standing on the right side of it. Return the values of the nodes you can see ordered from top to bottom.`,
+		Constraints: []string{
+			"The number of nodes in the tree is in the range [0, 100]",
+			"-100 <= Node.val <= 100",
+		},
+		Examples: []Example{
+			{Input: "root = [1,2,3,null,5,null,4]", Output: "[1,3,4]"},
+			{Input: "root = [1,null,3]", Output: "[1,3]"},
+			{Input: "root = []", Output: "[]"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"root": []interface{}{1, 2, 3, nil, 5, nil, 4}}, Expected: []int{1, 3, 4}},
+			{Input: map[string]interface{}{"root": []interface{}{1, nil, 3}}, Expected: []int{1, 3}},
+			{Input: map[string]interface{}{"root": []interface{}{}}, Expected: []int{}},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def rightSideView(root):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "From the right side you see exactly one node per level: the rightmost one. Level order traversal (BFS) visits the tree level by level.", ChapterRef: 6},
+			{Level: 2, Type: "algorithm", Content: "BFS with a queue. For each level, iterate its current width; the last node processed in the level is the visible one."},
+			{Level: 3, Type: "code", Content: "while queue: for i in range(len(queue)): node = queue.popleft(); if i == level_size - 1: result.append(node.val); push children."},
+		},
+		Solution: Solution{
+			Code: `from collections import deque
+
+def rightSideView(root):
+    if not root:
+        return []
+    result = []
+    queue = deque([root])
+    while queue:
+        size = len(queue)
+        for i in range(size):
+            node = queue.popleft()
+            if i == size - 1:
+                result.append(node.val)
+            if node.left:
+                queue.append(node.left)
+            if node.right:
+                queue.append(node.right)
+    return result`,
+			Explanation:     "Standard BFS by levels; the last node dequeued in each level is the rightmost node, which is what the right side view shows.",
+			TimeComplexity:  "O(n)",
+			SpaceComplexity: "O(n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Process by level", Explanation: "Freeze the level size before dequeuing so levels stay separated", CodeSnippet: "size = len(queue)"},
+				{Title: "Keep the rightmost", Explanation: "Only the last node in each level is visible from the right", CodeSnippet: "if i == size - 1: result.append(node.val)"},
+			},
+		},
+	},
+	{
+		ID:              "lowest-common-ancestor-binary-tree",
+		Number:          157,
+		Title:           "Lowest Common Ancestor of a Binary Tree",
+		Difficulty:      "Medium",
+		Category:        "trees",
+		Tags:            []string{"Tree", "Depth-First Search", "Binary Tree"},
+		RelatedChapters: []int{3, 12},
+		Description: `Given a binary tree, find the lowest common ancestor (LCA) of two given nodes in the tree.
+
+The lowest common ancestor is defined between two nodes p and q as the lowest node in the tree that has both p and q as descendants (where we allow a node to be a descendant of itself).
+
+Unlike the BST version of this problem, the tree has no ordering property you can exploit.`,
+		Constraints: []string{
+			"The number of nodes in the tree is in the range [2, 10^5]",
+			"-10^9 <= Node.val <= 10^9",
+			"All Node.val are unique",
+			"p != q, and both p and q exist in the tree",
+		},
+		Examples: []Example{
+			{Input: "root = [3,5,1,6,2,0,8,null,null,7,4], p = 5, q = 1", Output: "3", Explanation: "The LCA of nodes 5 and 1 is 3."},
+			{Input: "root = [3,5,1,6,2,0,8,null,null,7,4], p = 5, q = 4", Output: "5", Explanation: "A node can be a descendant of itself."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"root": []interface{}{3, 5, 1, 6, 2, 0, 8, nil, nil, 7, 4}, "p": 5, "q": 1}, Expected: 3},
+			{Input: map[string]interface{}{"root": []interface{}{3, 5, 1, 6, 2, 0, 8, nil, nil, 7, 4}, "p": 5, "q": 4}, Expected: 5},
+			{Input: map[string]interface{}{"root": []interface{}{1, 2}, "p": 1, "q": 2}, Expected: 1},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(h)",
+		StarterCode:     "def lowestCommonAncestor(root, p, q):\n    # p and q are TreeNode references; return the LCA node\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Think recursively: for a given node, p and q are either both in the left subtree, both in the right subtree, or split across the two — and the split point is the answer.", ChapterRef: 3},
+			{Level: 2, Type: "algorithm", Content: "DFS returns non-null when it finds p, q, or an ancestor of both. If both left and right recursion return non-null, the current node is the LCA; otherwise pass up whichever side found something."},
+			{Level: 3, Type: "code", Content: "if root in (None, p, q): return root; l = dfs(root.left); r = dfs(root.right); return root if l and r else l or r."},
+		},
+		Solution: Solution{
+			Code: `def lowestCommonAncestor(root, p, q):
+    if root is None or root is p or root is q:
+        return root
+    left = lowestCommonAncestor(root.left, p, q)
+    right = lowestCommonAncestor(root.right, p, q)
+    if left and right:
+        return root
+    return left or right`,
+			Explanation:     "Post-order DFS: a node that sees p in one subtree and q in the other is the lowest common ancestor; a node that sees only one of them forwards it upward.",
+			TimeComplexity:  "O(n)",
+			SpaceComplexity: "O(h)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Base cases", Explanation: "Finding p or q (or running off the tree) ends the recursion", CodeSnippet: "if root is None or root is p or root is q: return root"},
+				{Title: "Detect the split", Explanation: "Hits on both sides mean this node is the answer", CodeSnippet: "if left and right: return root"},
+				{Title: "Forward the find", Explanation: "Otherwise propagate whichever side found a target", CodeSnippet: "return left or right"},
+			},
+		},
+	},
 }
 
 func init() {

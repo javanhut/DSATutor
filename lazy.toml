@@ -6,18 +6,16 @@
 [settings]
 default = "run"
 
-[variables]
-gocache = "{{curdir}}/.gocache"
 
 [commands]
 
 [commands.run]
-run = ["GOCACHE={{gocache}} go run ./cmd/tutor"]
+run = ["go run ./cmd/tutor"]
 
 [commands.serve]
-run = ["GOCACHE={{gocache}} go run ./cmd/tutor -serve -addr=:8080"]
+run = ["go run ./cmd/tutor -serve -addr=:8080"]
 
 [commands.clean]
-run = ["rm -rf {{gocache}}"]
+run = ["rm -rf tutor"]
 
 # imlazy-generated-end: everything below this line is yours and survives re-sync

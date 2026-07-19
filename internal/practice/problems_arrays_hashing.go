@@ -27,9 +27,9 @@ You can return the answer in any order.`,
 			{Input: "nums = [3,3], target = 6", Output: "[0,1]"},
 		},
 		TestCases: []TestCase{
-			{Input: map[string]interface{}{"nums": []int{2, 7, 11, 15}, "target": 9}, Expected: []int{0, 1}},
-			{Input: map[string]interface{}{"nums": []int{3, 2, 4}, "target": 6}, Expected: []int{1, 2}},
-			{Input: map[string]interface{}{"nums": []int{3, 3}, "target": 6}, Expected: []int{0, 1}},
+			{Input: map[string]interface{}{"nums": []int{2, 7, 11, 15}, "target": 9}, Expected: []int{0, 1}, OrderIndependent: true},
+			{Input: map[string]interface{}{"nums": []int{3, 2, 4}, "target": 6}, Expected: []int{1, 2}, OrderIndependent: true},
+			{Input: map[string]interface{}{"nums": []int{3, 3}, "target": 6}, Expected: []int{0, 1}, OrderIndependent: true},
 		},
 		TimeComplexity:  "O(n)",
 		SpaceComplexity: "O(n)",
@@ -533,6 +533,304 @@ Return the maximum profit you can achieve from this transaction. If you cannot a
         max_profit = max(max_profit, price - min_price)
     return max_profit`,
 			Explanation: "Track minimum price seen. At each step, calculate potential profit and update max.",
+		},
+	},
+	{
+		ID:              "subarray-sum-equals-k",
+		Number:          149,
+		Title:           "Subarray Sum Equals K",
+		Difficulty:      "Medium",
+		Category:        "arrays-hashing",
+		Tags:            []string{"Array", "Hash Table", "Prefix Sum"},
+		RelatedChapters: []int{5, 12},
+		Description: `Given an array of integers nums and an integer k, return the total number of subarrays whose sum equals to k.
+
+A subarray is a contiguous non-empty sequence of elements within an array.`,
+		Constraints: []string{
+			"1 <= nums.length <= 2 * 10^4",
+			"-1000 <= nums[i] <= 1000",
+			"-10^7 <= k <= 10^7",
+		},
+		Examples: []Example{
+			{Input: "nums = [1,1,1], k = 2", Output: "2"},
+			{Input: "nums = [1,2,3], k = 3", Output: "2"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"nums": []int{1, 1, 1}, "k": 2}, Expected: 2},
+			{Input: map[string]interface{}{"nums": []int{1, 2, 3}, "k": 3}, Expected: 2},
+			{Input: map[string]interface{}{"nums": []int{1, -1, 0}, "k": 0}, Expected: 3},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def subarraySum(nums, k):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Sliding window fails here because of negative numbers. Think about prefix sums: sum(i..j) = prefix[j] - prefix[i-1].", ChapterRef: 5},
+			{Level: 2, Type: "algorithm", Content: "If prefix[j] - prefix[i] == k, then a subarray ending at j sums to k. Count how many earlier prefix sums equal prefix[j] - k using a hash map."},
+			{Level: 3, Type: "code", Content: "Keep counts = {0: 1}. For each num: prefix += num; result += counts.get(prefix - k, 0); counts[prefix] = counts.get(prefix, 0) + 1."},
+		},
+		Solution: Solution{
+			Code: `def subarraySum(nums, k):
+    counts = {0: 1}
+    prefix = 0
+    result = 0
+    for num in nums:
+        prefix += num
+        result += counts.get(prefix - k, 0)
+        counts[prefix] = counts.get(prefix, 0) + 1
+    return result`,
+			Explanation:     "Track running prefix sums in a hash map. A subarray ending at the current index sums to k exactly when an earlier prefix equals current_prefix - k.",
+			TimeComplexity:  "O(n)",
+			SpaceComplexity: "O(n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Seed the map", Explanation: "counts = {0: 1} so a prefix that itself equals k is counted", CodeSnippet: "counts = {0: 1}"},
+				{Title: "Count matches", Explanation: "Each earlier prefix equal to prefix - k marks the start of a valid subarray", CodeSnippet: "result += counts.get(prefix - k, 0)"},
+				{Title: "Record prefix", Explanation: "Add the current prefix so later elements can match against it", CodeSnippet: "counts[prefix] = counts.get(prefix, 0) + 1"},
+			},
+		},
+	},
+	{
+		ID:              "majority-element",
+		Number:          150,
+		Title:           "Majority Element",
+		Difficulty:      "Easy",
+		Category:        "arrays-hashing",
+		Tags:            []string{"Array", "Hash Table", "Divide and Conquer"},
+		RelatedChapters: []int{5, 12},
+		Description: `Given an array nums of size n, return the majority element.
+
+The majority element is the element that appears more than n / 2 times. You may assume that the majority element always exists in the array.
+
+Follow-up: could you solve the problem in linear time and in O(1) space?`,
+		Constraints: []string{
+			"n == nums.length",
+			"1 <= n <= 5 * 10^4",
+			"-10^9 <= nums[i] <= 10^9",
+		},
+		Examples: []Example{
+			{Input: "nums = [3,2,3]", Output: "3"},
+			{Input: "nums = [2,2,1,1,1,2,2]", Output: "2"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"nums": []int{3, 2, 3}}, Expected: 3},
+			{Input: map[string]interface{}{"nums": []int{2, 2, 1, 1, 1, 2, 2}}, Expected: 2},
+			{Input: map[string]interface{}{"nums": []int{1}}, Expected: 1},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def majorityElement(nums):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "A hash map of counts works in O(n) space. For O(1) space, think about what happens if you pair up each majority element with a different element — the majority still survives.", ChapterRef: 5},
+			{Level: 2, Type: "algorithm", Content: "Boyer-Moore voting: keep a candidate and a counter. Matching elements increment the counter, different elements decrement it; when it hits zero, adopt the current element as the new candidate."},
+			{Level: 3, Type: "code", Content: "count = 0; for num: if count == 0: candidate = num; count += 1 if num == candidate else -1. Return candidate."},
+		},
+		Solution: Solution{
+			Code: `def majorityElement(nums):
+    count = 0
+    candidate = None
+    for num in nums:
+        if count == 0:
+            candidate = num
+        count += 1 if num == candidate else -1
+    return candidate`,
+			Explanation:     "Boyer-Moore voting: every non-majority element can cancel out at most one majority element, so the majority element is always the last surviving candidate.",
+			TimeComplexity:  "O(n)",
+			SpaceComplexity: "O(1)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Adopt a candidate", Explanation: "When the counter is zero, the current element becomes the candidate", CodeSnippet: "if count == 0: candidate = num"},
+				{Title: "Vote", Explanation: "Same element votes up, different element votes down", CodeSnippet: "count += 1 if num == candidate else -1"},
+			},
+		},
+	},
+	{
+		ID:              "rotate-array",
+		Number:          151,
+		Title:           "Rotate Array",
+		Difficulty:      "Easy",
+		Category:        "arrays-hashing",
+		Tags:            []string{"Array", "Two Pointers", "Math"},
+		RelatedChapters: []int{2, 12},
+		Description: `Given an integer array nums, rotate the array to the right by k steps, where k is non-negative.
+
+Modify nums in-place. Try to come up with an approach that uses O(1) extra space.`,
+		Constraints: []string{
+			"1 <= nums.length <= 10^5",
+			"-2^31 <= nums[i] <= 2^31 - 1",
+			"0 <= k <= 10^5",
+		},
+		Examples: []Example{
+			{Input: "nums = [1,2,3,4,5,6,7], k = 3", Output: "[5,6,7,1,2,3,4]", Explanation: "Rotate right 3 times: [7,1,2,3,4,5,6] -> [6,7,1,2,3,4,5] -> [5,6,7,1,2,3,4]"},
+			{Input: "nums = [-1,-100,3,99], k = 2", Output: "[3,99,-1,-100]"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"nums": []int{1, 2, 3, 4, 5, 6, 7}, "k": 3}, Expected: []int{5, 6, 7, 1, 2, 3, 4}},
+			{Input: map[string]interface{}{"nums": []int{-1, -100, 3, 99}, "k": 2}, Expected: []int{3, 99, -1, -100}},
+			{Input: map[string]interface{}{"nums": []int{1, 2}, "k": 4}, Expected: []int{1, 2}},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def rotate(nums, k):\n    # Modify nums in-place, do not return anything\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "k can be larger than the array length — first reduce it with k % n. Then think about which suffix of the array ends up at the front.", ChapterRef: 2},
+			{Level: 2, Type: "algorithm", Content: "The elegant O(1)-space trick: reverse the whole array, then reverse the first k elements, then reverse the rest."},
+			{Level: 3, Type: "code", Content: "k %= len(nums); nums[:] = nums[-k:] + nums[:-k] if k else nums — or implement the triple-reversal for true O(1) space."},
+		},
+		Solution: Solution{
+			Code: `def rotate(nums, k):
+    n = len(nums)
+    k %= n
+    nums[:] = nums[n - k:] + nums[:n - k]`,
+			Explanation:     "After rotating right by k, the last k elements move to the front. Slicing expresses that directly; the triple-reversal variant achieves the same result in O(1) extra space.",
+			TimeComplexity:  "O(n)",
+			SpaceComplexity: "O(n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Normalize k", Explanation: "Rotating by n is a no-op, so reduce k modulo n", CodeSnippet: "k %= n"},
+				{Title: "Rebuild in place", Explanation: "Assign to nums[:] so the caller's list is mutated", CodeSnippet: "nums[:] = nums[n - k:] + nums[:n - k]"},
+			},
+		},
+	},
+	{
+		ID:              "range-sum-query-immutable",
+		Number:          152,
+		Title:           "Range Sum Query - Immutable",
+		Difficulty:      "Easy",
+		Category:        "arrays-hashing",
+		Tags:            []string{"Array", "Design", "Prefix Sum"},
+		RelatedChapters: []int{2, 12},
+		Description: `Given an integer array nums, handle multiple queries of the following type: calculate the sum of the elements of nums between indices left and right inclusive.
+
+Implement the NumArray class:
+- NumArray(nums) initializes the object with the integer array nums.
+- sumRange(left, right) returns the sum of nums[left..right] inclusive.
+
+Each sumRange call should run in O(1) time.`,
+		Constraints: []string{
+			"1 <= nums.length <= 10^4",
+			"-10^5 <= nums[i] <= 10^5",
+			"0 <= left <= right < nums.length",
+			"At most 10^4 calls will be made to sumRange",
+		},
+		Examples: []Example{
+			{Input: `["NumArray","sumRange","sumRange","sumRange"]
+[[[-2,0,3,-5,2,-1]],[0,2],[2,5],[0,5]]`, Output: "[null,1,-1,-3]"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"operations": []string{"NumArray", "sumRange", "sumRange", "sumRange"}, "values": []interface{}{[]interface{}{[]int{-2, 0, 3, -5, 2, -1}}, []int{0, 2}, []int{2, 5}, []int{0, 5}}}, Expected: []interface{}{nil, 1, -1, -3}},
+		},
+		TimeComplexity:  "O(1)",
+		SpaceComplexity: "O(n)",
+		StarterCode: `class NumArray:
+    def __init__(self, nums):
+        # Precompute whatever you need here
+        pass
+
+    def sumRange(self, left, right):
+        pass`,
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "Summing the range on every query is O(n) per call. Precompute something in the constructor so each query becomes a subtraction.", ChapterRef: 2},
+			{Level: 2, Type: "algorithm", Content: "Build a prefix sum array where prefix[i] = sum of the first i elements. Then sum(left..right) = prefix[right + 1] - prefix[left]."},
+			{Level: 3, Type: "code", Content: "self.prefix = [0]; for num in nums: self.prefix.append(self.prefix[-1] + num). sumRange returns self.prefix[right + 1] - self.prefix[left]."},
+		},
+		Solution: Solution{
+			Code: `class NumArray:
+    def __init__(self, nums):
+        self.prefix = [0]
+        for num in nums:
+            self.prefix.append(self.prefix[-1] + num)
+
+    def sumRange(self, left, right):
+        return self.prefix[right + 1] - self.prefix[left]`,
+			Explanation:     "Precompute prefix sums once in O(n); every range query is then the difference of two prefix values.",
+			TimeComplexity:  "O(1)",
+			SpaceComplexity: "O(n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Build prefixes", Explanation: "prefix[i] holds the sum of the first i elements", CodeSnippet: "self.prefix.append(self.prefix[-1] + num)"},
+				{Title: "Answer queries", Explanation: "Subtract the prefix before left from the prefix through right", CodeSnippet: "return self.prefix[right + 1] - self.prefix[left]"},
+			},
+		},
+	},
+	{
+		ID:              "insert-delete-getrandom-o1",
+		Number:          153,
+		Title:           "Insert Delete GetRandom O(1)",
+		Difficulty:      "Medium",
+		Category:        "arrays-hashing",
+		Tags:            []string{"Array", "Hash Table", "Design", "Randomized"},
+		RelatedChapters: []int{5, 12},
+		Description: `Implement the RandomizedSet class:
+- RandomizedSet() initializes the RandomizedSet object.
+- insert(val) inserts an item val into the set if not present. Returns true if the item was not present, false otherwise.
+- remove(val) removes an item val from the set if present. Returns true if the item was present, false otherwise.
+- getRandom() returns a random element from the current set of elements. Each element must have the same probability of being returned. It is guaranteed that at least one element exists when this method is called.
+
+Each function must work in average O(1) time complexity.`,
+		Constraints: []string{
+			"-2^31 <= val <= 2^31 - 1",
+			"At most 2 * 10^5 calls will be made to insert, remove, and getRandom",
+			"There will be at least one element in the data structure when getRandom is called",
+		},
+		Examples: []Example{
+			{Input: `["RandomizedSet","insert","remove","insert","getRandom","remove","insert","getRandom"]
+[[],[1],[2],[2],[],[1],[2],[]]`, Output: "[null,true,false,true,2,true,false,2]", Explanation: "insert(1) returns true. remove(2) returns false (not present). insert(2) returns true. getRandom returns 1 or 2. remove(1) returns true. insert(2) returns false (already present). getRandom returns 2 (only element left)."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"operations": []string{"RandomizedSet", "insert", "remove", "insert", "remove", "getRandom"}, "values": []interface{}{[]interface{}{}, []int{1}, []int{2}, []int{2}, []int{1}, []interface{}{}}}, Expected: []interface{}{nil, true, false, true, true, 2}},
+			{Input: map[string]interface{}{"operations": []string{"RandomizedSet", "insert", "insert", "remove", "insert", "getRandom"}, "values": []interface{}{[]interface{}{}, []int{7}, []int{7}, []int{7}, []int{9}, []interface{}{}}}, Expected: []interface{}{nil, true, false, true, true, 9}},
+		},
+		TimeComplexity:  "O(1)",
+		SpaceComplexity: "O(n)",
+		StarterCode: `class RandomizedSet:
+    def __init__(self):
+        pass
+
+    def insert(self, val):
+        pass
+
+    def remove(self, val):
+        pass
+
+    def getRandom(self):
+        pass`,
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "A hash set gives O(1) insert/remove but random.choice needs indexable storage. A list gives O(1) random access but O(n) removal. Combine both.", ChapterRef: 5},
+			{Level: 2, Type: "algorithm", Content: "Keep a list of values plus a dict mapping value -> its index in the list. To remove in O(1), swap the target with the last list element, then pop."},
+			{Level: 3, Type: "code", Content: "On remove: idx = self.pos[val]; last = self.vals[-1]; self.vals[idx] = last; self.pos[last] = idx; self.vals.pop(); del self.pos[val]. getRandom: random.choice(self.vals)."},
+		},
+		Solution: Solution{
+			Code: `import random
+
+class RandomizedSet:
+    def __init__(self):
+        self.vals = []
+        self.pos = {}
+
+    def insert(self, val):
+        if val in self.pos:
+            return False
+        self.pos[val] = len(self.vals)
+        self.vals.append(val)
+        return True
+
+    def remove(self, val):
+        if val not in self.pos:
+            return False
+        idx = self.pos[val]
+        last = self.vals[-1]
+        self.vals[idx] = last
+        self.pos[last] = idx
+        self.vals.pop()
+        del self.pos[val]
+        return True
+
+    def getRandom(self):
+        return random.choice(self.vals)`,
+			Explanation:     "A list supports O(1) random choice and a dict supports O(1) membership. Swap-with-last makes list removal O(1) too, keeping the dict's stored indices consistent.",
+			TimeComplexity:  "O(1)",
+			SpaceComplexity: "O(n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Insert", Explanation: "Append to the list and record its index in the dict", CodeSnippet: "self.pos[val] = len(self.vals); self.vals.append(val)"},
+				{Title: "Remove via swap", Explanation: "Overwrite the removed slot with the last element so the pop is O(1)", CodeSnippet: "self.vals[idx] = last; self.pos[last] = idx"},
+				{Title: "Random pick", Explanation: "The list makes uniform selection trivial", CodeSnippet: "return random.choice(self.vals)"},
+			},
 		},
 	},
 }

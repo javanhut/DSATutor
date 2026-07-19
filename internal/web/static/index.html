@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DSA Tutor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
   <link rel="stylesheet" href="/static/styles.css">
   <!-- CodeMirror 5 - stable, no ES module conflicts -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.css">
@@ -29,15 +32,15 @@
       <nav class="sidebar-nav" id="chapters"></nav>
       <div class="sidebar-footer">
         <button id="practice-toggle" class="sidebar-btn" title="Practice Problems">
-          <span class="btn-icon">P</span>
+          <span class="btn-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
           <span class="btn-text">Practice</span>
         </button>
         <button id="sandbox-toggle" class="sidebar-btn" title="Sandbox Mode">
-          <span class="btn-icon">S</span>
+          <span class="btn-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></span>
           <span class="btn-text">Sandbox</span>
         </button>
         <button id="reload" class="sidebar-btn" title="Reload">
-          <span class="btn-icon">R</span>
+          <span class="btn-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></span>
           <span class="btn-text">Reload</span>
         </button>
       </div>
@@ -179,7 +182,7 @@
         <header class="content-header">
           <div class="header-info">
             <span class="chapter-badge practice-badge">PRACTICE</span>
-            <h1>Blind 75 Problems</h1>
+            <h1>Practice Problems</h1>
           </div>
           <div class="header-controls">
             <div class="progress-summary">
@@ -520,6 +523,20 @@
       </div>
     </main>
   </div>
+
+  <!-- Solved Celebration Modal -->
+  <div id="celebration-overlay" class="celebration-overlay hidden">
+    <div class="celebration-modal">
+      <div class="celebration-icon">🎉</div>
+      <h2>Solved!</h2>
+      <p id="celebration-text"></p>
+      <div class="celebration-actions">
+        <button id="celebration-close" class="btn-small ghost">Keep Reviewing</button>
+        <button id="celebration-next" class="btn-small">Next Problem →</button>
+      </div>
+    </div>
+  </div>
+
   <script src="/static/app.js"></script>
 </body>
 </html>

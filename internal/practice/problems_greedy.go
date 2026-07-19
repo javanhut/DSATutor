@@ -465,6 +465,57 @@ Return true if you can reach the last index, or false otherwise.`,
 			},
 		},
 	},
+	{
+		ID:              "best-time-to-buy-sell-stock-ii",
+		Number:          167,
+		Title:           "Best Time to Buy and Sell Stock II",
+		Difficulty:      "Easy",
+		Category:        "greedy",
+		Tags:            []string{"Array", "Greedy", "Dynamic Programming"},
+		RelatedChapters: []int{8, 12},
+		Description: `You are given an integer array prices where prices[i] is the price of a given stock on the ith day.
+
+On each day, you may decide to buy and/or sell the stock. You can only hold at most one share of the stock at any time. However, you can buy it then immediately sell it on the same day.
+
+Find and return the maximum profit you can achieve.`,
+		Constraints: []string{
+			"1 <= prices.length <= 3 * 10^4",
+			"0 <= prices[i] <= 10^4",
+		},
+		Examples: []Example{
+			{Input: "prices = [7,1,5,3,6,4]", Output: "7", Explanation: "Buy on day 2 (price 1), sell on day 3 (price 5), profit 4. Then buy on day 4 (price 3), sell on day 5 (price 6), profit 3. Total 7."},
+			{Input: "prices = [1,2,3,4,5]", Output: "4", Explanation: "Buy on day 1, sell on day 5."},
+			{Input: "prices = [7,6,4,3,1]", Output: "0", Explanation: "No profitable transaction exists."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"prices": []int{7, 1, 5, 3, 6, 4}}, Expected: 7},
+			{Input: map[string]interface{}{"prices": []int{1, 2, 3, 4, 5}}, Expected: 4},
+			{Input: map[string]interface{}{"prices": []int{7, 6, 4, 3, 1}}, Expected: 0},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def maxProfit(prices):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "approach", Content: "With unlimited transactions, any multi-day rise can be decomposed into consecutive one-day rises. Do you ever gain by skipping a profitable day-to-day step?", ChapterRef: 8},
+			{Level: 2, Type: "algorithm", Content: "Greedy: collect every positive difference between consecutive days. Buying before each rise and selling after it is always optimal."},
+			{Level: 3, Type: "code", Content: "return sum(max(0, prices[i] - prices[i - 1]) for i in range(1, len(prices)))."},
+		},
+		Solution: Solution{
+			Code: `def maxProfit(prices):
+    profit = 0
+    for i in range(1, len(prices)):
+        if prices[i] > prices[i - 1]:
+            profit += prices[i] - prices[i - 1]
+    return profit`,
+			Explanation:     "Every optimal strategy's profit equals the sum of all positive day-to-day price changes, so greedily collecting each rise is optimal.",
+			TimeComplexity:  "O(n)",
+			SpaceComplexity: "O(1)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Compare neighbors", Explanation: "A multi-day climb equals the sum of its daily steps", CodeSnippet: "if prices[i] > prices[i - 1]:"},
+				{Title: "Collect every rise", Explanation: "Skipping a profitable step can never help", CodeSnippet: "profit += prices[i] - prices[i - 1]"},
+			},
+		},
+	},
 }
 
 func init() {

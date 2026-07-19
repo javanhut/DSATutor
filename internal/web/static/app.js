@@ -745,7 +745,7 @@ class AlgorithmAnimator {
       const lineEl = this.codeEl.querySelector(`[data-line="${lineNum}"]`);
       if (lineEl) {
         lineEl.classList.add('active');
-        lineEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        scrollLineIntoView(lineEl);
       }
     }
   }
@@ -6906,6 +6906,23 @@ function escapeHtml(str) {
   }[c]));
 }
 
+// Center an element within its nearest scrollable ancestor only —
+// scrollIntoView would also scroll the page itself.
+function scrollLineIntoView(lineEl) {
+  let container = lineEl.parentElement;
+  while (container && container !== document.body) {
+    const style = getComputedStyle(container);
+    if (/(auto|scroll)/.test(style.overflowY) && container.scrollHeight > container.clientHeight) break;
+    container = container.parentElement;
+  }
+  if (!container || container === document.body) return;
+  const delta = lineEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
+  container.scrollTo({
+    top: container.scrollTop + delta - container.clientHeight / 2 + lineEl.clientHeight / 2,
+    behavior: "smooth",
+  });
+}
+
 async function loadChapters() {
   const res = await fetch("/api/chapters");
   const data = await res.json();
@@ -8057,6 +8074,64 @@ async function runPracticeCode() {
   }
 }
 
+function launchConfetti() {
+  const colors = ['#38bdf8', '#22c55e', '#a855f7', '#f59e0b', '#ef4444'];
+  const container = document.createElement('div');
+  container.className = 'confetti-container';
+  document.body.appendChild(container);
+  for (let i = 0; i < 80; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    const size = 6 + Math.random() * 7;
+    piece.style.left = Math.random() * 100 + 'vw';
+    piece.style.width = size + 'px';
+    piece.style.height = size * 0.55 + 'px';
+    piece.style.background = colors[i % colors.length];
+    piece.style.transform = `rotate(${Math.random() * 360}deg)`;
+    piece.style.animationDelay = Math.random() * 0.6 + 's';
+    piece.style.animationDuration = 2 + Math.random() * 1.5 + 's';
+    container.appendChild(piece);
+  }
+  setTimeout(() => container.remove(), 4500);
+}
+
+// Next unsolved problem after the current one (wrapping); null if everything is solved.
+function findNextProblem(currentId) {
+  const list = practiceState.problems;
+  const idx = list.findIndex(p => p.id === currentId);
+  if (idx === -1) return null;
+  for (let i = 1; i < list.length; i++) {
+    const cand = list[(idx + i) % list.length];
+    if (!practiceState.progress[cand.id]?.solved) return cand;
+  }
+  return null;
+}
+
+function hideCelebration() {
+  el('celebration-overlay').classList.add('hidden');
+}
+
+function showCelebration(problem) {
+  launchConfetti();
+  const overlay = el('celebration-overlay');
+  const textEl = el('celebration-text');
+  const nextBtn = el('celebration-next');
+  const next = findNextProblem(problem.id);
+
+  if (next) {
+    textEl.textContent = `You solved ${problem.title}. Ready for the next one?`;
+    nextBtn.textContent = `Next: ${next.title} →`;
+    nextBtn.onclick = () => { hideCelebration(); openProblem(next.id); };
+  } else {
+    textEl.textContent = `You solved ${problem.title} — that was the last one. All problems solved!`;
+    nextBtn.textContent = 'Back to Problems';
+    nextBtn.onclick = () => { hideCelebration(); showPracticeList(); };
+  }
+  el('celebration-close').onclick = hideCelebration;
+  overlay.onclick = (e) => { if (e.target === overlay) hideCelebration(); };
+  overlay.classList.remove('hidden');
+}
+
 async function submitPracticeCode() {
   const problem = practiceState.currentProblem;
   const outputEl = el('test-results');
@@ -8118,6 +8193,7 @@ async function submitPracticeCode() {
         await loadProblems();
         renderProblemsList();
         updateProgressCount();
+        showCelebration(problem);
       }
     }
 
@@ -8197,7 +8273,7 @@ function renderCurrentVizStep() {
     // Scroll to current line
     const activeLine = codeLinesEl.querySelector('.code-line.active');
     if (activeLine) {
-      activeLine.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      scrollLineIntoView(activeLine);
     }
   }
 
