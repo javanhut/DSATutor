@@ -6041,7 +6041,7 @@ class SandboxAnimator extends AlgorithmAnimator {
     this.inputEl = null;
   }
 
-  async executeCode(code) {
+  async executeCode(code, language = 'python') {
     this.userCode = code;
     this.setCode(code);
 
@@ -6049,7 +6049,7 @@ class SandboxAnimator extends AlgorithmAnimator {
       const response = await fetch('/api/sandbox/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, timeout: 10000 })
+        body: JSON.stringify({ code, timeout: 10000, language })
       });
 
       const result = await response.json();
@@ -6383,12 +6383,124 @@ function initEditor(containerId, content, options = {}) {
   return null;
 }
 
+// The language learners write solutions in: "python" or "oxigen". Kept in
+// localStorage so the choice survives a reload.
+const LANGUAGE_KEY = 'dsatutor_language';
+
+function storedLanguage() {
+  try {
+    return localStorage.getItem(LANGUAGE_KEY) === 'oxigen' ? 'oxigen' : 'python';
+  } catch (e) {
+    return 'python';
+  }
+}
+
+function storeLanguage(language) {
+  try {
+    localStorage.setItem(LANGUAGE_KEY, language);
+  } catch (e) { /* private mode */ }
+}
+
 // Sandbox state
 const sandboxState = {
   isActive: false,
   animator: null,
-  isExecuting: false
+  isExecuting: false,
+  language: storedLanguage(),
+  drafts: {}, // language -> code
 };
+
+const SANDBOX_SAMPLES = {
+  python: `# Write your Python code here
+# Available helper classes:
+#   ListNode(val, next=None)  - for linked lists
+#   TreeNode(val, left=None, right=None)  - for binary trees
+#   GraphNode(val, neighbors=[])  - for graphs
+#
+# Example: Binary Search
+def binary_search(arr, target):
+    low, high = 0, len(arr) - 1
+    while low <= high:
+        mid = (low + high) // 2
+        if arr[mid] == target:
+            return mid
+        elif arr[mid] < target:
+            low = mid + 1
+        else:
+            high = mid - 1
+    return -1
+
+arr = [1, 3, 5, 7, 9, 11, 13]
+result = binary_search(arr, 7)
+print(f'Found at index: {result}')`,
+  oxigen: `// Write your Oxigen code here. Run executes main and shows what it prints.
+// Oxigen runs aren't traced, so there's no step-through: print what you
+// want to see.
+
+struct ListNode {
+    val <generic>
+    next <ListNode> || <None>
+}
+
+fun binary_search(arr, target) {
+    low := 0
+    high := len(arr) - 1
+    repeat when low <= high {
+        mid := (low + high) / 2
+        option {
+            arr[mid] == target -> { give mid }
+            arr[mid] < target -> { low := mid + 1 }
+            { high := mid - 1 }
+        }
+    }
+    give -1
+}
+
+fun reverse(head) {
+    prev := None
+    node := head
+    repeat when node != None {
+        next := node.next
+        node.next = prev
+        prev := node
+        node := next
+    }
+    give prev
+}
+
+main {
+    arr := [1, 3, 5, 7, 9, 11, 13]
+    println("Found 7 at index:", binary_search(arr, 7))
+
+    node := reverse(ListNode(1, ListNode(2, ListNode(3))))
+    repeat when node != None {
+        print(node.val, "")
+        node := node.next
+    }
+    println()
+}`,
+};
+
+const SANDBOX_CODE_META = {
+  python: 'Python, traced line by line',
+  oxigen: 'Oxigen, output only',
+};
+
+function setSandboxLanguage(language) {
+  if (language === sandboxState.language) return;
+  sandboxState.drafts[sandboxState.language] = getEditorCode('sandbox-code');
+  sandboxState.language = language;
+  storeLanguage(language);
+  const code = sandboxState.drafts[language] ?? SANDBOX_SAMPLES[language];
+  // The sandbox's CodeMirror lives in sandbox-editor-container, which
+  // setEditorCode('sandbox-code') doesn't reach, so set both directly.
+  if (window.setEditorLanguage) window.setEditorLanguage('sandbox-editor-container', language);
+  if (window.setEditorContent) window.setEditorContent('sandbox-editor-container', code);
+  const textarea = document.getElementById('sandbox-code');
+  if (textarea) textarea.value = code;
+  const meta = document.getElementById('sandbox-code-meta');
+  if (meta) meta.textContent = SANDBOX_CODE_META[language];
+}
 
 // Toggle sandbox mode
 function toggleSandboxMode() {
@@ -6456,28 +6568,11 @@ function initSandboxAnimator() {
   sandboxState.animator = new SandboxAnimator(canvas, codeEl, stateEl, {});
 
   // Initialize CodeMirror editor with sample code
-  const sampleCode = `# Write your Python code here
-# Available helper classes:
-#   ListNode(val, next=None)  - for linked lists
-#   TreeNode(val, left=None, right=None)  - for binary trees
-#   GraphNode(val, neighbors=[])  - for graphs
-#
-# Example: Binary Search
-def binary_search(arr, target):
-    low, high = 0, len(arr) - 1
-    while low <= high:
-        mid = (low + high) // 2
-        if arr[mid] == target:
-            return mid
-        elif arr[mid] < target:
-            low = mid + 1
-        else:
-            high = mid - 1
-    return -1
-
-arr = [1, 3, 5, 7, 9, 11, 13]
-result = binary_search(arr, 7)
-print(f'Found at index: {result}')`;
+  const sampleCode = SANDBOX_SAMPLES[sandboxState.language];
+  const meta = document.getElementById('sandbox-code-meta');
+  if (meta) meta.textContent = SANDBOX_CODE_META[sandboxState.language];
+  const picker = document.getElementById('sandbox-language');
+  if (picker) picker.value = sandboxState.language;
 
   // Always set the textarea as fallback
   const textarea = document.getElementById('sandbox-code');
@@ -6487,6 +6582,7 @@ print(f'Found at index: {result}')`;
 
   // Initialize CodeMirror editor
   initEditor('sandbox-editor-container', sampleCode, {
+    language: sandboxState.language,
     onChange: (content) => {
       const ta = document.getElementById('sandbox-code');
       if (ta) ta.value = content;
@@ -6520,9 +6616,15 @@ async function runSandboxCode() {
       initSandboxAnimator();
     }
 
-    const result = await sandboxState.animator.executeCode(code);
+    const result = await sandboxState.animator.executeCode(code, sandboxState.language);
 
-    if (result.success) {
+    if (result.success && sandboxState.language === 'oxigen') {
+      outputEl.textContent = result.output || '(no output)';
+      stateEl.textContent = "Done. Oxigen runs aren't traced, so there are no steps to play; the output is below.";
+      structuresEl.textContent = 'Not traced for Oxigen';
+      const canvas = document.getElementById('sandbox-canvas');
+      if (canvas) canvas.innerHTML = '<div class="sandbox-empty">Step-through visualization is available for Python code.</div>';
+    } else if (result.success) {
       outputEl.textContent = result.output || '(no output)';
       stateEl.textContent = `Execution complete. ${result.stepCount} steps captured. Use controls to step through.`;
 
@@ -6704,6 +6806,12 @@ function setupSandboxControls() {
 
   if (runBtn) {
     runBtn.onclick = runSandboxCode;
+  }
+
+  const languagePicker = document.getElementById('sandbox-language');
+  if (languagePicker) {
+    languagePicker.value = sandboxState.language;
+    languagePicker.onchange = () => setSandboxLanguage(languagePicker.value);
   }
 
   if (clearBtn) {
@@ -7459,6 +7567,8 @@ const practiceState = {
   hintsRevealed: 0,
   currentTestCase: 0,
   practiceAnimator: null,
+  language: storedLanguage(),
+  drafts: {}, // "problemId:language" -> code, for this session
 };
 
 function loadProgress() {
@@ -7634,6 +7744,7 @@ async function openProblem(problemId, opts = {}) {
   }
 
   // Reset all practice state for new problem
+  saveDraft();
   practiceState.currentProblem = problem;
   practiceState.hintsRevealed = 0;
   practiceState.currentTestCase = problem.testCases?.findIndex(tc => !tc.hidden) ?? 0;
@@ -7962,11 +8073,33 @@ function renderHints() {
   }
 }
 
+function starterFor(problem, language) {
+  if (language === 'oxigen') {
+    return problem.starterCodeOxigen || '// Write your solution here\n';
+  }
+  return problem.starterCode || '# Write your solution here\n';
+}
+
+function draftKey(problem, language) {
+  return `${problem.id}:${language}`;
+}
+
+// Keep what's in the editor before it is replaced, so switching language
+// and back doesn't lose work.
+function saveDraft() {
+  const problem = practiceState.currentProblem;
+  if (!problem) return;
+  practiceState.drafts[draftKey(problem, practiceState.language)] = getEditorCode('practice-code');
+}
+
 function renderStarterCode() {
   const problem = practiceState.currentProblem;
   if (!problem) return;
 
-  const starterCode = problem.starterCode || '# Write your solution here\n';
+  const language = practiceState.language;
+  const starterCode = practiceState.drafts[draftKey(problem, language)] ?? starterFor(problem, language);
+  const picker = el('practice-language');
+  if (picker) picker.value = language;
 
   // Update textarea first
   const textarea = document.getElementById('practice-code');
@@ -7979,6 +8112,7 @@ function renderStarterCode() {
   if (window.dsaEditors && window.dsaEditors[containerId]) {
     // Editor exists - update content and refresh
     const editor = window.dsaEditors[containerId];
+    if (window.setEditorLanguage) window.setEditorLanguage(containerId, language);
     editor.setValue(starterCode);
     // Refresh to ensure proper rendering after content change
     setTimeout(() => {
@@ -7988,12 +8122,21 @@ function renderStarterCode() {
   } else {
     // Create new editor
     initEditor(containerId, starterCode, {
+      language,
       onChange: (content) => {
         const ta = document.getElementById('practice-code');
         if (ta) ta.value = content;
       },
     });
   }
+}
+
+function setPracticeLanguage(language) {
+  if (language === practiceState.language) return;
+  saveDraft();
+  practiceState.language = language;
+  storeLanguage(language);
+  renderStarterCode();
 }
 
 function formatResult(value) {
@@ -8023,6 +8166,7 @@ async function runPracticeCode() {
         problemId: problem.id,
         code: code,
         testCaseIndex: practiceState.currentTestCase,
+        language: practiceState.language,
       }),
     });
 
@@ -8053,6 +8197,8 @@ async function runPracticeCode() {
     if (result.steps && result.steps.length > 0) {
       renderPracticeVisualization(result.steps, code);
       html += `<div class="viz-note">Step through the run in the Visualize tab${result.truncated ? ' (the first steps are recorded)' : ''}.</div>`;
+    } else if (practiceState.language === 'oxigen' && !result.error) {
+      html += `<div class="test-note">Oxigen runs aren't traced, so there's no step-through. Print values to see what your code does.</div>`;
     }
 
     updateProblemProgress(problem.id, { attempted: true });
@@ -8084,6 +8230,7 @@ async function submitPracticeCode() {
       body: JSON.stringify({
         problemId: problem.id,
         code: code,
+        language: practiceState.language,
       }),
     });
 
@@ -8638,6 +8785,7 @@ async function showSolution() {
 
   if (contentEl) {
     let html = `
+      ${practiceState.language === 'oxigen' ? '<p class="language-note">The model solution and its walkthrough are written in Python.</p>' : ''}
       <div class="solution-actions">
         <button id="visualize-solution" class="btn-small btn-primary">Visualize Solution</button>
       </div>
@@ -8746,6 +8894,22 @@ async function visualizeSolution() {
 }
 
 function setupPracticeControls() {
+  const languagePicker = el('practice-language');
+  if (languagePicker) {
+    languagePicker.value = practiceState.language;
+    languagePicker.onchange = () => setPracticeLanguage(languagePicker.value);
+  }
+
+  const resetCodeBtn = el('reset-code');
+  if (resetCodeBtn) {
+    resetCodeBtn.onclick = () => {
+      const problem = practiceState.currentProblem;
+      if (!problem) return;
+      delete practiceState.drafts[draftKey(problem, practiceState.language)];
+      renderStarterCode();
+    };
+  }
+
   // Practice toggle button
   const toggleBtn = el('practice-toggle');
   if (toggleBtn) {

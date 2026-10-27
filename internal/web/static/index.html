@@ -18,6 +18,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/hint/show-hint.css">
   <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/python/python.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/mode/simple.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/edit/matchbrackets.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/edit/closebrackets.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/comment/comment.min.js"></script>
@@ -132,9 +133,16 @@
         <header class="content-header">
           <div class="header-info">
             <span class="chapter-badge sandbox-badge">Sandbox</span>
-            <h1>Python Sandbox</h1>
+            <h1>Sandbox</h1>
           </div>
           <div class="header-controls">
+            <label class="language-picker">
+              <span>Language</span>
+              <select id="sandbox-language">
+                <option value="python">Python</option>
+                <option value="oxigen">Oxigen</option>
+              </select>
+            </label>
             <div class="control-group">
               <button id="sandbox-run" class="btn-small primary">Run Code</button>
               <button id="sandbox-clear" class="btn-small ghost">Clear</button>
@@ -166,8 +174,8 @@
             <!-- Code Editor Panel -->
             <div class="panel code-panel sandbox-code-panel">
               <div class="panel-header">
-                <h3>Python Code</h3>
-                <span class="panel-meta">Write your algorithm here</span>
+                <h3>Code</h3>
+                <span class="panel-meta" id="sandbox-code-meta">Python, traced line by line</span>
               </div>
               <div class="panel-body editor-body">
                 <div id="sandbox-editor-container" class="cm-editor-container"></div>
@@ -412,7 +420,16 @@
             <div class="practice-panel code-panel">
               <div class="panel-header">
                 <h3>Code</h3>
-                <button id="reset-code" class="btn-small ghost">Reset</button>
+                <div class="panel-actions">
+                  <label class="language-picker">
+                    <span class="visually-hidden">Language</span>
+                    <select id="practice-language">
+                      <option value="python">Python</option>
+                      <option value="oxigen">Oxigen</option>
+                    </select>
+                  </label>
+                  <button id="reset-code" class="btn-small ghost">Reset</button>
+                </div>
               </div>
               <div class="panel-body editor-body">
                 <div id="practice-editor-container" class="cm-editor-container"></div>

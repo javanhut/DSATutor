@@ -2,6 +2,11 @@
 
 The Python Sandbox is an interactive feature that allows you to write custom Python algorithms and visualize their execution step-by-step with automatic data structure detection.
 
+The language picker in the sandbox header also offers Oxigen. Oxigen code runs
+and shows its output, but isn't traced, so there are no steps or structures to
+display. Node helpers aren't added in the sandbox either: define the structs
+you need, as the Oxigen sample does. See [oxigen.md](oxigen.md).
+
 ## Overview
 
 The sandbox provides:

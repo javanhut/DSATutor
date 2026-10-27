@@ -1,0 +1,331 @@
+// DSATutor test harness for Oxigen, the counterpart of harness.py.
+//
+// oxigen.go writes the learner's code to solution.oxi and this file, followed
+// by a generated main block for one test case, to harness.oxi. The learner's
+// module can't see anything imported here: Oxigen modules have their own
+// globals. Struct `==` compares by value, so node identity is checked by
+// temporarily marking each node's val with a tuple instead.
+
+MAX_NODES := 10000
+
+// JSON -> structures ------------------------------------------------------
+
+fun build_list(values) {
+    give None when values == None
+    dummy := ListNode(0, None)
+    tail := dummy
+    each v in values {
+        node := ListNode(v, None)
+        tail.next = node
+        tail := node
+    }
+    give dummy.next
+}
+
+fun build_cycle_list(values, pos) {
+    head := build_list(values)
+    give head when head == None or pos == None or pos < 0
+    nodes := []
+    node := head
+    repeat when node != None {
+        nodes := push(nodes, node)
+        node := node.next
+    }
+    nodes[len(nodes) - 1].next = nodes[pos]
+    give head
+}
+
+// Level-order form, as LeetCode writes it: [1, None, 2, 3].
+fun build_tree(values) {
+    give None when values == None or len(values) == 0 or values[0] == None
+    root := TreeNode(values[0], None, None)
+    queue := [root]
+    head := 0
+    i := 1
+    repeat when head < len(queue) and i < len(values) {
+        node := queue[head]
+        head := head + 1
+        option {
+            values[i] != None -> {
+                node.left = TreeNode(values[i], None, None)
+                queue := push(queue, node.left)
+            }
+        }
+        i := i + 1
+        option {
+            i < len(values) and values[i] != None -> {
+                node.right = TreeNode(values[i], None, None)
+                queue := push(queue, node.right)
+            }
+        }
+        i := i + 1
+    }
+    give root
+}
+
+fun find_tree_node(root, val) {
+    stack := [root]
+    repeat when len(stack) > 0 {
+        node := last(stack)
+        stack := stack[0:len(stack) - 1]
+        skip when node == None
+        give node when node.val == val
+        stack := push(stack, node.left)
+        stack := push(stack, node.right)
+    }
+    give None
+}
+
+// An undirected graph from a 1-indexed adjacency list.
+fun build_graph(adj) {
+    give None when adj == None or len(adj) == 0
+    nodes := []
+    each i in range(len(adj)) {
+        nodes := push(nodes, Node(i + 1, []))
+    }
+    each i, nbrs in adj {
+        linked := []
+        each j in nbrs {
+            linked := push(linked, nodes[j - 1])
+        }
+        nodes[i].neighbors = linked
+    }
+    give nodes[0]
+}
+
+// A list with random pointers from [[val, randomIndex], ...].
+fun build_random_list(pairs) {
+    give None when pairs == None or len(pairs) == 0
+    nodes := []
+    each p in pairs {
+        nodes := push(nodes, Node(p[0], None, None))
+    }
+    each i, p in pairs {
+        nodes[i].next = nodes[i + 1] when i + 1 < len(nodes)
+        nodes[i].random = nodes[p[1]] when p[1] != None
+    }
+    give nodes[0]
+}
+
+// Identity marks ------------------------------------------------------------
+
+fun is_mark(v) {
+    give type(v) == "TUPLE" and len(v) == 2 and v[0] == "#dsatutor-node"
+}
+
+// Every node reachable from start through the given fields, each once. The
+// walk marks nodes as it goes; restore() puts the values back.
+fun collect(start, fields) {
+    found := []
+    saved := []
+    stack := [start]
+    repeat when len(stack) > 0 and len(found) < MAX_NODES {
+        node := last(stack)
+        stack := stack[0:len(stack) - 1]
+        skip when node == None
+        skip when is_mark(node.val)
+        saved := push(saved, node.val)
+        node.val = ("#dsatutor-node", len(found))
+        found := push(found, node)
+        each f in fields {
+            option {
+                f == "next" -> { stack := push(stack, node.next) }
+                f == "random" -> { stack := push(stack, node.random) }
+                f == "left" -> { stack := push(stack, node.left) }
+                f == "right" -> { stack := push(stack, node.right) }
+                f == "neighbors" -> {
+                    each n in node.neighbors {
+                        stack := push(stack, n)
+                    }
+                }
+            }
+        }
+    }
+    give [found, saved]
+}
+
+fun restore(walk) {
+    each i, node in walk[0] {
+        node.val = walk[1][i]
+    }
+}
+
+fun index_of(node) {
+    give None when node == None or not is_mark(node.val)
+    give node.val[1]
+}
+
+// Does anything reachable from result reuse a node of the original input?
+// Used by the clone problems, where the copy must be built from new nodes.
+fun shares_nodes(original, result, fields) {
+    walk := collect(original, fields)
+    shared := False
+    stack := [result]
+    seen := 0
+    repeat when len(stack) > 0 and seen < MAX_NODES {
+        node := last(stack)
+        stack := stack[0:len(stack) - 1]
+        skip when node == None
+        seen := seen + 1
+        option {
+            is_mark(node.val) -> {
+                shared := True
+                stop
+            }
+        }
+        // The copy isn't marked, so a cycle in it is walked again; seen
+        // caps the walk.
+        each f in fields {
+            option {
+                f == "next" -> { stack := push(stack, node.next) }
+                f == "random" -> { stack := push(stack, node.random) }
+                f == "neighbors" -> {
+                    each n in node.neighbors {
+                        stack := push(stack, n)
+                    }
+                }
+            }
+        }
+    }
+    restore(walk)
+    give shared
+}
+
+// Structures -> JSON --------------------------------------------------------
+
+fun list_to_json(head) {
+    out := []
+    node := head
+    repeat when node != None {
+        option {
+            len(out) >= MAX_NODES -> {
+                out := push(out, "<cycle>")
+                stop
+            }
+        }
+        out := push(out, to_json(node.val, ""))
+        node := node.next
+    }
+    give out
+}
+
+fun tree_to_json(root) {
+    give [] when root == None
+    out := []
+    queue := [root]
+    head := 0
+    repeat when head < len(queue) and len(out) < MAX_NODES {
+        node := queue[head]
+        head := head + 1
+        option {
+            node == None -> { out := push(out, None) }
+            {
+                out := push(out, to_json(node.val, ""))
+                queue := push(queue, node.left)
+                queue := push(queue, node.right)
+            }
+        }
+    }
+    repeat when len(out) > 0 and last(out) == None {
+        out := out[0:len(out) - 1]
+    }
+    give out
+}
+
+fun sorted_ints(values) {
+    out := []
+    each v in values {
+        out := push(out, v)
+    }
+    // Insertion sort: adjacency lists are short.
+    each i in range(1, len(out)) {
+        j := i
+        repeat when j > 0 and out[j - 1] > out[j] {
+            tmp := out[j]
+            out[j] = out[j - 1]
+            out[j - 1] = tmp
+            j := j - 1
+        }
+    }
+    give out
+}
+
+// Adjacency list ordered by node value, each list sorted. Node values are
+// 1..n in the graph problems, so a value works as the node's index.
+fun graph_to_json(start) {
+    give [] when start == None
+    walk := collect(start, ["neighbors"])
+    vals := walk[1]
+    out := []
+    each i in range(len(walk[0])) {
+        out := push(out, [])
+    }
+    each i, node in walk[0] {
+        nbrs := []
+        each n in node.neighbors {
+            nbrs := push(nbrs, vals[n.val[1]])
+        }
+        out[vals[i] - 1] = sorted_ints(nbrs)
+    }
+    restore(walk)
+    give out
+}
+
+fun random_list_to_json(head) {
+    walk := collect(head, ["next"])
+    out := []
+    node := head
+    repeat when node != None and len(out) < MAX_NODES {
+        out := push(out, [to_json(walk[1][node.val[1]], ""), index_of(node.random)])
+        node := node.next
+    }
+    restore(walk)
+    give out
+}
+
+fun to_json(value, return_type) {
+    give graph_to_json(value) when return_type == "GraphNode"
+    give random_list_to_json(value) when return_type == "RandomList"
+    option {
+        return_type == "TreeNodeVal" -> {
+            give None when value == None
+            give to_json(value.val, "")
+        }
+    }
+    give [] when value == None and (return_type == "ListNode" or return_type == "TreeNode")
+    kind := type(value)
+    give list_to_json(value) when kind == "ListNode"
+    give tree_to_json(value) when kind == "TreeNode"
+    option {
+        kind == "ARRAY" or kind == "TUPLE" -> {
+            out := []
+            each v in value {
+                out := push(out, to_json(v, ""))
+            }
+            give out
+        }
+        kind == "SET" -> {
+            out := []
+            each v in value {
+                out := push(out, to_json(v, ""))
+            }
+            give out
+        }
+        kind == "MAP" -> {
+            out := {}
+            each k, v in value {
+                out[str(k)] = to_json(v, "")
+            }
+            give out
+        }
+        kind == "CHAR" -> { give str(value) }
+    }
+    give value
+}
+
+// Reporting ----------------------------------------------------------------
+
+// The Go side reads the last line that starts with this marker.
+fun emit(result, extra) {
+    println("@@dsatutor-result@@" + stringify({"result": result, "extra": extra}))
+}

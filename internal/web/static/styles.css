@@ -3554,7 +3554,47 @@ input[type="range"] { accent-color: var(--accent); }
 .cm-s-paper .cm-comment { color: var(--code-comment); font-style: italic; }
 .cm-s-paper .cm-operator { color: var(--text-dim); }
 .cm-s-paper .cm-meta { color: var(--code-builtin); }
+.cm-s-paper .cm-type { color: var(--code-builtin); }
 .cm-s-paper .cm-error { color: var(--error); }
+
+/* Language picker (Python / Oxigen) */
+.language-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+
+.panel-header .language-picker select {
+  padding: 4px 26px 4px 8px;
+  font-size: 12px;
+  background-position: right 7px center;
+}
+
+.panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.language-note {
+  margin-bottom: 14px;
+  padding-left: 12px;
+  border-left: 2px solid var(--accent);
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+  line-height: 1.5;
+}
 
 /* Autocomplete list */
 .CodeMirror-hints {

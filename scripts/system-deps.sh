@@ -14,6 +14,7 @@ check_only=false
 requirements=(
     "go|go"
     "python|python3"
+    "oxigen|oxigen"
 )
 
 missing=()

@@ -28,6 +28,9 @@ type ExecuteRequest struct {
 	// Harness, when set, tells the sandbox how to call the user's code for one
 	// test case and report its return value (see harness.py).
 	Harness *HarnessSpec `json:"harness,omitempty"`
+
+	// Language is "python" (the default) or "oxigen" (see oxigen.go).
+	Language string `json:"language,omitempty"`
 }
 
 // HarnessSpec describes how to run one test case against user code.
@@ -110,6 +113,20 @@ func Execute(req ExecuteRequest) (*ExecuteResponse, error) {
 		}, nil
 	}
 
+	// Set timeout
+	timeout := req.Timeout
+	if timeout <= 0 || timeout > MaxTimeout {
+		timeout = DefaultTimeout
+	}
+
+	switch req.Language {
+	case "", "python":
+	case "oxigen":
+		return executeOxigen(req, timeout)
+	default:
+		return failed(fmt.Sprintf("unknown language %q", req.Language)), nil
+	}
+
 	// Validate code security
 	if err := ValidateCode(req.Code); err != nil {
 		return &ExecuteResponse{
@@ -118,12 +135,6 @@ func Execute(req ExecuteRequest) (*ExecuteResponse, error) {
 			Output:  "",
 			Error:   err.Error(),
 		}, nil
-	}
-
-	// Set timeout
-	timeout := req.Timeout
-	if timeout <= 0 || timeout > MaxTimeout {
-		timeout = DefaultTimeout
 	}
 
 	// Create temp directory for execution

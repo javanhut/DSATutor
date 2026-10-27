@@ -28,7 +28,8 @@ type Result struct {
 
 // Options control how a case is executed.
 type Options struct {
-	Trace bool // record line-by-line steps for the visualizer
+	Trace    bool   // record line-by-line steps for the visualizer (Python only)
+	Language string // "python" (default) or "oxigen"
 }
 
 // Run executes code against one test case of p.
@@ -38,10 +39,11 @@ func Run(p *practice.Problem, code string, tc *practice.TestCase, opts Options) 
 		return &Result{Error: err.Error()}, nil
 	}
 	resp, err := sandbox.Execute(sandbox.ExecuteRequest{
-		Code:    code,
-		Timeout: tc.Timeout,
-		NoTrace: !opts.Trace,
-		Harness: spec,
+		Code:     code,
+		Timeout:  tc.Timeout,
+		NoTrace:  !opts.Trace,
+		Harness:  spec,
+		Language: opts.Language,
 	})
 	if err != nil {
 		return nil, err

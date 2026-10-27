@@ -128,6 +128,7 @@ type RunRequest struct {
 	Code          string `json:"code"`
 	TestCaseID    string `json:"testCaseId,omitempty"`
 	TestCaseIndex *int   `json:"testCaseIndex,omitempty"`
+	Language      string `json:"language,omitempty"` // python (default) or oxigen
 }
 
 // RunResponse includes execution trace for visualization.
@@ -150,6 +151,7 @@ type RunResponse struct {
 type SubmitRequest struct {
 	ProblemID string `json:"problemId"`
 	Code      string `json:"code"`
+	Language  string `json:"language,omitempty"` // python (default) or oxigen
 }
 
 // SubmitResponse includes all test results.

@@ -1,7 +1,7 @@
 # Practice Mode
 
-Practice mode is where learners solve LeetCode-style problems in Python
-after each chapter. Problems are grouped into categories, and each category is
+Practice mode is where learners solve LeetCode-style problems in Python, or
+in Oxigen (see [oxigen.md](oxigen.md)), after each chapter. Problems are grouped into categories, and each category is
 a ladder ordered easy → hard. Every Blind 75 problem is included, plus 64
 NeetCode 150 problems, for 139 in total. How problems are written, and why, is
 in [pedagogy.md](pedagogy.md).
@@ -98,8 +98,8 @@ The harness options are listed in [pedagogy.md](pedagogy.md#harness-how-the-judg
 | `/api/practice/problems` | GET | Problem summaries in ladder order (`{problems, total, stats}`) |
 | `/api/practice/problems/{id}` | GET | Problem with hints and self-check. Hidden tests show only their `note`. |
 | `/api/practice/categories` | GET | Categories in curriculum order, with problem counts |
-| `/api/practice/run` | POST | `{problemId, code, testCaseIndex}`: one visible case, traced |
-| `/api/practice/submit` | POST | `{problemId, code}`: every case. Returns `{status, passedCount, totalCount, results}`. |
+| `/api/practice/run` | POST | `{problemId, code, testCaseIndex, language}`: one visible case, traced when the language is Python |
+| `/api/practice/submit` | POST | `{problemId, code, language}`: every case. Returns `{status, passedCount, totalCount, results}`. |
 | `/api/practice/hints/{id}/{level}` | GET | A single hint |
 | `/api/practice/solution/{id}` | GET | The full solution |
 | `/api/practice/solution-viz/{id}` | POST | The reference solution traced on a visible case |

@@ -30,10 +30,11 @@ The course is built on well-replicated learning research; see
 ## Features
 
 - **Algorithm Animations**: step-by-step walkthroughs with synchronized code highlighting
-- **Practice judge**: Python solutions run against visible and hidden tests,
-  including linked-list, tree, graph and class-design problems
+- **Practice judge**: Python or [Oxigen](docs/oxigen.md) solutions run against
+  visible and hidden tests, including linked-list, tree, graph and
+  class-design problems
 - **Execution visualization**: any run can be replayed line by line with variables and data structures
-- **Sandbox**: free-form Python with the same visualizer
+- **Sandbox**: free-form Python with the same visualizer, or Oxigen (output only)
 
 ## Available Animators
 
@@ -68,7 +69,7 @@ The course is built on well-replicated learning research; see
 Builds and tests go through ImLazy (`lazy.toml`); `imlazy list` shows the tasks.
 
 ```sh
-imlazy setup    # installs Go and Python 3 with rvn if missing
+imlazy setup    # installs Go, Python 3 and Oxigen with rvn if missing
 imlazy serve    # http://localhost:8080
 imlazy test     # unit tests, content checks, and every reference solution through the judge
 ```
@@ -98,13 +99,13 @@ DSATutor/
 │   ├── chapter/            # Curriculum: chapter.go (model), templates.go (order), chNN_*.go (one per chapter)
 │   ├── practice/           # Problems (problems_*.go), categories, loader
 │   ├── judge/              # Runs code against a problem's tests and decides pass/fail
-│   ├── sandbox/            # Python execution: tracer.py, harness.py, security checks
+│   ├── sandbox/            # Code execution: tracer.py, harness.py (Python), oxigen.go, harness_lib.oxi (Oxigen), security checks
 │   ├── contentcheck/       # Tests that hold content to docs/pedagogy.md
 │   ├── storage/            # JSON import/export
 │   ├── ui/                 # Console renderer
 │   └── web/                # HTTP server and static assets (app.js, learn.js, editor.js)
-├── docs/                   # pedagogy.md, chapters.md, practice.md, sandbox.md, ...
-├── scripts/system-deps.sh  # Installs Go and Python 3 with rvn
+├── docs/                   # pedagogy.md, chapters.md, practice.md, sandbox.md, oxigen.md, ...
+├── scripts/system-deps.sh  # Installs Go, Python 3 and Oxigen with rvn
 └── lazy.toml               # Build, serve and test tasks
 ```
 

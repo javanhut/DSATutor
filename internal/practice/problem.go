@@ -11,28 +11,31 @@ import (
 // hints fade from a question to a code skeleton, and the solution explains the
 // brute force, the insight that improves it, and why the result is correct.
 type Problem struct {
-	ID              string      `json:"id"`
-	Number          int         `json:"number"` // LeetCode problem number
-	Order           int         `json:"order"`  // position in its category's ladder, from 1
-	Title           string      `json:"title"`
-	Slug            string      `json:"slug"`
-	Difficulty      string      `json:"difficulty"` // Easy, Medium, Hard
-	Category        string      `json:"category"`
-	Tags            []string    `json:"tags"`
-	RelatedChapters []int       `json:"relatedChapters"`
-	Description     string      `json:"description"` // Markdown
-	Constraints     []string    `json:"constraints"`
-	Examples        []Example   `json:"examples"`
-	TestCases       []TestCase  `json:"testCases"`
-	TimeComplexity  string      `json:"timeComplexity"`
-	SpaceComplexity string      `json:"spaceComplexity"`
-	StarterCode     string      `json:"starterCode"`
-	Harness         Harness     `json:"harness"`
-	Hints           []Hint      `json:"hints"`
-	Solution        Solution    `json:"solution"`
-	SelfCheck       []SelfCheck `json:"selfCheck,omitempty"`
-	CreatedAt       time.Time   `json:"createdAt,omitempty"`
-	UpdatedAt       time.Time   `json:"updatedAt,omitempty"`
+	ID              string     `json:"id"`
+	Number          int        `json:"number"` // LeetCode problem number
+	Order           int        `json:"order"`  // position in its category's ladder, from 1
+	Title           string     `json:"title"`
+	Slug            string     `json:"slug"`
+	Difficulty      string     `json:"difficulty"` // Easy, Medium, Hard
+	Category        string     `json:"category"`
+	Tags            []string   `json:"tags"`
+	RelatedChapters []int      `json:"relatedChapters"`
+	Description     string     `json:"description"` // Markdown
+	Constraints     []string   `json:"constraints"`
+	Examples        []Example  `json:"examples"`
+	TestCases       []TestCase `json:"testCases"`
+	TimeComplexity  string     `json:"timeComplexity"`
+	SpaceComplexity string     `json:"spaceComplexity"`
+	StarterCode     string     `json:"starterCode"`
+	// StarterCodeOxigen overrides the Oxigen starter OxigenStarter derives
+	// from StarterCode.
+	StarterCodeOxigen string      `json:"starterCodeOxigen,omitempty"`
+	Harness           Harness     `json:"harness"`
+	Hints             []Hint      `json:"hints"`
+	Solution          Solution    `json:"solution"`
+	SelfCheck         []SelfCheck `json:"selfCheck,omitempty"`
+	CreatedAt         time.Time   `json:"createdAt,omitempty"`
+	UpdatedAt         time.Time   `json:"updatedAt,omitempty"`
 }
 
 // Harness tells the judge how to call the learner's code. The zero value calls

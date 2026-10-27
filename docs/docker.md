@@ -66,10 +66,20 @@ docker compose down
 
 - **Base Image**: Python 3.12 slim (Debian Bookworm)
 - **Build Stage**: Go 1.22 (multi-stage build)
-- **Final Size**: ~150MB
+- **Oxigen**: copied from [`javanhut/oxigen`](https://hub.docker.com/r/javanhut/oxigen)
 - **Exposed Port**: 8080
 
-The image includes Python 3.12 for the code execution sandbox that powers the practice problems.
+The image includes Python 3.12 and Oxigen for the code execution sandbox that
+powers the practice problems. The `oxigen` binary goes to `/usr/local/bin` and
+its standard library to `/usr/local/lib/oxigen/stdlib`, where the binary looks
+for it.
+
+The Oxigen release is pinned by the `OXIGEN_VERSION` build argument (default
+`0.2.1`). To ship another release:
+
+```bash
+docker build --build-arg OXIGEN_VERSION=0.2.0 -t dsatutor .
+```
 
 ## Automated Publishing with GitHub Actions
 

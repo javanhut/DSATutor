@@ -142,25 +142,26 @@ func (ps *PracticeServer) handleGetProblem(w http.ResponseWriter, r *http.Reques
 
 	// Build response without full solution (user must explicitly request it)
 	response := map[string]interface{}{
-		"id":              problem.ID,
-		"number":          problem.Number,
-		"order":           problem.Order,
-		"title":           problem.Title,
-		"slug":            problem.Slug,
-		"difficulty":      problem.Difficulty,
-		"category":        problem.Category,
-		"tags":            problem.Tags,
-		"relatedChapters": problem.RelatedChapters,
-		"description":     problem.Description,
-		"constraints":     problem.Constraints,
-		"examples":        problem.Examples,
-		"testCases":       safeTestCases,
-		"timeComplexity":  problem.TimeComplexity,
-		"spaceComplexity": problem.SpaceComplexity,
-		"starterCode":     problem.StarterCode,
-		"hintCount":       len(problem.Hints),
-		"hints":           problem.Hints,
-		"selfCheck":       problem.SelfCheck,
+		"id":                problem.ID,
+		"number":            problem.Number,
+		"order":             problem.Order,
+		"title":             problem.Title,
+		"slug":              problem.Slug,
+		"difficulty":        problem.Difficulty,
+		"category":          problem.Category,
+		"tags":              problem.Tags,
+		"relatedChapters":   problem.RelatedChapters,
+		"description":       problem.Description,
+		"constraints":       problem.Constraints,
+		"examples":          problem.Examples,
+		"testCases":         safeTestCases,
+		"timeComplexity":    problem.TimeComplexity,
+		"spaceComplexity":   problem.SpaceComplexity,
+		"starterCode":       problem.StarterCode,
+		"starterCodeOxigen": practice.OxigenStarter(problem),
+		"hintCount":         len(problem.Hints),
+		"hints":             problem.Hints,
+		"selfCheck":         problem.SelfCheck,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -220,7 +221,7 @@ func (ps *PracticeServer) handleRunCode(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	writeJSON(w, http.StatusOK, runOne(problem, req.Code, tc))
+	writeJSON(w, http.StatusOK, runOne(problem, req.Code, req.Language, tc))
 }
 
 // pickTestCase finds a test case by ID or index, defaulting to the first
@@ -246,8 +247,8 @@ func pickTestCase(problem *practice.Problem, id string, index *int) *practice.Te
 
 // runOne judges code on one visible test case with tracing on, for the Run
 // button and the solution visualizer.
-func runOne(problem *practice.Problem, code string, tc *practice.TestCase) practice.RunResponse {
-	res, err := judge.Run(problem, code, tc, judge.Options{Trace: true})
+func runOne(problem *practice.Problem, code, language string, tc *practice.TestCase) practice.RunResponse {
+	res, err := judge.Run(problem, code, tc, judge.Options{Trace: true, Language: language})
 	if err != nil {
 		return practice.RunResponse{Error: "Execution error: " + err.Error()}
 	}
@@ -298,7 +299,7 @@ func (ps *PracticeServer) handleSubmitCode(w http.ResponseWriter, r *http.Reques
 			Note:       tc.Note,
 		}
 
-		res, err := judge.Run(problem, req.Code, tc, judge.Options{})
+		res, err := judge.Run(problem, req.Code, tc, judge.Options{Language: req.Language})
 		if err != nil {
 			result.Error = err.Error()
 		} else {
@@ -456,7 +457,7 @@ func (ps *PracticeServer) handleVisualizeSolution(w http.ResponseWriter, r *http
 		return
 	}
 
-	writeJSON(w, http.StatusOK, runOne(problem, problem.Solution.Code, testCase))
+	writeJSON(w, http.StatusOK, runOne(problem, problem.Solution.Code, "python", testCase))
 }
 
 // handleExportProgress exports user progress as JSON.
