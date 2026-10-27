@@ -22,7 +22,7 @@ const complexityFunctions = {
 // Curve styling configuration with examples and explanations
 const curveConfig = {
   'O(1)': {
-    color: '#22c55e',
+    color: 'var(--curve-1)',
     label: 'O(1)',
     name: 'Constant',
     examples: ['Array index lookup', 'Hash table access', 'Push/pop from stack'],
@@ -32,7 +32,7 @@ const curveConfig = {
     realWorld: 'Looking up a phone contact by tapping their name',
   },
   'O(log n)': {
-    color: '#38bdf8',
+    color: 'var(--curve-2)',
     label: 'O(log n)',
     name: 'Logarithmic',
     examples: ['Binary search', 'Balanced BST lookup', 'Finding in sorted array'],
@@ -42,7 +42,7 @@ const curveConfig = {
     realWorld: 'Finding a word in a dictionary by opening to the middle',
   },
   'O(n)': {
-    color: '#f59e0b',
+    color: 'var(--curve-3)',
     label: 'O(n)',
     name: 'Linear',
     examples: ['Linear search', 'Array traversal', 'Finding max/min'],
@@ -52,7 +52,7 @@ const curveConfig = {
     realWorld: 'Reading every page of a book to find a quote',
   },
   'O(n log n)': {
-    color: '#a855f7',
+    color: 'var(--curve-4)',
     label: 'O(n log n)',
     name: 'Linearithmic',
     examples: ['Merge sort', 'Quick sort (avg)', 'Heap sort'],
@@ -62,7 +62,7 @@ const curveConfig = {
     realWorld: 'Organizing a shuffled deck by repeatedly splitting and merging',
   },
   'O(n^2)': {
-    color: '#ef4444',
+    color: 'var(--curve-5)',
     label: 'O(n^2)',
     name: 'Quadratic',
     examples: ['Bubble sort', 'Selection sort', 'Nested loops over same data'],
@@ -253,7 +253,7 @@ class RuntimeShapesVisualizer {
       const path = document.createElementNS(svgNS, 'path');
       const safeClass = key.replace(/[()^]/g, '').replace(/\s/g, '-');
       path.setAttribute('class', `curve curve-${safeClass}`);
-      path.setAttribute('stroke', cfg.color);
+      path.style.stroke = cfg.color;
       path.setAttribute('fill', 'none');
       path.setAttribute('stroke-width', '2.5');
       path.setAttribute('stroke-linecap', 'round');
@@ -267,7 +267,7 @@ class RuntimeShapesVisualizer {
     // Create vertical line indicator for current N
     this.nLine = document.createElementNS(svgNS, 'line');
     this.nLine.setAttribute('class', 'n-indicator');
-    this.nLine.setAttribute('stroke', 'var(--text-dim)');
+    this.nLine.style.stroke = 'var(--text-dim)';
     this.nLine.setAttribute('stroke-width', '1');
     this.nLine.setAttribute('stroke-dasharray', '4,4');
     this.svg.appendChild(this.nLine);
@@ -547,7 +547,7 @@ class RuntimeShapesVisualizer {
     xAxis.setAttribute('y1', padding.top + chartHeight);
     xAxis.setAttribute('x2', padding.left + chartWidth);
     xAxis.setAttribute('y2', padding.top + chartHeight);
-    xAxis.setAttribute('stroke', 'var(--border)');
+    xAxis.style.stroke = 'var(--border)';
     group.appendChild(xAxis);
 
     // Y-axis
@@ -556,7 +556,7 @@ class RuntimeShapesVisualizer {
     yAxis.setAttribute('y1', padding.top);
     yAxis.setAttribute('x2', padding.left);
     yAxis.setAttribute('y2', padding.top + chartHeight);
-    yAxis.setAttribute('stroke', 'var(--border)');
+    yAxis.style.stroke = 'var(--border)';
     group.appendChild(yAxis);
 
     // X-axis label
@@ -564,7 +564,7 @@ class RuntimeShapesVisualizer {
     xLabel.setAttribute('x', padding.left + chartWidth / 2);
     xLabel.setAttribute('y', padding.top + chartHeight + 40);
     xLabel.setAttribute('text-anchor', 'middle');
-    xLabel.setAttribute('fill', 'var(--muted)');
+    xLabel.style.fill = 'var(--muted)';
     xLabel.setAttribute('font-size', '14');
     xLabel.textContent = 'Input size (n)';
     group.appendChild(xLabel);
@@ -574,7 +574,7 @@ class RuntimeShapesVisualizer {
     yLabel.setAttribute('x', -padding.top - chartHeight / 2);
     yLabel.setAttribute('y', 20);
     yLabel.setAttribute('text-anchor', 'middle');
-    yLabel.setAttribute('fill', 'var(--muted)');
+    yLabel.style.fill = 'var(--muted)';
     yLabel.setAttribute('font-size', '14');
     yLabel.setAttribute('transform', 'rotate(-90)');
     yLabel.textContent = 'Operations';
@@ -587,7 +587,7 @@ class RuntimeShapesVisualizer {
       tick.setAttribute('x', x);
       tick.setAttribute('y', padding.top + chartHeight + 18);
       tick.setAttribute('text-anchor', 'middle');
-      tick.setAttribute('fill', 'var(--muted)');
+      tick.style.fill = 'var(--muted)';
       tick.setAttribute('font-size', '11');
       tick.textContent = n;
       group.appendChild(tick);
@@ -6906,8 +6906,8 @@ function selectChapter(ch) {
   state.visualizerIndex = 0;
   el("detail-empty").classList.add("hidden");
   el("detail").classList.remove("hidden");
-  el("detail-slug").textContent = ch.slug;
-  el("detail-title").textContent = `${pad(ch.number)}. ${ch.title}`;
+  el("detail-slug").textContent = `Chapter ${pad(ch.number)}`;
+  el("detail-title").textContent = ch.title;
   el("detail-summary").textContent = ch.summary;
 
   const obj = el("detail-objectives");
@@ -8143,7 +8143,7 @@ function updateProgressCount() {
 
   const solved = Object.values(practiceState.progress).filter(p => p.solved).length;
   const total = practiceState.problems.length;
-  countEl.textContent = `${solved}/${total} Solved`;
+  countEl.textContent = `${solved} of ${total} solved`;
 }
 
 function renderPracticeVisualization(steps, codeToDisplay) {

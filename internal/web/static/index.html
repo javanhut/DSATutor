@@ -4,10 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DSA Tutor</title>
+  <meta name="description" content="A course in data structures and algorithms: read why each pattern works, step through it line by line, then solve problems checked by a Python judge.">
+  <script>
+    // Apply a stored theme before first paint; shell.js owns the toggle.
+    try { var t = localStorage.getItem('dsa-theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&display=swap">
   <link rel="stylesheet" href="/static/styles.css">
   <!-- CodeMirror 5 - stable, no ES module conflicts -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/theme/material-darker.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/hint/show-hint.css">
   <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/python/python.min.js"></script>
@@ -23,22 +30,28 @@
     <!-- Collapsible Sidebar -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
-        <span class="sidebar-logo">DSA</span>
-        <span class="sidebar-title">DSA Tutor</span>
+        <a class="wordmark" href="/">DSA Tutor</a>
+        <p class="sidebar-tagline">Data structures and algorithms, one pattern at a time</p>
       </div>
-      <nav class="sidebar-nav" id="chapters"></nav>
+      <div class="sidebar-label">Chapters</div>
+      <nav class="sidebar-nav" id="chapters" aria-label="Chapters"></nav>
       <div class="sidebar-footer">
-        <button id="practice-toggle" class="sidebar-btn" title="Practice Problems">
-          <span class="btn-icon">P</span>
+        <button id="practice-toggle" class="sidebar-btn" title="Practice problems">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg>
           <span class="btn-text">Practice</span>
         </button>
-        <button id="sandbox-toggle" class="sidebar-btn" title="Sandbox Mode">
-          <span class="btn-icon">S</span>
+        <button id="sandbox-toggle" class="sidebar-btn" title="Run your own code">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/></svg>
           <span class="btn-text">Sandbox</span>
         </button>
-        <button id="reload" class="sidebar-btn" title="Reload">
-          <span class="btn-icon">R</span>
-          <span class="btn-text">Reload</span>
+        <button id="reload" class="sidebar-btn" title="Reload chapters from the server">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+          <span class="btn-text">Reload chapters</span>
+        </button>
+        <button id="theme-toggle" class="sidebar-btn" title="Switch between light and dark">
+          <svg class="icon theme-icon-dark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+          <svg class="icon theme-icon-light" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+          <span class="btn-text" id="theme-toggle-label">Dark theme</span>
         </button>
       </div>
     </aside>
@@ -46,10 +59,71 @@
     <!-- Main Content -->
     <main class="main-content">
       <!-- Empty State -->
-      <div id="detail-empty" class="empty-state">
-        <div class="empty-icon">DSA</div>
-        <h2>Select a Chapter</h2>
-        <p>Choose a chapter from the sidebar to begin learning algorithms with interactive visualizations.</p>
+      <div id="detail-empty" class="home">
+        <header class="home-hero">
+          <p class="eyebrow">A course in data structures &amp; algorithms</p>
+          <h1>Watch the code run, then solve it yourself.</h1>
+          <p class="home-lede">Every chapter explains why a pattern works, lets you step through it line by line with the variables in view, and ends with problems checked against hidden tests.</p>
+          <div class="home-actions">
+            <button id="home-start" class="primary">Start with chapter 1</button>
+            <button id="home-practice">Browse practice problems</button>
+          </div>
+        </header>
+
+        <figure class="home-figure">
+          <div class="home-figure-head">
+            <span>two_sum([3, 8, 5, 1], target=6)</span>
+            <span>Python</span>
+          </div>
+<pre class="home-code"><span><span class="tok-kw">def</span> <span class="tok-def">two_sum</span>(nums, target):</span>
+<span>    seen = {}  <span class="tok-cm"># value -&gt; index</span></span>
+<span>    <span class="tok-kw">for</span> i, x <span class="tok-kw">in</span> <span class="tok-bi">enumerate</span>(nums):</span>
+<span>        need = target - x</span>
+<span>        <span class="tok-kw">if</span> need <span class="tok-kw">in</span> seen:</span>
+<span class="is-current">            <span class="tok-kw">return</span> [seen[need], i]</span>
+<span>        seen[x] = i</span></pre>
+          <table class="trace-table">
+            <thead>
+              <tr><th>i</th><th>x</th><th>need</th><th>seen</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>0</td><td>3</td><td>3</td><td>{}</td></tr>
+              <tr><td>1</td><td>8</td><td>-2</td><td>{3: 0}</td></tr>
+              <tr><td>2</td><td>5</td><td>1</td><td>{3: 0, 8: 1}</td></tr>
+              <tr class="is-hit"><td>3</td><td>1</td><td>5</td><td>5 seen at 2</td></tr>
+            </tbody>
+          </table>
+          <figcaption>One pass, one dictionary. At <code>i = 3</code> the value it needs, 5, was stored two steps earlier, so it returns <code>[2, 3]</code>. Chapters show traces like this one, step by step.</figcaption>
+        </figure>
+
+        <ol class="home-steps">
+          <li>
+            <span class="step-index">01</span>
+            <h2>Read</h2>
+            <p>Each chapter opens with the idea, why it works, and the mistakes people usually make with it.</p>
+          </li>
+          <li>
+            <span class="step-index">02</span>
+            <h2>Step through</h2>
+            <p>Play an algorithm forward or back. The current line, the variables and the data structure move together.</p>
+          </li>
+          <li>
+            <span class="step-index">03</span>
+            <h2>Check</h2>
+            <p>Worked examples reveal one subgoal at a time, then fill-in-the-blank code and recall questions test what stuck.</p>
+          </li>
+          <li>
+            <span class="step-index">04</span>
+            <h2>Practise</h2>
+            <p>Problems run against hidden tests. The ones you solve come back for review on a schedule.</p>
+          </li>
+        </ol>
+
+        <section class="home-aside">
+          <p class="eyebrow">Sandbox</p>
+          <p>Bring your own code. The sandbox runs any Python and draws the lists, linked lists, trees, graphs and dictionaries it finds as it goes.</p>
+          <button id="home-sandbox">Open the sandbox</button>
+        </section>
       </div>
 
       <!-- Sandbox Mode -->
@@ -57,7 +131,7 @@
         <!-- Sandbox Header -->
         <header class="content-header">
           <div class="header-info">
-            <span class="chapter-badge sandbox-badge">SANDBOX</span>
+            <span class="chapter-badge sandbox-badge">Sandbox</span>
             <h1>Python Sandbox</h1>
           </div>
           <div class="header-controls">
@@ -178,12 +252,12 @@
       <div id="practice-list" class="hidden">
         <header class="content-header">
           <div class="header-info">
-            <span class="chapter-badge practice-badge">PRACTICE</span>
-            <h1>Practice Problems</h1>
+            <span class="chapter-badge practice-badge">Practice</span>
+            <h1>Problems, in the order to solve them</h1>
           </div>
           <div class="header-controls">
             <div class="progress-summary">
-              <span id="progress-count">0 Solved</span>
+              <span id="progress-count">0 solved</span>
             </div>
             <div class="control-group">
               <button id="export-progress" class="btn-small ghost">Export</button>
@@ -222,7 +296,8 @@
             </select>
           </div>
           <div class="filter-group search">
-            <input type="text" id="filter-search" placeholder="Search problems...">
+            <label for="filter-search">Search</label>
+            <input type="text" id="filter-search" placeholder="Problem title">
           </div>
         </div>
 
@@ -234,7 +309,10 @@
       <div id="practice-mode" class="hidden">
         <header class="content-header practice-header">
           <div class="header-info">
-            <button id="practice-back" class="btn-small ghost">Back</button>
+            <button id="practice-back" class="btn-small ghost" title="Back to the problem list">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+              Problems
+            </button>
             <span class="chapter-badge practice-badge" id="practice-difficulty">EASY</span>
             <h1 id="practice-title">Problem Title</h1>
           </div>
@@ -563,7 +641,7 @@
             <div id="edit-storyboard-steps" class="edit-steps"></div>
           </div>
           <div class="buttons">
-            <button id="save-edit">Save edits</button>
+            <button id="save-edit" class="primary">Save edits</button>
             <button id="cancel-edit" class="ghost">Cancel</button>
           </div>
         </div>
@@ -572,5 +650,6 @@
   </div>
   <script src="/static/learn.js"></script>
   <script src="/static/app.js"></script>
+  <script src="/static/shell.js"></script>
 </body>
 </html>

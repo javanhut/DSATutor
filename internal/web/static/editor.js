@@ -96,7 +96,7 @@
     // Create CodeMirror instance
     const editor = CodeMirror.fromTextArea(textarea, {
       mode: 'python',
-      theme: 'material-darker',
+      theme: 'paper',
       lineNumbers: true,
       indentUnit: 4,
       tabSize: 4,
