@@ -1,0 +1,44 @@
+# ImLazy configuration for DSA Tutor
+
+[settings]
+default = "build"
+
+[commands]
+
+# Everything below depends on this first: it checks for Go and Python 3 (the
+# sandbox runs learners' code with python3) and installs only what is missing
+# with rvn.
+[commands.system-deps]
+desc = "Install the system packages DSA Tutor needs (go, python) with rvn"
+alias = ["setup"]
+run = ["scripts/system-deps.sh"]
+
+[commands.build]
+desc = "Build the dsatutor binary"
+dep = ["system-deps"]
+alias = ["b"]
+run = ["go build -o dsatutor ./cmd/tutor"]
+watch = ["**/*.go", "internal/web/static/*", "internal/sandbox/*.py"]
+
+[commands.serve]
+desc = "Run the web app on http://localhost:8080"
+dep = ["system-deps"]
+alias = ["run", "r"]
+run = ["go run ./cmd/tutor -serve -addr=:8080"]
+
+# The content tests run every reference solution through the real judge and
+# check each chapter and problem against docs/pedagogy.md.
+[commands.test]
+desc = "Run all tests, including the curriculum and reference-solution checks"
+dep = ["system-deps"]
+alias = ["t"]
+run = ["go vet ./...", "go test ./..."]
+
+[commands.test-quick]
+desc = "Run tests without executing every reference solution"
+dep = ["system-deps"]
+run = ["go test -short ./..."]
+
+[commands.clean]
+desc = "Remove the built binary"
+run = ["rm -f dsatutor"]

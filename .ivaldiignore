@@ -5,3 +5,4 @@
 .gocache/*
 .cache/*
 *.cache/
+./dsatutor

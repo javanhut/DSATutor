@@ -6897,6 +6897,7 @@ function renderChapters() {
     item.onclick = () => selectChapter(ch);
     container.appendChild(item);
   });
+  markChapterDone();
 }
 
 function selectChapter(ch) {
@@ -6912,13 +6913,6 @@ function selectChapter(ch) {
   const obj = el("detail-objectives");
   obj.innerHTML = ch.objectives.map((o) => `<li>${o}</li>`).join("");
 
-  const vis = el("detail-visualizers");
-  if (ch.visualizers && ch.visualizers.length) {
-    vis.innerHTML = ch.visualizers.map((v) => `<li><strong>${v.title}</strong> — ${v.goal} (hooks: ${v.hooks?.join(", ") || "none"})</li>`).join("");
-  } else {
-    vis.innerHTML = `<li>No visualizers defined yet.</li>`;
-  }
-
   populateSelectors();
   renderTutorialContent(ch);
   renderMemoryTips(getStoryboard());
@@ -6926,6 +6920,8 @@ function selectChapter(ch) {
   renderExamples(ch);
   mountVisualizer(getVisualizer());
   renderEditor();
+  renderLesson(ch);
+  renderChapters();
 }
 
 // Render the tutorial content with WHY explanations
@@ -7115,7 +7111,7 @@ function mountVisualizer(v) {
 
   if (!v) {
     meta.textContent = "No visualizer attached to this chapter.";
-    panel.innerHTML = "";
+    if (panel) panel.innerHTML = "";
     return;
   }
 
@@ -7553,7 +7549,7 @@ function renderProblemsList() {
   const categories = practiceState.categories;
   const progress = practiceState.progress;
 
-  // Group problems by category
+  // Group problems by category (the API returns them in ladder order)
   const byCategory = {};
   problems.forEach(p => {
     if (!byCategory[p.category]) {
@@ -7568,17 +7564,20 @@ function renderProblemsList() {
     if (catProblems.length === 0) return;
 
     const solved = catProblems.filter(p => progress[p.id]?.solved).length;
+    const ch = chapterForCategory(cat.id);
 
     html += `
-      <div class="category-section">
+      <div class="category-section" data-category="${cat.id}">
         <div class="category-header">
           <h3>${escapeHtml(cat.name)}</h3>
+          ${ch ? `<a href="#" class="chapter-link category-learn" data-chapter="${ch.number}">Learn first: Chapter ${ch.number}${isChapterDone(ch) ? ' ✓' : ''}</a>` : ''}
           <span class="category-progress">${solved}/${catProblems.length}</span>
         </div>
+        <p class="category-desc">${escapeHtml(cat.description || '')}</p>
         <div class="category-problems">
     `;
 
-    catProblems.forEach(p => {
+    catProblems.forEach((p, i) => {
       const prog = progress[p.id] || {};
       const statusClass = prog.solved ? 'solved' : (prog.attempts > 0 ? 'attempted' : '');
       const diffClass = `difficulty-${p.difficulty.toLowerCase()}`;
@@ -7586,7 +7585,7 @@ function renderProblemsList() {
       html += `
         <div class="problem-card ${statusClass}" data-problem-id="${p.id}">
           <div class="problem-card-header">
-            <span class="problem-number">${p.number}.</span>
+            <span class="problem-number">${i + 1}.</span>
             <span class="problem-title">${escapeHtml(p.title)}</span>
           </div>
           <div class="problem-card-meta">
@@ -7602,16 +7601,32 @@ function renderProblemsList() {
 
   container.innerHTML = html;
 
-  // Add click handlers
   container.querySelectorAll('.problem-card').forEach(card => {
-    card.onclick = () => {
-      const problemId = card.dataset.problemId;
-      openProblem(problemId);
+    card.onclick = () => openProblem(card.dataset.problemId);
+  });
+  container.querySelectorAll('.category-learn').forEach(link => {
+    link.onclick = (e) => {
+      e.preventDefault();
+      goToChapter(Number(link.dataset.chapter));
     };
   });
+
+  // Category filter options follow the curriculum order
+  const catFilter = el('filter-category');
+  if (catFilter && catFilter.options.length <= 1) {
+    categories.forEach(cat => {
+      const opt = document.createElement('option');
+      opt.value = cat.id;
+      opt.textContent = cat.name;
+      catFilter.appendChild(opt);
+    });
+  }
+
+  renderReviewBar();
+  filterProblems();
 }
 
-async function openProblem(problemId) {
+async function openProblem(problemId, opts = {}) {
   const problem = await loadProblem(problemId);
   if (!problem) {
     alert('Failed to load problem');
@@ -7621,19 +7636,23 @@ async function openProblem(problemId) {
   // Reset all practice state for new problem
   practiceState.currentProblem = problem;
   practiceState.hintsRevealed = 0;
-  practiceState.currentTestCase = 0;
+  practiceState.currentTestCase = problem.testCases?.findIndex(tc => !tc.hidden) ?? 0;
+  if (practiceState.currentTestCase < 0) practiceState.currentTestCase = 0;
+  practiceState.mode = { mixed: !!opts.mixed, review: !!opts.review };
 
   // Reset UI panels to initial state before rendering
   resetPracticePanels();
 
   // Render new problem content
   renderProblemDescription();
+  renderPatternPrompt(problem);
   renderTestCases();
   renderHints();
   renderStarterCode();
 
   // Switch to Description tab
-  activatePracticeTab('description');
+  const descTab = document.querySelector('#practice-mode .tab-btn[data-tab="description"]');
+  if (descTab) descTab.click();
 
   showProblem();
 }
@@ -7705,10 +7724,15 @@ function resetPracticePanels() {
     testOutput.innerHTML = '';
   }
 
-  // Reset submit results
+  // Reset submit results and the after-solve panel
   const submitResults = el('submit-results');
   if (submitResults) {
     submitResults.innerHTML = '';
+  }
+  const afterSolve = el('after-solve');
+  if (afterSolve) {
+    afterSolve.classList.add('hidden');
+    afterSolve.innerHTML = '';
   }
 }
 
@@ -7747,7 +7771,7 @@ function renderProblemDescription() {
   const diffBadge = el('practice-difficulty');
 
   if (titleEl) {
-    titleEl.textContent = `${problem.number}. ${problem.title}`;
+    titleEl.innerHTML = `${escapeHtml(problem.title)} <span class="leetcode-number">LeetCode #${problem.number}</span>`;
   }
 
   if (diffBadge) {
@@ -7758,7 +7782,7 @@ function renderProblemDescription() {
   // Update problem statement
   const statementEl = el('problem-statement');
   if (statementEl) {
-    statementEl.innerHTML = `<div class="problem-text">${problem.description}</div>`;
+    statementEl.innerHTML = `<div class="problem-text">${renderMarkdown(problem.description)}</div>`;
   }
 
   // Update examples
@@ -7773,7 +7797,7 @@ function renderProblemDescription() {
             <div><strong>Input:</strong> <code>${escapeHtml(ex.input)}</code></div>
             <div><strong>Output:</strong> <code>${escapeHtml(ex.output)}</code></div>
           </div>
-          ${ex.explanation ? `<div class="example-explanation"><strong>Explanation:</strong> ${escapeHtml(ex.explanation)}</div>` : ''}
+          ${ex.explanation ? `<div class="example-explanation"><strong>Explanation:</strong> ${renderInline(ex.explanation)}</div>` : ''}
         </div>
       `;
     });
@@ -7809,14 +7833,7 @@ function renderProblemDescription() {
         e.preventDefault();
         const chNum = parseInt(link.dataset.chapter);
         const ch = state.chapters.find(c => c.number === chNum);
-        if (ch) {
-          el('practice-toggle').classList.remove('active');
-          el('practice-list').classList.add('hidden');
-          el('practice-mode').classList.add('hidden');
-          el('detail').classList.remove('hidden');
-          el('detail-empty').classList.add('hidden');
-          selectChapter(ch);
-        }
+        if (ch) goToChapter(chNum);
       };
     });
   }
@@ -7845,23 +7862,27 @@ function renderTestCases() {
   const resultsEl = el('test-results');
   if (!selectorEl || !problem) return;
 
-  // Render test case selector buttons
+  // Render test case selector buttons (hidden cases only run on Submit)
   let selectorHtml = '';
   problem.testCases?.forEach((tc, i) => {
     if (!tc.hidden) {
       const isActive = i === practiceState.currentTestCase;
-      selectorHtml += `<button class="test-case-btn ${isActive ? 'active' : ''}" data-index="${i}">Case ${i + 1}</button>`;
+      selectorHtml += `<button class="test-case-btn ${isActive ? 'active' : ''}" data-index="${i}" title="${escapeHtml(tc.note || '')}">Case ${i + 1}</button>`;
     }
   });
+  const hiddenCount = problem.testCases?.filter(tc => tc.hidden).length || 0;
+  if (hiddenCount) {
+    selectorHtml += `<span class="hidden-cases">+ ${hiddenCount} hidden on Submit</span>`;
+  }
   selectorEl.innerHTML = selectorHtml;
 
-  // Render current test case details
   const currentTC = problem.testCases?.[practiceState.currentTestCase];
   if (resultsEl && currentTC) {
     const inputDisplay = escapeHtml(formatTestValue(currentTC.input));
     const expectedDisplay = escapeHtml(formatTestValue(currentTC.expected));
     resultsEl.innerHTML = `
       <div class="test-case-detail">
+        ${currentTC.note ? `<div class="test-note">Checks: ${escapeHtml(currentTC.note)}</div>` : ''}
         <div class="test-io">
           <div class="test-input">
             <strong>Input:</strong>
@@ -7877,16 +7898,15 @@ function renderTestCases() {
     `;
   }
 
-  // Add click handlers to test case buttons
   selectorEl.querySelectorAll('.test-case-btn').forEach(btn => {
     btn.onclick = () => {
       practiceState.currentTestCase = parseInt(btn.dataset.index);
-      selectorEl.querySelectorAll('.test-case-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
       renderTestCases();
     };
   });
 }
+
+const HINT_LABELS = { nudge: 'Nudge', insight: 'Key insight', plan: 'Plan', skeleton: 'Code skeleton' };
 
 function renderHints() {
   const problem = practiceState.currentProblem;
@@ -7896,34 +7916,43 @@ function renderHints() {
 
   let html = '';
   problem.hints?.forEach((hint, i) => {
-    const revealed = i < practiceState.hintsRevealed;
-    if (revealed) {
-      html += `
-        <div class="hint revealed">
-          <div class="hint-header">
-            <span class="hint-type">${escapeHtml(hint.type || 'Hint')} ${i + 1}</span>
-          </div>
-          <div class="hint-content">${escapeHtml(hint.content)}</div>
+    if (i >= practiceState.hintsRevealed) return;
+    const label = HINT_LABELS[hint.type] || hint.type || 'Hint';
+    const ch = hint.chapterRef ? state.chapters.find(c => c.number === hint.chapterRef) : null;
+    const body = hint.type === 'skeleton'
+      ? `<pre class="hint-code"><code>${escapeHtml(hint.content)}</code></pre>`
+      : renderMarkdown(hint.content);
+    html += `
+      <div class="hint revealed">
+        <div class="hint-header">
+          <span class="hint-type">${i + 1}. ${escapeHtml(label)}</span>
+          ${ch ? `<a href="#" class="chapter-link" data-chapter="${ch.number}">Chapter ${ch.number}</a>` : ''}
         </div>
-      `;
-    }
+        <div class="hint-content">${body}</div>
+      </div>
+    `;
   });
 
   if (practiceState.hintsRevealed === 0) {
-    html = '<p class="no-hints">No hints revealed yet. Click "Reveal Next Hint" to get started.</p>';
+    html = `<p class="no-hints">Give the problem a real try first: work a small example by hand and write the brute force. Each hint gives a little more, from a guiding question up to a code skeleton.</p>`;
+  } else if (practiceState.hintsRevealed < (problem.hints?.length || 0)) {
+    html += `<p class="no-hints">Work with this hint for a few minutes before taking the next one.</p>`;
   }
 
   hintsListEl.innerHTML = html;
+  hintsListEl.querySelectorAll('.chapter-link').forEach(a => {
+    a.onclick = (e) => { e.preventDefault(); goToChapter(Number(a.dataset.chapter)); };
+  });
 
-  // Update reveal button
   if (revealBtn) {
     const remainingHints = (problem.hints?.length || 0) - practiceState.hintsRevealed;
     if (remainingHints > 0) {
-      revealBtn.textContent = `Reveal Next Hint (${remainingHints} remaining)`;
+      const next = problem.hints[practiceState.hintsRevealed];
+      revealBtn.textContent = `Reveal ${HINT_LABELS[next.type] || 'next hint'} (${remainingHints} left)`;
       revealBtn.disabled = false;
       revealBtn.onclick = () => {
         practiceState.hintsRevealed++;
-        updateProblemProgress(problem.id, { hintsUsed: practiceState.hintsRevealed });
+        updateProblemProgress(problem.id, { hintsUsed: Math.max(practiceState.hintsRevealed, practiceState.progress[problem.id]?.hintsUsed || 0) });
         renderHints();
       };
     } else {
@@ -7967,15 +7996,21 @@ function renderStarterCode() {
   }
 }
 
+function formatResult(value) {
+  if (value === undefined) return '';
+  return typeof value === 'string' ? JSON.stringify(value) : JSON.stringify(value);
+}
+
 async function runPracticeCode() {
   const problem = practiceState.currentProblem;
-  const outputEl = el('current-test-output');
   if (!problem) return;
 
   const code = getEditorCode('practice-code');
   const testCase = problem.testCases?.[practiceState.currentTestCase];
   if (!testCase) return;
 
+  renderTestCases();
+  const outputEl = el('current-test-output');
   if (outputEl) {
     outputEl.innerHTML = '<div class="running">Running...</div>';
   }
@@ -7999,30 +8034,28 @@ async function runPracticeCode() {
     } else {
       html = `
         <div class="test-result-detail ${result.passed ? 'passed' : 'failed'}">
-          <div class="result-status">${result.passed ? 'Passed' : 'Failed'}</div>
-          <div class="result-output"><strong>Your Output:</strong> <pre><code>${escapeHtml(result.output || 'None')}</code></pre></div>
+          <div class="result-status">${result.passed ? 'Passed' : 'Wrong answer'}</div>
+          <div class="result-output"><strong>Your answer:</strong> <pre><code>${escapeHtml(formatResult(result.actual))}</code></pre></div>
+          ${result.message ? `<div class="result-message">${escapeHtml(result.message)}</div>` : ''}
         </div>
       `;
 
-      // Update test case button status
       const btn = el('test-case-selector')?.querySelector(`[data-index="${practiceState.currentTestCase}"]`);
       if (btn) {
         btn.classList.remove('passed', 'failed');
         btn.classList.add(result.passed ? 'passed' : 'failed');
       }
-
-      // Handle visualization steps - pass user's code for display
-      if (result.steps && result.steps.length > 0) {
-        renderPracticeVisualization(result.steps, code);
-
-        // Auto-switch to visualization tab
-        const vizTab = document.querySelector('#practice-mode .problem-panel .tab-btn[data-tab="visualization"]');
-        if (vizTab) {
-          vizTab.click();
-        }
-      }
+    }
+    if (result.output) {
+      html += `<div class="result-printed"><strong>Printed:</strong><pre><code>${escapeHtml(result.output)}</code></pre></div>`;
     }
 
+    if (result.steps && result.steps.length > 0) {
+      renderPracticeVisualization(result.steps, code);
+      html += `<div class="viz-note">Step through the run in the Visualize tab${result.truncated ? ' (the first steps are recorded)' : ''}.</div>`;
+    }
+
+    updateProblemProgress(problem.id, { attempted: true });
     if (outputEl) {
       outputEl.innerHTML = html;
     }
@@ -8055,49 +8088,47 @@ async function submitPracticeCode() {
     });
 
     const result = await response.json();
+    const allPassed = result.status === 'Accepted';
 
-    let html = '';
-    if (result.error) {
-      html = `<div class="test-error">${escapeHtml(result.error)}</div>`;
-    } else {
-      const allPassed = result.results?.every(r => r.passed);
+    let html = `
+      <div class="submit-result ${allPassed ? 'all-passed' : 'some-failed'}">
+        <div class="submit-status">${escapeHtml(result.status || 'Error')}</div>
+        <div class="submit-summary">Passed ${result.passedCount ?? 0} of ${result.totalCount ?? 0} tests</div>
+        <div class="submit-details">
+    `;
 
-      html = `
-        <div class="submit-result ${allPassed ? 'all-passed' : 'some-failed'}">
-          <div class="submit-status">${allPassed ? 'All Tests Passed!' : 'Some Tests Failed'}</div>
-          <div class="submit-summary">Passed: ${result.passed}/${result.total}</div>
-          <div class="submit-details">
+    result.results?.forEach((r, i) => {
+      html += `
+        <div class="submit-test ${r.passed ? 'passed' : 'failed'}">
+          <span class="test-num">Test ${i + 1}${r.hidden ? ' (hidden)' : ''}</span>
+          <span class="test-status">${r.passed ? 'Passed' : 'Failed'}</span>
+          ${r.note ? `<span class="test-note-inline">${escapeHtml(r.note)}</span>` : ''}
+          ${!r.passed && r.error ? `<div class="test-output test-error">${escapeHtml(r.error)}</div>` : ''}
+          ${!r.passed && !r.error && !r.hidden ? `<div class="test-output">Input: <code>${escapeHtml(formatTestValue(r.input))}</code><br>Expected: <code>${escapeHtml(formatResult(r.expected))}</code><br>Got: <code>${escapeHtml(formatResult(r.actual))}</code></div>` : ''}
+          ${!r.passed && r.message ? `<div class="test-output">${escapeHtml(r.message)}</div>` : ''}
+        </div>
       `;
+    });
 
-      result.results?.forEach((r, i) => {
-        html += `
-          <div class="submit-test ${r.passed ? 'passed' : 'failed'}">
-            <span class="test-num">Test ${i + 1}</span>
-            <span class="test-status">${r.passed ? 'Passed' : 'Failed'}</span>
-            ${!r.passed && r.output ? `<div class="test-output">Got: <code>${escapeHtml(r.output)}</code></div>` : ''}
-          </div>
-        `;
-      });
-
-      html += '</div></div>';
-
-      // Update progress
-      updateProblemProgress(problem.id, {
-        attempts: (practiceState.progress[problem.id]?.attempts || 0) + 1,
-        solved: allPassed || practiceState.progress[problem.id]?.solved,
-        lastAttempt: new Date().toISOString(),
-      });
-
-      // Refresh problems list to show updated status
-      if (allPassed) {
-        await loadProblems();
-        renderProblemsList();
-        updateProgressCount();
-      }
+    html += '</div></div>';
+    if (!allPassed && result.results?.some(r => !r.passed && r.hidden && !r.error)) {
+      html += `<p class="submit-hint">A hidden case failed. Read its note: which edge case does your code not handle yet?</p>`;
     }
+
+    const prev = practiceState.progress[problem.id] || {};
+    updateProblemProgress(problem.id, {
+      attempts: (prev.attempts || 0) + 1,
+      solved: allPassed || prev.solved,
+      lastAttempt: new Date().toISOString(),
+    });
 
     if (outputEl) {
       outputEl.innerHTML = html;
+    }
+    if (allPassed) {
+      renderAfterSolve(problem);
+      renderProblemsList();
+      updateProgressCount();
     }
   } catch (e) {
     if (outputEl) {
@@ -8550,11 +8581,32 @@ function renderGraphViz(struct) {
   return html;
 }
 
+// The solution is gated until the learner has made a real attempt: a submit
+// or every hint. Trying first makes the explanation land (Kapur 2016), but the
+// learner can always override.
+function solutionGateOpen(problem) {
+  const prog = practiceState.progress[problem.id] || {};
+  return prog.solved || (prog.attempts || 0) > 0 || (prog.hintsUsed || 0) >= (problem.hints?.length || 0);
+}
+
+function renderSolutionGate() {
+  const problem = practiceState.currentProblem;
+  const gate = el('solution-gate-text');
+  const btn = el('unlock-solution');
+  if (!problem || !gate || !btn) return;
+  if (solutionGateOpen(problem)) {
+    gate.textContent = 'Compare your approach with the model solution.';
+    btn.textContent = 'Show Solution';
+  } else {
+    gate.textContent = "You haven't submitted an attempt or used all the hints yet. Struggling with a problem first is what makes the solution stick; try the hints.";
+    btn.textContent = 'Show it anyway';
+  }
+}
+
 async function showSolution() {
   const problem = practiceState.currentProblem;
   if (!problem) return;
 
-  // Fetch solution if not already loaded
   if (!problem.solution) {
     try {
       const response = await fetch(`/api/practice/solution/${problem.id}`);
@@ -8567,6 +8619,13 @@ async function showSolution() {
     }
   }
 
+  const sol = problem.solution;
+  if (!practiceState.progress[problem.id]?.solved) {
+    updateProblemProgress(problem.id, { solutionViewed: true });
+    // Seeing the answer before solving means it should come back soon.
+    scheduleReview(problem.id, 'again');
+  }
+
   const lockedEl = el('solution-locked');
   const contentEl = el('solution-content');
   const walkthroughEl = el('solution-walkthrough');
@@ -8575,41 +8634,56 @@ async function showSolution() {
     lockedEl.classList.add('hidden');
   }
 
+  const section = (title, body) => body ? `<div class="solution-section"><h4>${title}</h4>${body}</div>` : '';
+
   if (contentEl) {
     let html = `
       <div class="solution-actions">
         <button id="visualize-solution" class="btn-small btn-primary">Visualize Solution</button>
       </div>
-      <h4>Solution</h4>
-      <div class="solution-approach"><strong>Approach:</strong> ${escapeHtml(problem.solution.explanation || '')}</div>
+      ${section('Approach', renderMarkdown(sol.explanation))}
+      ${section('Brute force first', renderMarkdown(sol.bruteForce))}
+      ${section('Key insight', renderMarkdown(sol.keyInsight))}
+      ${section('Why it works', renderMarkdown(sol.whyItWorks))}
       <div class="solution-complexity">
-        <span><strong>Time:</strong> ${escapeHtml(problem.solution.timeComplexity || problem.timeComplexity || 'N/A')}</span>
-        <span><strong>Space:</strong> ${escapeHtml(problem.solution.spaceComplexity || problem.spaceComplexity || 'N/A')}</span>
+        <span><strong>Time:</strong> ${escapeHtml(sol.timeComplexity || problem.timeComplexity || 'N/A')}</span>
+        <span><strong>Space:</strong> ${escapeHtml(sol.spaceComplexity || problem.spaceComplexity || 'N/A')}</span>
       </div>
-      <pre class="solution-code"><code>${escapeHtml(problem.solution.code || '')}</code></pre>
+      <pre class="solution-code"><code>${escapeHtml(sol.code || '')}</code></pre>
+      <div id="solution-walkthrough-slot"></div>
+      ${section('Common mistakes', (sol.commonMistakes || []).length ? `<ul>${sol.commonMistakes.map(m => `<li>${renderInline(m)}</li>`).join('')}</ul>` : '')}
+      ${(sol.alternatives || []).map(alt => `
+        <details class="solution-alt">
+          <summary>${escapeHtml(alt.name)} (time ${escapeHtml(alt.timeComplexity || '?')}, space ${escapeHtml(alt.spaceComplexity || '?')})</summary>
+          ${renderMarkdown(alt.explanation)}
+          ${alt.code ? `<pre class="solution-code"><code>${escapeHtml(alt.code)}</code></pre>` : ''}
+        </details>`).join('')}
+      ${(problem.selfCheck || []).length ? section('Check yourself', problem.selfCheck.map(q => `
+        <details class="self-check"><summary>${renderInline(q.prompt)}</summary>${renderMarkdown(q.answer)}</details>`).join('')) : ''}
     `;
     contentEl.innerHTML = html;
     contentEl.classList.remove('hidden');
 
-    // Re-bind visualize button since we regenerated the content
     const vizBtn = el('visualize-solution');
     if (vizBtn) {
       vizBtn.onclick = visualizeSolution;
     }
   }
 
-  if (walkthroughEl && problem.solution.walkthrough && problem.solution.walkthrough.length > 0) {
+  if (walkthroughEl && sol.walkthrough && sol.walkthrough.length > 0) {
     let html = '<h4>Walkthrough</h4>';
-    problem.solution.walkthrough.forEach((step, i) => {
+    sol.walkthrough.forEach((step, i) => {
       html += `
         <div class="walkthrough-step">
-          <div class="walkthrough-header">Step ${i + 1}: ${escapeHtml(step.title || '')}</div>
-          <div class="walkthrough-explanation">${escapeHtml(step.explanation || '')}</div>
+          <div class="walkthrough-header"><span class="subgoal">${escapeHtml(step.title || '')}</span> <span class="walkthrough-lines">lines ${step.lineStart}-${step.lineEnd}</span></div>
+          <div class="walkthrough-explanation">${renderMarkdown(step.explanation || '')}</div>
           ${step.codeSnippet ? `<pre class="walkthrough-code"><code>${escapeHtml(step.codeSnippet)}</code></pre>` : ''}
         </div>
       `;
     });
     walkthroughEl.innerHTML = html;
+    const slot = el('solution-walkthrough-slot');
+    if (slot) slot.appendChild(walkthroughEl);
   }
 }
 
@@ -8715,7 +8789,7 @@ function setupPracticeControls() {
 
         if (chaptersEl) chaptersEl.classList.remove('hidden');
         // Show detail-empty or detail depending on whether a chapter is selected
-        if (state.currentChapter) {
+        if (state.current) {
           if (detailEl) detailEl.classList.remove('hidden');
           if (detailEmptyEl) detailEmptyEl.classList.add('hidden');
         } else {
@@ -8772,6 +8846,7 @@ function setupPracticeControls() {
 
       // Show/hide tab content based on data-tab attribute
       const targetTab = tab.dataset.tab;
+      if (targetTab === 'solution') renderSolutionGate();
       panelBody.querySelectorAll('.tab-content').forEach(content => {
         // Map content IDs to tab names:
         // test-cases-tab -> testcases, visualization-tab -> visualization
@@ -8852,7 +8927,6 @@ function filterProblems() {
       show = false;
     }
 
-    // Search filter
     if (search && !problem.title.toLowerCase().includes(search) &&
         !problem.id.toLowerCase().includes(search)) {
       show = false;

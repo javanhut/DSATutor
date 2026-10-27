@@ -106,9 +106,10 @@ var BlockedPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`\.__dict__`),
 	regexp.MustCompile(`\.__module__`),
 
-	// File operations via alternative methods
-	regexp.MustCompile(`Path\s*\(`),
-	regexp.MustCompile(`file\s*=`),
+	// File operations via alternative methods. Word boundaries keep names like
+	// longestIncreasingPath( and profile = ... usable.
+	regexp.MustCompile(`\bPath\s*\(`),
+	regexp.MustCompile(`\bfile\s*=[^=]`),
 }
 
 // ValidateCode checks if Python code is safe to execute.

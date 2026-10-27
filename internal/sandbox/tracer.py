@@ -10,11 +10,16 @@ import sys
 import json
 import copy
 import io
+import math
 from contextlib import redirect_stdout, redirect_stderr
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-# Maximum steps to prevent infinite loops
+# Maximum steps recorded for visualization. Execution keeps going after this;
+# only the recording stops, so long-running correct code still gets checked.
 MAX_STEPS = 1000
+
+# Recursion depth allowed for user code (grid DFS on 200x200 inputs needs it).
+RECURSION_LIMIT = 20000
 
 # Maximum recursion depth for serialization
 MAX_SERIALIZE_DEPTH = 10
@@ -62,17 +67,23 @@ class DSATracer:
         # Helper classes
         'ListNode', 'TreeNode', 'GraphNode',
         # Pre-imported modules
-        'math', 'random', 'itertools', 'functools', 'heapq', 'collections',
+        'math', 'random', 'itertools', 'functools', 'heapq', 'collections', 'bisect',
+        # typing names
+        'List', 'Optional', 'Dict', 'Tuple', 'Set', 'Deque',
         # Common imports from collections
         'deque', 'defaultdict', 'Counter', 'OrderedDict',
     }
 
-    def __init__(self, user_code: str, user_filename: str = "<user_code>"):
+    def __init__(self, user_code: str, user_filename: str = "<user_code>",
+                 harness: Optional[Dict] = None, trace: bool = True):
         self.user_code = user_code
         self.user_filename = user_filename
+        self.harness = harness
+        self.trace = trace
         self.steps: List[Dict] = []
         self.step_count = 0
         self.stopped = False
+        self.truncated = False
         self.error: Optional[str] = None
         self.code_lines = user_code.split('\n')
 
@@ -89,19 +100,13 @@ class DSATracer:
         if event == 'line':
             self.capture_step(frame)
 
-        if event == 'exception':
-            exc_type, exc_value, exc_tb = arg
-            self.error = f"{exc_type.__name__}: {exc_value}"
-            self.stopped = True
-            return None
-
         return self.trace_function
 
     def capture_step(self, frame) -> None:
         """Capture the current execution state."""
         if self.step_count >= MAX_STEPS:
             self.stopped = True
-            self.error = f"Execution stopped: exceeded {MAX_STEPS} steps"
+            self.truncated = True
             return
 
         self.step_count += 1
@@ -514,7 +519,7 @@ class DSATracer:
         }
 
     def run(self) -> Dict:
-        """Execute the user code with tracing and return results."""
+        """Execute the user code (and the test harness, if any) and return results."""
         stdout_capture = io.StringIO()
         stderr_capture = io.StringIO()
 
@@ -528,38 +533,50 @@ class DSATracer:
             'ListNode': ListNode,
             'TreeNode': TreeNode,
             'GraphNode': GraphNode,
-            # Pre-imported modules available at top level
-            'math': safe_builtins['math'],
-            'random': safe_builtins['random'],
-            'itertools': safe_builtins['itertools'],
-            'functools': safe_builtins['functools'],
-            'heapq': safe_builtins['heapq'],
-            'collections': safe_builtins['collections'],
-            # Common collections available directly
-            'deque': safe_builtins['deque'],
-            'defaultdict': safe_builtins['defaultdict'],
-            'Counter': safe_builtins['Counter'],
-            'OrderedDict': safe_builtins['OrderedDict'],
         }
+        # Pre-imported modules, collections and typing names available at top level
+        for name in ('math', 'random', 'itertools', 'functools', 'heapq', 'collections', 'bisect',
+                     'deque', 'defaultdict', 'Counter', 'OrderedDict',
+                     'List', 'Optional', 'Dict', 'Tuple', 'Set', 'Deque'):
+            exec_globals[name] = safe_builtins[name]
+
+        result = None
+        has_result = False
+        verdict = None
+        old_limit = sys.getrecursionlimit()
 
         try:
+            sys.setrecursionlimit(RECURSION_LIMIT)
+
+            # Problem-specific definitions (e.g. LeetCode's Node class) run untraced
+            prelude = (self.harness or {}).get('prelude')
+            if prelude:
+                exec(compile(prelude, '<prelude>', 'exec'), exec_globals)
+
             # Compile the code
             code_obj = compile(self.user_code, self.user_filename, 'exec')
 
-            # Set the trace function
-            sys.settrace(self.trace_function)
+            if self.trace:
+                sys.settrace(self.trace_function)
 
             # Execute with captured output
             with redirect_stdout(stdout_capture), redirect_stderr(stderr_capture):
                 exec(code_obj, exec_globals)
+                if self.harness:
+                    import harness
+                    result, verdict = harness.run_case(self.harness, exec_globals, safe_builtins)
+                    has_result = True
 
         except SyntaxError as e:
             self.error = f"SyntaxError: {e.msg} (line {e.lineno})"
+        except RecursionError:
+            self.error = "RecursionError: maximum recursion depth exceeded - check your base case"
         except Exception as e:
             if not self.error:
                 self.error = f"{type(e).__name__}: {e}"
         finally:
             sys.settrace(None)
+            sys.setrecursionlimit(old_limit)
 
         output = stdout_capture.getvalue()
         if stderr_capture.getvalue():
@@ -569,12 +586,19 @@ class DSATracer:
         if len(output) > 10000:
             output = output[:10000] + "\n... (output truncated)"
 
-        return {
+        response = {
             "success": self.error is None,
             "steps": self.steps,
             "output": output,
-            "error": self.error
+            "error": self.error,
+            "truncated": self.truncated,
         }
+        if has_result and self.error is None:
+            response["hasResult"] = True
+            response["result"] = result
+            if verdict is not None:
+                response["verdict"] = verdict
+        return response
 
     def get_safe_builtins(self) -> Dict:
         """Return a restricted set of safe builtins."""
@@ -585,6 +609,10 @@ class DSATracer:
         import random
         import itertools
         import functools
+        import bisect
+        import typing
+        import string
+        import operator
 
         # Pre-imported safe modules
         safe_modules = {
@@ -594,6 +622,10 @@ class DSATracer:
             'functools': functools,
             'collections': collections,
             'heapq': heapq_module,
+            'bisect': bisect,
+            'typing': typing,
+            'string': string,
+            'operator': operator,
         }
 
         def restricted_import(name, globals=None, locals=None, fromlist=(), level=0):
@@ -658,8 +690,23 @@ class DSATracer:
             'type': type,
             'zip': zip,
 
+            # Classes: needed for design problems (MinStack, LRUCache, Trie, ...)
+            '__build_class__': builtins.__build_class__,
+            'object': object,
+            'super': super,
+            'property': property,
+            'staticmethod': staticmethod,
+            'classmethod': classmethod,
+
             # Exceptions (for catching)
             'Exception': Exception,
+            'ArithmeticError': ArithmeticError,
+            'LookupError': LookupError,
+            'NotImplementedError': NotImplementedError,
+            'OverflowError': OverflowError,
+            'RecursionError': RecursionError,
+            'AssertionError': AssertionError,
+            'NameError': NameError,
             'ValueError': ValueError,
             'TypeError': TypeError,
             'IndexError': IndexError,
@@ -690,11 +737,31 @@ class DSATracer:
             # Collections module (for from collections import ...)
             'collections': collections,
 
+            # Binary search helpers and typing names used in LeetCode signatures
+            'bisect': bisect,
+            'List': typing.List,
+            'Optional': typing.Optional,
+            'Dict': typing.Dict,
+            'Tuple': typing.Tuple,
+            'Set': typing.Set,
+            'Deque': typing.Deque,
+
             # Restricted import function (allows only safe modules)
             '__import__': restricted_import,
         }
 
         return safe
+
+
+def json_safe(value):
+    """Replace NaN/Infinity (invalid in JSON) with strings, recursively."""
+    if isinstance(value, float) and not math.isfinite(value):
+        return "NaN" if math.isnan(value) else ("Infinity" if value > 0 else "-Infinity")
+    if isinstance(value, dict):
+        return {k: json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [json_safe(v) for v in value]
+    return value
 
 
 def main():
@@ -724,10 +791,24 @@ def main():
         print(json.dumps(result))
         return
 
-    tracer = DSATracer(user_code, "<user_code>")
+    harness_spec = None
+    trace = True
+    for arg in sys.argv[2:]:
+        if arg == '--no-trace':
+            trace = False
+        else:
+            try:
+                with open(arg, 'r') as f:
+                    harness_spec = json.load(f)
+            except Exception as e:
+                print(json.dumps({"success": False, "steps": [], "output": "",
+                                  "error": f"Failed to read harness spec: {e}"}))
+                return
+
+    tracer = DSATracer(user_code, "<user_code>", harness=harness_spec, trace=trace)
     result = tracer.run()
 
-    print(json.dumps(result))
+    print(json.dumps(json_safe(result), default=repr))
 
 
 if __name__ == '__main__':

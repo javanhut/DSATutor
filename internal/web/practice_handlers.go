@@ -2,13 +2,11 @@ package web
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"sort"
 	"strings"
 
+	"dsatutor/internal/judge"
 	"dsatutor/internal/practice"
-	"dsatutor/internal/sandbox"
 )
 
 // PracticeServer handles practice-related API endpoints.
@@ -61,6 +59,7 @@ func (ps *PracticeServer) handleListProblems(w http.ResponseWriter, r *http.Requ
 	type ProblemSummary struct {
 		ID              string   `json:"id"`
 		Number          int      `json:"number"`
+		Order           int      `json:"order"`
 		Title           string   `json:"title"`
 		Slug            string   `json:"slug"`
 		Difficulty      string   `json:"difficulty"`
@@ -74,6 +73,7 @@ func (ps *PracticeServer) handleListProblems(w http.ResponseWriter, r *http.Requ
 		summaries[i] = ProblemSummary{
 			ID:              p.ID,
 			Number:          p.Number,
+			Order:           p.Order,
 			Title:           p.Title,
 			Slug:            p.Slug,
 			Difficulty:      p.Difficulty,
@@ -120,6 +120,7 @@ func (ps *PracticeServer) handleGetProblem(w http.ResponseWriter, r *http.Reques
 		Expected interface{} `json:"expected,omitempty"`
 		Hidden   bool        `json:"hidden"`
 		Timeout  int         `json:"timeout,omitempty"`
+		Note     string      `json:"note,omitempty"`
 	}
 
 	safeTestCases := make([]SafeTestCase, len(problem.TestCases))
@@ -129,8 +130,12 @@ func (ps *PracticeServer) handleGetProblem(w http.ResponseWriter, r *http.Reques
 			Input:   tc.Input,
 			Hidden:  tc.Hidden,
 			Timeout: tc.Timeout,
+			Note:    tc.Note,
 		}
-		if !tc.Hidden {
+		// Hidden cases reveal only what they check, not their data.
+		if tc.Hidden {
+			safeTestCases[i].Input = nil
+		} else {
 			safeTestCases[i].Expected = tc.Expected
 		}
 	}
@@ -139,6 +144,7 @@ func (ps *PracticeServer) handleGetProblem(w http.ResponseWriter, r *http.Reques
 	response := map[string]interface{}{
 		"id":              problem.ID,
 		"number":          problem.Number,
+		"order":           problem.Order,
 		"title":           problem.Title,
 		"slug":            problem.Slug,
 		"difficulty":      problem.Difficulty,
@@ -153,6 +159,8 @@ func (ps *PracticeServer) handleGetProblem(w http.ResponseWriter, r *http.Reques
 		"spaceComplexity": problem.SpaceComplexity,
 		"starterCode":     problem.StarterCode,
 		"hintCount":       len(problem.Hints),
+		"hints":           problem.Hints,
+		"selfCheck":       problem.SelfCheck,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -196,101 +204,68 @@ func (ps *PracticeServer) handleRunCode(w http.ResponseWriter, r *http.Request) 
 
 	var req practice.RunRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(practice.RunResponse{
-			Success: false,
-			Error:   "Invalid request: " + err.Error(),
-		})
+		writeJSON(w, http.StatusBadRequest, practice.RunResponse{Error: "Invalid request: " + err.Error()})
 		return
 	}
 
-	// Get the problem
 	problem, err := ps.loader.GetProblem(req.ProblemID)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(practice.RunResponse{
-			Success: false,
-			Error:   "Problem not found: " + err.Error(),
-		})
+		writeJSON(w, http.StatusNotFound, practice.RunResponse{Error: "Problem not found: " + err.Error()})
 		return
 	}
 
-	// Find test case
-	var testCase *practice.TestCase
-	if req.TestCaseID != "" {
-		for _, tc := range problem.TestCases {
-			if tc.ID == req.TestCaseID {
-				testCase = &tc
-				break
-			}
-		}
-	} else if len(problem.TestCases) > 0 {
-		// Use first visible test case by default
-		for _, tc := range problem.TestCases {
-			if !tc.Hidden {
-				testCase = &tc
-				break
-			}
-		}
-		if testCase == nil {
-			testCase = &problem.TestCases[0]
-		}
-	}
-
-	if testCase == nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(practice.RunResponse{
-			Success: false,
-			Error:   "No test case found",
-		})
+	tc := pickTestCase(problem, req.TestCaseID, req.TestCaseIndex)
+	if tc == nil {
+		writeJSON(w, http.StatusBadRequest, practice.RunResponse{Error: "No test case found"})
 		return
 	}
 
-	// Generate code that runs with test input
-	fullCode := generateTestWrapper(req.Code, problem, testCase)
+	writeJSON(w, http.StatusOK, runOne(problem, req.Code, tc))
+}
 
-	// Execute in sandbox
-	execReq := sandbox.ExecuteRequest{
-		Code:    fullCode,
-		Timeout: testCase.Timeout,
+// pickTestCase finds a test case by ID or index, defaulting to the first
+// visible one. Hidden cases can't be run individually.
+func pickTestCase(problem *practice.Problem, id string, index *int) *practice.TestCase {
+	if id != "" {
+		for i := range problem.TestCases {
+			if problem.TestCases[i].ID == id {
+				return &problem.TestCases[i]
+			}
+		}
 	}
+	if index != nil && *index >= 0 && *index < len(problem.TestCases) && !problem.TestCases[*index].Hidden {
+		return &problem.TestCases[*index]
+	}
+	for i := range problem.TestCases {
+		if !problem.TestCases[i].Hidden {
+			return &problem.TestCases[i]
+		}
+	}
+	return nil
+}
 
-	execResp, err := sandbox.Execute(execReq)
+// runOne judges code on one visible test case with tracing on, for the Run
+// button and the solution visualizer.
+func runOne(problem *practice.Problem, code string, tc *practice.TestCase) practice.RunResponse {
+	res, err := judge.Run(problem, code, tc, judge.Options{Trace: true})
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(practice.RunResponse{
-			Success: false,
-			Error:   "Execution error: " + err.Error(),
-		})
-		return
+		return practice.RunResponse{Error: "Execution error: " + err.Error()}
 	}
-
-	// Build response
 	response := practice.RunResponse{
-		Success:    execResp.Success,
-		Output:     execResp.Output,
-		Error:      execResp.Error,
-		Steps:      execResp.Steps,
-		Structures: nil, // Will be populated from steps if available
+		Success:   res.Error == "",
+		Passed:    res.Passed,
+		Output:    res.Output,
+		Error:     res.Error,
+		Steps:     res.Steps,
+		Actual:    res.Actual,
+		Expected:  tc.Expected,
+		Message:   res.Message,
+		Truncated: res.Truncated,
 	}
-
-	// Compare output with expected value
-	if execResp.Success && testCase.Expected != nil {
-		response.Passed = compareOutput(execResp.Output, testCase.Expected, testCase.OrderIndependent)
+	if len(res.Steps) > 0 {
+		response.Structures = res.Steps[len(res.Steps)-1].Structures
 	}
-
-	// Extract structures from last step if available
-	if len(execResp.Steps) > 0 {
-		lastStep := execResp.Steps[len(execResp.Steps)-1]
-		response.Structures = lastStep.Structures
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	return response
 }
 
 // handleSubmitCode validates code against all test cases.
@@ -302,71 +277,56 @@ func (ps *PracticeServer) handleSubmitCode(w http.ResponseWriter, r *http.Reques
 
 	var req practice.SubmitRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(practice.SubmitResponse{
-			Status: practice.StatusCompileError,
-		})
+		writeJSON(w, http.StatusBadRequest, practice.SubmitResponse{Status: practice.StatusCompileError})
 		return
 	}
 
-	// Get the problem
 	problem, err := ps.loader.GetProblem(req.ProblemID)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(practice.SubmitResponse{
-			Status: practice.StatusCompileError,
-		})
+		writeJSON(w, http.StatusNotFound, practice.SubmitResponse{Status: practice.StatusCompileError})
 		return
 	}
 
 	response := practice.NewSubmitResponse()
 	response.TotalCount = len(problem.TestCases)
 
-	// Run against all test cases
-	for _, tc := range problem.TestCases {
-		fullCode := generateTestWrapper(req.Code, problem, &tc)
-
-		execReq := sandbox.ExecuteRequest{
-			Code:    fullCode,
-			Timeout: tc.Timeout,
-		}
-
-		execResp, err := sandbox.Execute(execReq)
-
+	for i := range problem.TestCases {
+		tc := &problem.TestCases[i]
 		result := practice.TestResult{
 			TestCaseID: tc.ID,
 			Hidden:     tc.Hidden,
+			Note:       tc.Note,
 		}
 
+		res, err := judge.Run(problem, req.Code, tc, judge.Options{})
 		if err != nil {
-			result.Passed = false
 			result.Error = err.Error()
-		} else if !execResp.Success {
-			result.Passed = false
-			result.Error = execResp.Error
 		} else {
-			// Parse output and compare with expected
-			result.Passed = compareOutput(execResp.Output, tc.Expected, tc.OrderIndependent)
-			result.Actual = execResp.Output
+			result.Passed = res.Passed
+			result.Error = res.Error
+			result.Message = res.Message
 			if !tc.Hidden {
 				result.Input = tc.Input
 				result.Expected = tc.Expected
+				result.Actual = res.Actual
+				result.Output = res.Output
 			}
 		}
 
 		if result.Passed {
 			response.PassedCount++
 		}
-
 		response.Results = append(response.Results, result)
 	}
 
 	response.CalculateStatus()
+	writeJSON(w, http.StatusOK, response)
+}
 
+func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(v)
 }
 
 // handleGetHint returns a specific hint for a problem.
@@ -484,21 +444,7 @@ func (ps *PracticeServer) handleVisualizeSolution(w http.ResponseWriter, r *http
 	}
 
 	// Find test case
-	var testCase *practice.TestCase
-	if req.TestCaseIndex >= 0 && req.TestCaseIndex < len(problem.TestCases) {
-		testCase = &problem.TestCases[req.TestCaseIndex]
-	} else if len(problem.TestCases) > 0 {
-		// Use first visible test case by default
-		for _, tc := range problem.TestCases {
-			if !tc.Hidden {
-				testCase = &tc
-				break
-			}
-		}
-		if testCase == nil {
-			testCase = &problem.TestCases[0]
-		}
-	}
+	testCase := pickTestCase(problem, "", &req.TestCaseIndex)
 
 	if testCase == nil {
 		w.Header().Set("Content-Type", "application/json")
@@ -510,48 +456,7 @@ func (ps *PracticeServer) handleVisualizeSolution(w http.ResponseWriter, r *http
 		return
 	}
 
-	// Generate code that runs the solution with test input
-	fullCode := generateTestWrapper(problem.Solution.Code, problem, testCase)
-
-	// Execute in sandbox
-	execReq := sandbox.ExecuteRequest{
-		Code:    fullCode,
-		Timeout: testCase.Timeout,
-	}
-
-	execResp, err := sandbox.Execute(execReq)
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(practice.RunResponse{
-			Success: false,
-			Error:   "Execution error: " + err.Error(),
-		})
-		return
-	}
-
-	// Build response with visualization steps
-	response := practice.RunResponse{
-		Success:    execResp.Success,
-		Output:     execResp.Output,
-		Error:      execResp.Error,
-		Steps:      execResp.Steps,
-		Structures: nil,
-	}
-
-	// Compare output with expected value
-	if execResp.Success && testCase.Expected != nil {
-		response.Passed = compareOutput(execResp.Output, testCase.Expected, testCase.OrderIndependent)
-	}
-
-	// Extract structures from last step if available
-	if len(execResp.Steps) > 0 {
-		lastStep := execResp.Steps[len(execResp.Steps)-1]
-		response.Structures = lastStep.Structures
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	writeJSON(w, http.StatusOK, runOne(problem, problem.Solution.Code, testCase))
 }
 
 // handleExportProgress exports user progress as JSON.
@@ -603,337 +508,4 @@ func (ps *PracticeServer) handleImportProgress(w http.ResponseWriter, r *http.Re
 		"valid":    true,
 		"progress": progress,
 	})
-}
-
-// generateTestWrapper creates code that runs with test input.
-func generateTestWrapper(userCode string, problem *practice.Problem, tc *practice.TestCase) string {
-	// Extract all function signatures from starter code
-	funcSignatures := extractAllFunctionSignatures(problem.StarterCode)
-	if len(funcSignatures) == 0 {
-		return userCode + "\n# Could not extract function name\n"
-	}
-
-	// Use first function for single-function problems
-	funcName := funcSignatures[0].Name
-	funcParams := funcSignatures[0].Params
-
-	// Build input assignment from test case
-	inputAssignments := ""
-	callArgs := make([]string, 0)
-
-	// Handle both map[string]interface{} and string input formats
-	switch input := tc.Input.(type) {
-	case map[string]interface{}:
-		// Assign each input variable
-		for key, value := range input {
-			valueJSON, _ := json.Marshal(value)
-			inputAssignments += key + " = " + string(valueJSON) + "\n"
-		}
-		// Use function parameters in correct order
-		if len(funcParams) > 0 {
-			callArgs = funcParams
-		} else {
-			// Fallback: use map keys
-			for key := range input {
-				callArgs = append(callArgs, key)
-			}
-		}
-	case string:
-		// String input format - parse and use directly
-		inputAssignments = "__input__ = " + input + "\n"
-		// Check if it's a single value or multiple
-		if len(funcParams) == 1 {
-			callArgs = []string{"__input__"}
-		} else {
-			// Multiple params - unpack the input
-			callArgs = []string{"*__input__"}
-		}
-	default:
-		// Fallback: marshal the input as JSON
-		valueJSON, _ := json.Marshal(tc.Input)
-		inputAssignments = "__input__ = " + string(valueJSON) + "\n"
-		if len(funcParams) == 1 {
-			callArgs = []string{"__input__"}
-		} else {
-			callArgs = []string{"*__input__"}
-		}
-	}
-
-	// Generate wrapper code
-	wrapper := userCode + "\n\n# Test execution\n" + inputAssignments
-
-	// Special handling for encode/decode pattern (two complementary functions)
-	if len(funcSignatures) == 2 && isEncodeDecodePair(funcSignatures) {
-		// For encode/decode problems, we need to call decode(encode(input))
-		encodeFn, decodeFn := getEncodeDecodeFunctions(funcSignatures)
-		wrapper += "\n__encoded__ = " + encodeFn + "(" + strings.Join(callArgs, ", ") + ")\n"
-		wrapper += "__result__ = " + decodeFn + "(__encoded__)\n"
-	} else {
-		wrapper += "\n__result__ = " + funcName + "(" + strings.Join(callArgs, ", ") + ")\n"
-	}
-
-	wrapper += "print(__result__)\n"
-
-	return wrapper
-}
-
-// FunctionSignature holds extracted function name and parameters
-type FunctionSignature struct {
-	Name   string
-	Params []string
-}
-
-// isEncodeDecodePair checks if the two functions form an encode/decode pair
-func isEncodeDecodePair(sigs []FunctionSignature) bool {
-	if len(sigs) != 2 {
-		return false
-	}
-	names := []string{strings.ToLower(sigs[0].Name), strings.ToLower(sigs[1].Name)}
-	hasEncode := false
-	hasDecode := false
-	for _, n := range names {
-		if strings.Contains(n, "encode") || strings.Contains(n, "serialize") {
-			hasEncode = true
-		}
-		if strings.Contains(n, "decode") || strings.Contains(n, "deserialize") {
-			hasDecode = true
-		}
-	}
-	return hasEncode && hasDecode
-}
-
-// getEncodeDecodeFunctions returns the encode and decode function names in order
-func getEncodeDecodeFunctions(sigs []FunctionSignature) (string, string) {
-	var encodeFn, decodeFn string
-	for _, sig := range sigs {
-		lower := strings.ToLower(sig.Name)
-		if strings.Contains(lower, "encode") || strings.Contains(lower, "serialize") {
-			encodeFn = sig.Name
-		}
-		if strings.Contains(lower, "decode") || strings.Contains(lower, "deserialize") {
-			decodeFn = sig.Name
-		}
-	}
-	return encodeFn, decodeFn
-}
-
-// extractAllFunctionSignatures extracts all function signatures from starter code
-func extractAllFunctionSignatures(starterCode string) []FunctionSignature {
-	signatures := make([]FunctionSignature, 0)
-	lines := strings.Split(starterCode, "\n")
-
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "def ") {
-			// Extract: def funcName(param1, param2, ...):
-			line = strings.TrimPrefix(line, "def ")
-			parenStart := strings.Index(line, "(")
-			parenEnd := strings.Index(line, ")")
-			if parenStart == -1 || parenEnd == -1 {
-				continue
-			}
-			funcName := strings.TrimSpace(line[:parenStart])
-			paramsStr := line[parenStart+1 : parenEnd]
-
-			// Parse parameters
-			params := make([]string, 0)
-			if paramsStr != "" {
-				for _, p := range strings.Split(paramsStr, ",") {
-					p = strings.TrimSpace(p)
-					// Remove type hints if present
-					if colonIdx := strings.Index(p, ":"); colonIdx != -1 {
-						p = strings.TrimSpace(p[:colonIdx])
-					}
-					// Remove default values if present
-					if eqIdx := strings.Index(p, "="); eqIdx != -1 {
-						p = strings.TrimSpace(p[:eqIdx])
-					}
-					if p != "" && p != "self" {
-						params = append(params, p)
-					}
-				}
-			}
-			signatures = append(signatures, FunctionSignature{Name: funcName, Params: params})
-		}
-	}
-	return signatures
-}
-
-// extractFunctionSignature extracts the function name and parameter names from starter code.
-func extractFunctionSignature(starterCode string) (string, []string) {
-	lines := strings.Split(starterCode, "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "def ") {
-			// Extract: def funcName(param1, param2, ...):
-			// Remove "def " prefix
-			line = strings.TrimPrefix(line, "def ")
-			// Find the parentheses
-			parenStart := strings.Index(line, "(")
-			parenEnd := strings.Index(line, ")")
-			if parenStart == -1 || parenEnd == -1 {
-				continue
-			}
-			funcName := strings.TrimSpace(line[:parenStart])
-			paramsStr := line[parenStart+1 : parenEnd]
-
-			// Parse parameters
-			params := make([]string, 0)
-			if paramsStr != "" {
-				for _, p := range strings.Split(paramsStr, ",") {
-					p = strings.TrimSpace(p)
-					// Remove type hints if present (e.g., "nums: List[int]" -> "nums")
-					if colonIdx := strings.Index(p, ":"); colonIdx != -1 {
-						p = strings.TrimSpace(p[:colonIdx])
-					}
-					// Remove default values if present (e.g., "x=5" -> "x")
-					if eqIdx := strings.Index(p, "="); eqIdx != -1 {
-						p = strings.TrimSpace(p[:eqIdx])
-					}
-					if p != "" && p != "self" {
-						params = append(params, p)
-					}
-				}
-			}
-			return funcName, params
-		}
-	}
-	return "", nil
-}
-
-// extractFunctionName extracts the main function name from starter code.
-func extractFunctionName(starterCode string) string {
-	lines := strings.Split(starterCode, "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "def ") {
-			// Extract function name
-			parts := strings.Split(line, "(")
-			if len(parts) > 0 {
-				name := strings.TrimPrefix(parts[0], "def ")
-				return strings.TrimSpace(name)
-			}
-		}
-	}
-	return ""
-}
-
-// compareOutput compares execution output with expected value.
-func compareOutput(output string, expected interface{}, orderIndependent bool) bool {
-	output = strings.TrimSpace(output)
-
-	// Normalize Python output to JSON format
-	// Python uses single quotes, True/False, None - convert to JSON equivalents
-	normalized := normalizePythonOutput(output)
-
-	// Try to parse normalized output as JSON
-	var actualValue interface{}
-	if err := json.Unmarshal([]byte(normalized), &actualValue); err != nil {
-		// Output is not valid JSON, try direct comparison
-		expectedJSON, _ := json.Marshal(expected)
-		outputNoSpace := strings.ReplaceAll(strings.ReplaceAll(output, " ", ""), "\t", "")
-		expectedNoSpace := strings.ReplaceAll(string(expectedJSON), " ", "")
-		return outputNoSpace == expectedNoSpace
-	}
-
-	// For order-independent comparison (e.g., group anagrams, top k elements)
-	if orderIndependent {
-		return compareOrderIndependent(actualValue, expected)
-	}
-
-	// Compare JSON values (this normalizes spacing)
-	actualJSON, _ := json.Marshal(actualValue)
-	expectedJSON, _ := json.Marshal(expected)
-	return string(actualJSON) == string(expectedJSON)
-}
-
-// compareOrderIndependent compares two values regardless of order.
-// Works for arrays of arrays (like group anagrams) and simple arrays.
-func compareOrderIndependent(actual, expected interface{}) bool {
-	// Convert expected to interface{} via JSON round-trip to normalize types
-	// This handles Go types like [][]string -> []interface{} containing []interface{}
-	expectedJSON, err := json.Marshal(expected)
-	if err != nil {
-		return false
-	}
-	var expectedNormalized interface{}
-	if err := json.Unmarshal(expectedJSON, &expectedNormalized); err != nil {
-		return false
-	}
-
-	// Convert both to normalized form
-	actualNorm := normalizeForComparison(actual)
-	expectedNorm := normalizeForComparison(expectedNormalized)
-
-	return actualNorm == expectedNorm
-}
-
-// normalizeForComparison converts a value to a canonical string form for comparison.
-// For arrays: sorts elements. For arrays of arrays: sorts inner arrays, then sorts outer.
-func normalizeForComparison(v interface{}) string {
-	switch val := v.(type) {
-	case []interface{}:
-		// Check if it's an array of arrays
-		if len(val) > 0 {
-			if _, ok := val[0].([]interface{}); ok {
-				// Array of arrays - sort each inner array, then sort outer by canonical form
-				innerStrs := make([]string, len(val))
-				for i, inner := range val {
-					innerStrs[i] = normalizeForComparison(inner)
-				}
-				sort.Strings(innerStrs)
-				return "[" + strings.Join(innerStrs, ",") + "]"
-			}
-		}
-		// Simple array - convert elements to strings and sort
-		strs := make([]string, len(val))
-		for i, elem := range val {
-			strs[i] = normalizeElement(elem)
-		}
-		sort.Strings(strs)
-		return "[" + strings.Join(strs, ",") + "]"
-	default:
-		return normalizeElement(v)
-	}
-}
-
-// normalizeElement converts a single element to its canonical string form.
-func normalizeElement(v interface{}) string {
-	switch val := v.(type) {
-	case string:
-		return fmt.Sprintf("%q", val)
-	case float64:
-		// JSON numbers are float64
-		if val == float64(int(val)) {
-			return fmt.Sprintf("%d", int(val))
-		}
-		return fmt.Sprintf("%g", val)
-	case bool:
-		return fmt.Sprintf("%t", val)
-	case nil:
-		return "null"
-	case []interface{}:
-		return normalizeForComparison(val)
-	default:
-		b, _ := json.Marshal(val)
-		return string(b)
-	}
-}
-
-// normalizePythonOutput converts Python repr output to JSON format
-func normalizePythonOutput(output string) string {
-	// Replace Python booleans with JSON booleans
-	output = strings.ReplaceAll(output, "True", "true")
-	output = strings.ReplaceAll(output, "False", "false")
-	output = strings.ReplaceAll(output, "None", "null")
-
-	// Replace single quotes with double quotes (for strings)
-	// This is a simple replacement - might need more sophisticated parsing for edge cases
-	output = strings.ReplaceAll(output, "'", "\"")
-
-	// Replace Python tuples () with arrays []
-	output = strings.ReplaceAll(output, "(", "[")
-	output = strings.ReplaceAll(output, ")", "]")
-
-	return output
 }

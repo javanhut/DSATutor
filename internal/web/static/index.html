@@ -179,11 +179,11 @@
         <header class="content-header">
           <div class="header-info">
             <span class="chapter-badge practice-badge">PRACTICE</span>
-            <h1>Blind 75 Problems</h1>
+            <h1>Practice Problems</h1>
           </div>
           <div class="header-controls">
             <div class="progress-summary">
-              <span id="progress-count">0/75 Solved</span>
+              <span id="progress-count">0 Solved</span>
             </div>
             <div class="control-group">
               <button id="export-progress" class="btn-small ghost">Export</button>
@@ -192,18 +192,21 @@
           </div>
         </header>
 
+        <!-- Review queue and mixed practice -->
+        <div id="practice-learning-bar" class="learning-bar"></div>
+
         <!-- Filters -->
         <div class="practice-filters">
           <div class="filter-group">
             <label>Category</label>
             <select id="filter-category">
-              <option value="">All Categories</option>
+              <option value="all">All Categories</option>
             </select>
           </div>
           <div class="filter-group">
             <label>Difficulty</label>
             <select id="filter-difficulty">
-              <option value="">All</option>
+              <option value="all">All</option>
               <option value="Easy">Easy</option>
               <option value="Medium">Medium</option>
               <option value="Hard">Hard</option>
@@ -212,10 +215,10 @@
           <div class="filter-group">
             <label>Status</label>
             <select id="filter-status">
-              <option value="">All</option>
+              <option value="all">All</option>
               <option value="solved">Solved</option>
               <option value="attempted">Attempted</option>
-              <option value="not_started">Not Started</option>
+              <option value="unsolved">Not Solved</option>
             </select>
           </div>
           <div class="filter-group search">
@@ -258,6 +261,7 @@
             <div class="panel-body">
               <!-- Description Tab -->
               <div id="problem-description" class="tab-content active">
+                <div id="pattern-prompt" class="pattern-prompt hidden"></div>
                 <div id="problem-statement" class="problem-statement"></div>
                 <div id="problem-examples" class="problem-examples"></div>
                 <div id="problem-constraints" class="problem-constraints"></div>
@@ -278,8 +282,8 @@
               <!-- Solution Tab -->
               <div id="problem-solution" class="tab-content hidden">
                 <div class="solution-locked" id="solution-locked">
-                  <p>View the solution walkthrough?</p>
-                  <p class="warning">This will mark the problem as "solution viewed".</p>
+                  <p id="solution-gate-text">View the solution walkthrough?</p>
+                  <p class="warning">This marks the problem as "solution viewed" and brings it back for review tomorrow.</p>
                   <button id="unlock-solution" class="btn-small">Show Solution</button>
                 </div>
                 <div class="solution-content hidden" id="solution-content">
@@ -346,6 +350,7 @@
               <div class="panel-body">
                 <div id="test-case-selector" class="test-case-selector"></div>
                 <div id="test-results" class="test-results"></div>
+                <div id="after-solve" class="after-solve hidden"></div>
                 <div id="complexity-analysis" class="complexity-analysis"></div>
               </div>
             </div>
@@ -388,10 +393,12 @@
             <div class="overview-card">
               <h2>Overview</h2>
               <p id="detail-summary" class="summary-text"></p>
+              <div id="lesson-motivation" class="lesson-motivation"></div>
               <div class="objectives-inline">
                 <h4>What You'll Learn</h4>
                 <ul id="detail-objectives"></ul>
               </div>
+              <div id="lesson-path" class="lesson-path"></div>
             </div>
           </section>
 
@@ -402,6 +409,24 @@
               <div id="tutorial-content" class="tutorial-content">
                 <!-- Concepts with WHY explanations rendered here -->
               </div>
+            </div>
+          </section>
+
+          <!-- 2b. Recognising the pattern -->
+          <section id="lesson-when-section" class="lesson-section hidden">
+            <div class="lesson-card">
+              <h2>When to Use It</h2>
+              <p class="lesson-intro">Cues in a problem statement that point to this pattern:</p>
+              <ul id="lesson-when" class="lesson-when"></ul>
+            </div>
+          </section>
+
+          <!-- 2c. Worked examples, revealed one subgoal at a time -->
+          <section id="lesson-worked-section" class="lesson-section hidden">
+            <div class="lesson-card">
+              <h2>Worked Example</h2>
+              <p class="lesson-intro">Each step is labelled with the subgoal it achieves. Predict each step before you reveal it.</p>
+              <div id="lesson-worked"></div>
             </div>
           </section>
 
@@ -465,6 +490,32 @@
             </div>
           </section>
 
+          <!-- 4b. Faded example -->
+          <section id="lesson-completion-section" class="lesson-section hidden">
+            <div class="lesson-card">
+              <h2>Your Turn: Complete the Code</h2>
+              <p class="lesson-intro">Same subgoals, new problem. Fill in each blank, then check.</p>
+              <div id="lesson-completion"></div>
+            </div>
+          </section>
+
+          <!-- 4c. Retrieval practice -->
+          <section id="lesson-check-section" class="lesson-section hidden">
+            <div class="lesson-card">
+              <h2>Check Your Understanding</h2>
+              <p class="lesson-intro">Answer from memory before you scroll up. Recalling is what makes it stick.</p>
+              <div id="lesson-check"></div>
+            </div>
+          </section>
+
+          <!-- 4d. Practice ladder -->
+          <section id="lesson-practice-section" class="lesson-section hidden">
+            <div class="lesson-card">
+              <h2>Practice Ladder</h2>
+              <div id="lesson-practice"></div>
+            </div>
+          </section>
+
           <!-- 5. Code Examples -->
           <section class="examples-section">
             <div class="examples-card">
@@ -474,7 +525,7 @@
           </section>
 
           <!-- Additional Info (Collapsed) -->
-          <div class="info-sections">
+          <div class="info-sections hidden">
             <details class="info-section">
               <summary>Visualizers</summary>
               <div class="info-content">
@@ -519,6 +570,7 @@
       </div>
     </main>
   </div>
+  <script src="/static/learn.js"></script>
   <script src="/static/app.js"></script>
 </body>
 </html>

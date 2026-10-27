@@ -174,6 +174,12 @@ The following modules are available in the sandbox:
 - `collections.deque` - Double-ended queue
 - `collections.defaultdict` - Dict with default factory
 - `collections.Counter` - Element counting
+- `bisect` - Binary search on sorted lists
+- `typing` - `List`, `Optional`, `Dict`, `Tuple`, `Set` and `Deque` are also predefined
+- `string`, `operator`
+
+Classes can be defined (needed for design problems such as `MinStack` or
+`LRUCache`).
 
 ## Example Algorithms
 
@@ -278,7 +284,8 @@ For security, the following are blocked:
 | Resource | Limit |
 |----------|-------|
 | Execution time | 10 seconds |
-| Maximum steps | 1000 |
+| Recorded steps | 1000 (execution continues; only the recording stops) |
+| Recursion depth | 20,000 |
 | Code size | 10 KB |
 | Output size | 10 KB |
 
@@ -309,9 +316,10 @@ The sandbox restricts certain imports for security. Use only the allowed modules
 
 Your code took too long to execute. Check for infinite loops or reduce the problem size.
 
-### "Exceeded step limit" error
+### The visualization stops early
 
-The code executed more than 1000 steps. This usually indicates an infinite loop or very long algorithm. Reduce the input size.
+Only the first 1000 steps are recorded. The code still runs to the end and its
+result is still checked; use a smaller input to watch the whole run.
 
 ### No visualization appears
 
@@ -335,6 +343,7 @@ Make sure your code creates recognizable data structures (lists, dicts, or node 
 ### Files
 
 - `internal/sandbox/tracer.py` - Python execution tracer
+- `internal/sandbox/harness.py` - Calls practice-problem code for one test case (node conversion, design classes, validators)
 - `internal/sandbox/dsa_helpers.py` - Helper class definitions
 - `internal/sandbox/sandbox.go` - Go execution handler
 - `internal/sandbox/security.go` - Code validation

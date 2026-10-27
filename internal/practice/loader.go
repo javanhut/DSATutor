@@ -130,12 +130,27 @@ func (pl *ProblemLoader) GetAllProblems() []*Problem {
 		problems = append(problems, p)
 	}
 
-	// Sort by number
-	sort.Slice(problems, func(i, j int) bool {
-		return problems[i].Number < problems[j].Number
-	})
-
+	sortByLadder(problems)
 	return problems
+}
+
+// sortByLadder orders problems the way a learner should meet them: by
+// category (in curriculum order), then by position within the category.
+func sortByLadder(problems []*Problem) {
+	catOrder := make(map[string]int, len(Blind75Categories))
+	for _, c := range Blind75Categories {
+		catOrder[c.ID] = c.Order
+	}
+	sort.SliceStable(problems, func(i, j int) bool {
+		a, b := problems[i], problems[j]
+		if catOrder[a.Category] != catOrder[b.Category] {
+			return catOrder[a.Category] < catOrder[b.Category]
+		}
+		if a.Order != b.Order {
+			return a.Order < b.Order
+		}
+		return a.Number < b.Number
+	})
 }
 
 // GetProblemsByCategory returns problems in a specific category.
@@ -147,10 +162,7 @@ func (pl *ProblemLoader) GetProblemsByCategory(categoryID string) []*Problem {
 		}
 	}
 
-	sort.Slice(problems, func(i, j int) bool {
-		return problems[i].Number < problems[j].Number
-	})
-
+	sortByLadder(problems)
 	return problems
 }
 

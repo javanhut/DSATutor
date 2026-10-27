@@ -1,328 +1,119 @@
 # Practice Mode
 
-Practice mode provides a LeetCode-style problem-solving experience with integrated visualizations, progressive hints, and progress tracking. This feature is designed to complement the chapter-based learning with hands-on coding challenges.
+Practice mode is where learners solve LeetCode-style problems in Python
+after each chapter. Problems are grouped into categories, and each category is
+a ladder ordered easy → hard. Every Blind 75 problem is included, plus 64
+NeetCode 150 problems, for 139 in total. How problems are written, and why, is
+in [pedagogy.md](pedagogy.md).
 
-## Features
+## What a learner gets
 
-- **Blind 75 Problems**: Core problems embedded directly in Go code
-- **Progressive Hints**: Approach, algorithm, and code hints revealed incrementally
-- **Test Case Validation**: Run code against individual test cases or submit for full validation
-- **Chapter Links**: Each problem links to related learning chapters
-- **Execution Visualization**: Step-by-step visualization of code execution
-- **Progress Tracking**: LocalStorage-based progress with export/import capability
-- **Extensible**: Add custom problems via JSON files
+- **Ladders**: each category lists its problems in `Order`, and each step
+  adds one idea to the last. A link at the top of each category leads to the
+  chapter that teaches it.
+- **Fading hints**: a guiding question, then the key insight, then a subgoal
+  plan, then a code skeleton with blanks.
+- **Run** a visible test case with a line-by-line visualization, or **Submit**
+  against every case, hidden ones included. Every case says what it checks.
+- **Solutions**:
+  - The solution unlocks after an attempt or all the hints; it can be
+    overridden.
+  - It covers the brute force, the key insight, why it works, the code with a
+    subgoal-labelled walkthrough, common mistakes, alternatives with runnable
+    code, and self-check questions.
+- **After solving**: self-explanation questions and a difficulty rating that
+  schedules the problem for spaced review.
+- **Review**: a solved problem comes back after 3 days, and each interval
+  then grows about 2.5×. A Hard rating grows it 1.2× and an Easy rating 3.5×.
+  Viewing the solution before solving brings a problem back the next day.
+- **Mixed Practice**: picks problems from every category the learner has
+  started and hides the category. The learner names the pattern before
+  coding.
+
+Progress lives in the browser's localStorage, under
+`dsatutor_practice_progress` and `dsatutor_chapter_progress`, and can be
+exported and imported as JSON.
+
+## Categories
+
+| # | Category | Problems | Taught in chapter |
+|---|---|---|---|
+| 1 | Arrays & Hashing | 9 | 2 |
+| 2 | Two Pointers | 5 | 3 |
+| 3 | Sliding Window | 6 | 4 |
+| 4 | Stack | 7 | 5 |
+| 5 | Binary Search | 7 | 6 |
+| 6 | Linked List | 9 | 7 |
+| 7 | Trees | 11 | 9 |
+| 8 | Tries | 3 | 10 |
+| 9 | Heap / Priority Queue | 6 | 11 |
+| 10 | Backtracking | 9 | 12 |
+| 11 | Graphs | 12 | 13 |
+| 12 | Advanced Graphs | 6 | 14 |
+| 13 | 1-D Dynamic Programming | 11 | 15 |
+| 14 | 2-D Dynamic Programming | 11 | 16 |
+| 15 | Greedy | 8 | 17 |
+| 16 | Intervals | 5 | 18 |
+| 17 | Math & Geometry | 8 | 19 |
+| 18 | Bit Manipulation | 6 | 20 |
 
 ## Architecture
 
-### Backend Components
-
 ```
 internal/practice/
-  problem.go              - Core data structures (Problem, TestCase, Hint, Solution)
-  embedded_problems.go    - Aggregator slice for all problems
-  problems_*.go           - Category-specific problem files:
-    problems_arrays_hashing.go    - Arrays & Hashing (9 problems)
-    problems_two_pointers.go      - Two Pointers (5 problems)
-    problems_sliding_window.go    - Sliding Window (6 problems)
-    problems_stack.go             - Stack (7 problems)
-    problems_binary_search.go     - Binary Search (7 problems)
-    problems_linked_list.go       - Linked List (9 problems)
-    problems_trees.go             - Trees (11 problems)
-    problems_tries.go             - Tries (3 problems)
-    problems_heap.go              - Heap / Priority Queue (6 problems)
-    problems_backtracking.go      - Backtracking (7 problems)
-    problems_graphs.go            - Graphs (18 problems)
-    problems_1d_dp.go             - 1D Dynamic Programming (11 problems)
-    problems_2d_dp.go             - 2D Dynamic Programming (10 problems)
-    problems_greedy.go            - Greedy (7 problems)
-    problems_intervals.go         - Intervals (5 problems)
-    problems_math.go              - Math & Geometry (8 problems)
-    problems_bit_manipulation.go  - Bit Manipulation (6 problems)
-  submission.go           - Submission handling (RunRequest, SubmitRequest, Results)
-  category.go             - Problem categories (Blind75Categories)
-  loader.go               - Problem loading (embedded Go + optional JSON files)
-  embed.go                - Embedded filesystem for custom problems
-  problems/               - Directory for custom JSON problems (optional)
+  problem.go            Problem, Harness, Hint, Solution, SelfCheck, TestCase
+  category.go           categories in curriculum order, with their chapters
+  problems_*.go         one file per category; each appends to EmbeddedProblems in init()
+  loader.go             loads embedded problems plus optional JSON files, sorted by ladder
+  problems/             optional custom *.json problems (embedded at build time)
+internal/judge/         runs code for one test case and decides pass/fail
+internal/sandbox/       sandbox.go (Python subprocess), tracer.py (steps), harness.py (calling convention)
+internal/web/           practice_handlers.go (API); static/app.js and static/learn.js (UI)
 ```
 
-Each category file defines its own slice (e.g., `ArraysHashingProblems`) and uses an `init()` function to append problems to the main `EmbeddedProblems` slice. This organization makes it easy to add, update, or fix problems within a specific category without navigating a large monolithic file.
+### How a test case is judged
 
-### Problem Loading Strategy
+1. `judge.Spec` turns the problem's `Harness` and the test's input map into a
+   harness spec: function name and parameters (from the starter code), node
+   conversions, design or round-trip mode, an in-place parameter, a prelude,
+   and a validator.
+2. The sandbox runs the learner's code, then `harness.py` builds the
+   arguments (for example a `ListNode` chain from `[1,2,3]`), calls the code,
+   and converts the answer back to JSON.
+3. The judge compares the result with `Expected`. The comparison is `exact` by
+   default, `unordered`, or `unordered-nested`, with numbers matching within
+   1e-5. When the problem has a `Validator`, the validator's verdict is used
+   instead.
 
-1. **Embedded Problems** (primary): Core Blind 75 problems are defined in `embedded_problems.go` as pure Go structs. These are always available and don't require any external files.
+Submit runs without tracing, which keeps it fast. Run and the solution
+visualizer trace the first 1000 steps; the code still finishes, and its
+answer is still checked.
 
-2. **JSON Problems** (optional): Additional problems can be added via JSON files in `internal/practice/problems/`. These are loaded on startup and merged with the embedded problems.
+The harness options are listed in [pedagogy.md](pedagogy.md#harness-how-the-judge-calls-the-code).
 
-### Frontend Components
-
-The practice UI is integrated into the main `app.js` with:
-
-- `practiceState` - Global state for practice mode
-- Problem list view with category grouping
-- Problem workspace with 3-column layout
-- Code editor with run/submit functionality
-- Test case panel with pass/fail indicators
-- Hints panel with progressive reveal
-- Solution panel with walkthrough
-
-### API Endpoints
+## API
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/practice/problems` | GET | List all problems (returns `{problems: [], total, stats}`) |
-| `/api/practice/problems/{id}` | GET | Get problem details |
-| `/api/practice/categories` | GET | List all categories |
-| `/api/practice/run` | POST | Run code against single test case |
-| `/api/practice/submit` | POST | Run code against all test cases |
-| `/api/practice/hint/{id}/{index}` | GET | Get specific hint |
-| `/api/practice/solution/{id}` | GET | Get full solution |
-| `/api/practice/solution-viz/{id}` | POST | Run solution through sandbox for visualization |
-| `/api/practice/progress/export` | GET | Export progress JSON |
-| `/api/practice/progress/import` | POST | Import progress JSON |
+| `/api/practice/problems` | GET | Problem summaries in ladder order (`{problems, total, stats}`) |
+| `/api/practice/problems/{id}` | GET | Problem with hints and self-check. Hidden tests show only their `note`. |
+| `/api/practice/categories` | GET | Categories in curriculum order, with problem counts |
+| `/api/practice/run` | POST | `{problemId, code, testCaseIndex}`: one visible case, traced |
+| `/api/practice/submit` | POST | `{problemId, code}`: every case. Returns `{status, passedCount, totalCount, results}`. |
+| `/api/practice/hints/{id}/{level}` | GET | A single hint |
+| `/api/practice/solution/{id}` | GET | The full solution |
+| `/api/practice/solution-viz/{id}` | POST | The reference solution traced on a visible case |
+| `/api/practice/progress/export`, `/import` | GET/POST | Progress JSON |
 
-## Embedded Problems
+## Adding a problem
 
-The core Blind 75 problems are defined directly in Go code in `internal/practice/embedded_problems.go`. This provides:
+Follow [pedagogy.md](pedagogy.md#writing-a-practice-problem). Add the problem
+to its category's `problems_*.go` file with the next `Order`, then run:
 
-- **No external dependencies**: Problems are compiled into the binary
-- **Type safety**: Full Go compiler checks on problem definitions
-- **Easy maintenance**: Edit problems directly in Go code
-- **Fast loading**: No file I/O or JSON parsing at startup
-
-Example embedded problem:
-
-```go
-{
-    ID:         "two-sum",
-    Number:     1,
-    Title:      "Two Sum",
-    Difficulty: "Easy",
-    Category:   "arrays-hashing",
-    Tags:       []string{"Array", "Hash Table"},
-    RelatedChapters: []int{2, 3},
-    Description: `Given an array of integers nums and an integer target...`,
-    Constraints: []string{
-        "2 <= nums.length <= 10^4",
-        "-10^9 <= nums[i] <= 10^9",
-    },
-    Examples: []Example{
-        {Input: "nums = [2,7,11,15], target = 9", Output: "[0,1]"},
-    },
-    TestCases: []TestCase{
-        {Input: map[string]interface{}{"nums": []int{2, 7, 11, 15}, "target": 9}, Expected: []int{0, 1}},
-    },
-    StarterCode: "def twoSum(nums, target):\n    pass",
-    Hints: []Hint{
-        {Level: 1, Type: "approach", Content: "Use a hash table..."},
-    },
-    Solution: Solution{
-        Code: `def twoSum(nums, target):
-    seen = {}
-    for i, num in enumerate(nums):
-        if target - num in seen:
-            return [seen[target - num], i]
-        seen[num] = i`,
-    },
-}
+```sh
+DSATUTOR_CATEGORY=<category> go test ./internal/contentcheck/
+go test ./internal/judge/ -run 'TestReferenceSolutions/<category>/'
 ```
 
-## Adding Custom Problems
-
-To add problems beyond the embedded Blind 75, create JSON files in `internal/practice/problems/`:
-
-### JSON Problem Format
-
-```json
-{
-  "id": "custom-problem",
-  "number": 100,
-  "title": "Custom Problem",
-  "difficulty": "Medium",
-  "category": "arrays-hashing",
-  "tags": ["Array", "Custom"],
-  "relatedChapters": [2],
-  "description": "Problem description...",
-  "constraints": ["constraint 1"],
-  "examples": [
-    {
-      "input": "nums = [1,2,3]",
-      "output": "6",
-      "explanation": "Sum of all elements"
-    }
-  ],
-  "testCases": [
-    {
-      "input": {"nums": [1, 2, 3]},
-      "expected": 6,
-      "hidden": false
-    }
-  ],
-  "timeComplexity": "O(n)",
-  "spaceComplexity": "O(1)",
-  "starterCode": "def solve(nums):\n    pass",
-  "hints": [
-    {"type": "approach", "content": "Hint 1"},
-    {"type": "algorithm", "content": "Hint 2"}
-  ],
-  "solution": {
-    "approach": "Simple sum",
-    "code": "def solve(nums):\n    return sum(nums)",
-    "walkthrough": []
-  }
-}
-```
-
-### Adding a Custom Problem
-
-1. Create a JSON file in `internal/practice/problems/`:
-   ```
-   internal/practice/problems/custom-problem.json
-   ```
-
-2. Rebuild the application to embed the new file:
-   ```bash
-   go build ./cmd/tutor
-   ```
-
-3. The problem will be loaded on startup and merged with embedded problems.
-
-## Problem Categories
-
-The Blind 75 problems are organized into these categories (defined in `category.go`):
-
-| ID | Name | Description |
-|----|------|-------------|
-| arrays-hashing | Arrays & Hashing | Array manipulation and hash table problems |
-| two-pointers | Two Pointers | Problems using the two-pointer technique |
-| sliding-window | Sliding Window | Sliding window pattern problems |
-| stack | Stack | Stack-based problems |
-| binary-search | Binary Search | Binary search and variants |
-| linked-list | Linked List | Linked list manipulation problems |
-| trees | Trees | Binary tree and BST problems |
-| tries | Tries | Trie (prefix tree) problems |
-| heap-priority-queue | Heap / Priority Queue | Heap and priority queue problems |
-| backtracking | Backtracking | Backtracking and recursive enumeration |
-| graphs | Graphs | Graph traversal and algorithms |
-| 1d-dp | 1-D Dynamic Programming | One-dimensional DP problems |
-| 2d-dp | 2-D Dynamic Programming | Two-dimensional DP problems |
-| greedy | Greedy | Greedy algorithm problems |
-| intervals | Intervals | Interval scheduling and merging |
-| math-geometry | Math & Geometry | Mathematical and geometric problems |
-| bit-manipulation | Bit Manipulation | Bitwise operation problems |
-
-## Progress Tracking
-
-Progress is stored in browser LocalStorage under the key `dsatutor_practice_progress`:
-
-```json
-{
-  "two-sum": {
-    "attempts": 3,
-    "solved": true,
-    "hintsUsed": 1,
-    "lastAttempt": "2024-01-15T10:30:00.000Z"
-  }
-}
-```
-
-### Export/Import
-
-Users can export their progress to a JSON file and import it on another device:
-
-- **Export**: Click "Export Progress" button to download JSON file
-- **Import**: Click "Import Progress" to upload a previously exported file
-
-## Code Execution
-
-Practice mode uses the existing sandbox system for code execution:
-
-1. User code is wrapped with test case inputs
-2. Code runs in Python sandbox with tracing enabled
-3. Output is compared against expected result
-4. Execution steps are captured for visualization
-
-### Test Input Formats
-
-The loader supports two input formats:
-
-1. **Object format** (preferred):
-   ```json
-   {"input": {"nums": [1, 2, 3], "target": 5}}
-   ```
-
-2. **String format** (legacy):
-   ```json
-   {"input": "[1, 2, 3], 5"}
-   ```
-
-## UI Components
-
-### Problem List View
-
-- Category sections with progress counters
-- Problem cards showing difficulty and solved status
-- Filter controls for difficulty, category, status, and search
-
-### Problem Workspace
-
-Two-column layout:
-
-1. **Left Panel**: Problem description, examples, constraints, hints, solution, and visualization tabs
-2. **Right Panel**: Code editor with run/submit buttons and test case results
-
-### Code Editor
-
-The practice mode uses the same CodeMirror-based editor as the sandbox with full Python support:
-
-- **Syntax Highlighting**: Full Python syntax highlighting with One Dark theme
-- **IntelliSense/Autocomplete**: Built-in functions, keywords, methods, and DSA helper classes
-- **Smart Indentation**: Automatic Python-style indentation
-- **Line Numbers**: Displayed in the gutter for easy reference
-
-See the [Sandbox documentation](sandbox.md#code-editor-features) for full editor feature details.
-
-### Visualization Tab
-
-The Visualization tab provides a dedicated full-panel view for understanding algorithm execution:
-
-- **Code Panel**: Shows the solution code with line-by-line highlighting synchronized with execution
-- **Variables Panel**: Displays variable state at each step
-- **Data Structure Canvas**: Visual representations of arrays, linked lists, trees, and graphs
-- **Playback Controls**: Reset, Back, Play/Pause, Step, and speed slider
-
-### Solution Visualization
-
-Users can visualize the built-in solution's execution step-by-step:
-
-1. Open a problem and click the "Solution" tab
-2. Click "Show Solution" to reveal the solution code
-3. Click "Visualize Solution" to run the solution through the sandbox
-4. The Visualize tab will open automatically, showing:
-   - The solution code with current line highlighted
-   - Variable state changes at each step
-   - Data structure visualizations (arrays with pointer highlights, linked lists, trees, graphs)
-   - Playback controls with adjustable speed
-
-This helps users understand not just what the solution does, but how it works step-by-step.
-
-## Usage
-
-1. Click "Practice" in the sidebar to open practice mode
-2. Select a problem from the list
-3. Read the description and examples
-4. Write your solution in the editor
-5. Click "Run" to test against the current test case
-6. Click "Submit" to validate against all test cases
-7. Use hints if stuck (revealed progressively)
-8. View solution after solving or giving up
-
-## Configuration
-
-Practice mode is enabled by default when problems are loaded. The server logs the number of loaded problems at startup:
-
-```
-Loaded 20 embedded problems
-Total problems loaded: 20
-```
-
-If no problems are found, the server continues without practice support, and the Practice button is hidden.
+Custom problems can also go in `internal/practice/problems/*.json` using the
+JSON form of `practice.Problem`. These aren't held to the content checks.

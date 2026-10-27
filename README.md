@@ -1,14 +1,39 @@
 # DSA Tutor
 
-An interactive Data Structures and Algorithms tutor with step-by-step visualizations, code highlighting, and algorithm animations.
+An interactive Data Structures and Algorithms course: 21 chapters that take a
+beginner from Big O to dynamic programming, each leading into a ladder of
+LeetCode-style practice problems that run and are checked in the browser.
+
+## How it teaches
+
+The course is built on well-replicated learning research; see
+[docs/pedagogy.md](docs/pedagogy.md) for the evidence and the authoring rules.
+
+- **Worked examples, then fading**: each chapter solves a problem step by step
+  with subgoal labels, then gives a completion problem with the key lines
+  blanked out, then the practice ladder.
+- **Retrieval practice**: chapters end with questions answered from memory
+  before the answer is shown.
+- **Hints that fade**: every problem has a guiding question, the key insight,
+  a subgoal plan, and a code skeleton, in that order. The solution stays behind
+  a soft gate until you've made an attempt.
+- **Explanations that say why**: each solution covers the brute force, the
+  insight that improves it, a correctness argument, and common mistakes,
+  followed by self-explanation questions.
+- **Spaced review**: solved problems come back on a schedule set by how hard
+  they felt.
+- **Interleaved practice**: Mixed Practice draws from every topic you've
+  started and asks you to name the pattern before coding.
+- **Specific feedback**: every test case says what it checks; failures show
+  expected vs actual, and the visualizer replays your run line by line.
 
 ## Features
 
-- **Algorithm Animations** - Step-by-step walkthroughs with synchronized code highlighting
-- **Interactive Visualizations** - SVG-based visualizations for Big-O complexity curves
-- **Variable Tracking** - Real-time display of algorithm state and variable values
-- **Multiple Chapters** - Covers fundamental DSA topics from binary search to graph algorithms
-- **Web Interface** - Modern, responsive UI with collapsible sidebar navigation
+- **Algorithm Animations**: step-by-step walkthroughs with synchronized code highlighting
+- **Practice judge**: Python solutions run against visible and hidden tests,
+  including linked-list, tree, graph and class-design problems
+- **Execution visualization**: any run can be replayed line by line with variables and data structures
+- **Sandbox**: free-form Python with the same visualizer
 
 ## Available Animators
 
@@ -40,17 +65,13 @@ An interactive Data Structures and Algorithms tutor with step-by-step visualizat
 
 ## Quick Start
 
-### Prerequisites
+Builds and tests go through ImLazy (`lazy.toml`); `imlazy list` shows the tasks.
 
-- Go 1.22 or later
-
-### Running the Web Server
-
-```bash
-go run ./cmd/tutor -serve
+```sh
+imlazy setup    # installs Go and Python 3 with rvn if missing
+imlazy serve    # http://localhost:8080
+imlazy test     # unit tests, content checks, and every reference solution through the judge
 ```
-
-Then open http://localhost:8080 in your browser.
 
 ### Command Line Options
 
@@ -72,23 +93,19 @@ go run ./cmd/tutor -play 1
 
 ```
 DSATutor/
-├── cmd/tutor/           # Main application entry point
-│   └── main.go
+├── cmd/tutor/              # Main application entry point
 ├── internal/
-│   ├── chapter/         # Chapter definitions and templates
-│   │   ├── chapter.go   # Chapter data structures
-│   │   ├── registry.go  # Chapter registry
-│   │   └── templates.go # Built-in chapter content
-│   ├── storage/         # JSON import/export
-│   ├── ui/              # Console renderer
-│   └── web/             # Web server and static assets
-│       ├── server.go
-│       └── static/
-│           ├── index.html
-│           ├── app.js
-│           └── styles.css
-└── docs/                # Documentation
-    └── visualizer-system.md
+│   ├── chapter/            # Curriculum: chapter.go (model), templates.go (order), chNN_*.go (one per chapter)
+│   ├── practice/           # Problems (problems_*.go), categories, loader
+│   ├── judge/              # Runs code against a problem's tests and decides pass/fail
+│   ├── sandbox/            # Python execution: tracer.py, harness.py, security checks
+│   ├── contentcheck/       # Tests that hold content to docs/pedagogy.md
+│   ├── storage/            # JSON import/export
+│   ├── ui/                 # Console renderer
+│   └── web/                # HTTP server and static assets (app.js, learn.js, editor.js)
+├── docs/                   # pedagogy.md, chapters.md, practice.md, sandbox.md, ...
+├── scripts/system-deps.sh  # Installs Go and Python 3 with rvn
+└── lazy.toml               # Build, serve and test tasks
 ```
 
 ## Web Interface
@@ -173,21 +190,23 @@ See [docs/visualizer-system.md](docs/visualizer-system.md) for detailed document
 |----------|--------|-------------|
 | `/` | GET | Web interface |
 | `/api/chapters` | GET | List all chapters as JSON |
+| `/api/practice/*` | GET/POST | Practice problems, run and submit; see [docs/practice.md](docs/practice.md) |
 | `/static/*` | GET | Static assets |
 
 ## Development
 
-### Building
-
-```bash
-go build -o dsatutor ./cmd/tutor
+```sh
+imlazy build   # go build -o dsatutor ./cmd/tutor
+imlazy test    # go vet + go test ./...
 ```
 
-### Testing
+`imlazy test` includes two content gates:
 
-```bash
-go test ./...
-```
+- `internal/judge`: every problem's reference solution and alternatives pass
+  every test through the same judge a learner's Submit uses.
+- `internal/contentcheck`: chapters and problems have the structure
+  [docs/pedagogy.md](docs/pedagogy.md) requires: fading hints, edge-case tests,
+  correct walkthrough line ranges, valid chapter links, and so on.
 
 ## License
 

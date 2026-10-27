@@ -14,7 +14,8 @@ package practice
 //   - problems_tries.go            : Tries
 //   - problems_heap.go             : Heap / Priority Queue
 //   - problems_backtracking.go     : Backtracking
-//   - problems_graphs.go           : Graphs (including Advanced Graphs)
+//   - problems_graphs.go           : Graphs
+//   - problems_advanced_graphs.go  : Advanced Graphs
 //   - problems_1d_dp.go            : 1D Dynamic Programming
 //   - problems_2d_dp.go            : 2D Dynamic Programming
 //   - problems_greedy.go           : Greedy

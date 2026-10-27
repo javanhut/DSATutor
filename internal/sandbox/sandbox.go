@@ -13,21 +13,54 @@ import (
 	"time"
 )
 
-//go:embed tracer.py dsa_helpers.py
+//go:embed tracer.py harness.py dsa_helpers.py
 var sandboxFiles embed.FS
 
 // ExecuteRequest represents a request to execute Python code.
 type ExecuteRequest struct {
 	Code    string `json:"code"`
 	Timeout int    `json:"timeout"` // milliseconds, max 10000
+
+	// NoTrace skips line-by-line recording. Judging a submission doesn't need
+	// the visualization, and tracing slows long-running solutions a lot.
+	NoTrace bool `json:"noTrace,omitempty"`
+
+	// Harness, when set, tells the sandbox how to call the user's code for one
+	// test case and report its return value (see harness.py).
+	Harness *HarnessSpec `json:"harness,omitempty"`
+}
+
+// HarnessSpec describes how to run one test case against user code.
+type HarnessSpec struct {
+	Mode       string                 `json:"mode"`                 // function, design, roundtrip
+	Function   string                 `json:"function,omitempty"`   // function name, or "enc,dec" for roundtrip
+	ClassName  string                 `json:"className,omitempty"`  // roundtrip owner class (e.g. Codec)
+	Params     []string               `json:"params,omitempty"`     // argument order
+	Inputs     map[string]interface{} `json:"inputs"`               // raw JSON inputs keyed by parameter
+	ParamTypes map[string]string      `json:"paramTypes,omitempty"` // ListNode, TreeNode, GraphNode, ...
+	ReturnType string                 `json:"returnType,omitempty"` // GraphNode, RandomList, TreeNodeVal
+	InPlace    string                 `json:"inPlace,omitempty"`    // parameter whose final value is the answer
+	Prelude    string                 `json:"prelude,omitempty"`    // trusted definitions run before user code
+	Validator  string                 `json:"validator,omitempty"`  // trusted check(raw, args, result, expected)
+	Expected   interface{}            `json:"expected,omitempty"`
+}
+
+// Verdict is a validator's decision on a returned answer.
+type Verdict struct {
+	Passed  bool   `json:"passed"`
+	Message string `json:"message"`
 }
 
 // ExecuteResponse represents the result of code execution.
 type ExecuteResponse struct {
-	Success bool        `json:"success"`
-	Steps   []Step      `json:"steps"`
-	Output  string      `json:"output"`
-	Error   string      `json:"error,omitempty"`
+	Success   bool        `json:"success"`
+	Steps     []Step      `json:"steps"`
+	Output    string      `json:"output"`
+	Error     string      `json:"error,omitempty"`
+	Truncated bool        `json:"truncated,omitempty"` // more steps ran than were recorded
+	HasResult bool        `json:"hasResult,omitempty"`
+	Result    interface{} `json:"result,omitempty"` // harness return value as JSON
+	Verdict   *Verdict    `json:"verdict,omitempty"`
 }
 
 // Step represents a single execution step captured by the tracer.
@@ -110,6 +143,16 @@ func Execute(req ExecuteRequest) (*ExecuteResponse, error) {
 		return nil, fmt.Errorf("failed to write tracer script: %w", err)
 	}
 
+	// Write test harness
+	harnessPath := filepath.Join(tmpDir, "harness.py")
+	harnessContent, err := sandboxFiles.ReadFile("harness.py")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read harness script: %w", err)
+	}
+	if err := os.WriteFile(harnessPath, harnessContent, 0600); err != nil {
+		return nil, fmt.Errorf("failed to write harness script: %w", err)
+	}
+
 	// Write DSA helpers
 	helpersPath := filepath.Join(tmpDir, "dsa_helpers.py")
 	helpersContent, err := sandboxFiles.ReadFile("dsa_helpers.py")
@@ -130,7 +173,23 @@ func Execute(req ExecuteRequest) (*ExecuteResponse, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Millisecond)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "python3", tracerPath, codePath)
+	args := []string{tracerPath, codePath}
+	if req.Harness != nil {
+		specPath := filepath.Join(tmpDir, "harness.json")
+		spec, err := json.Marshal(req.Harness)
+		if err != nil {
+			return nil, fmt.Errorf("failed to encode harness spec: %w", err)
+		}
+		if err := os.WriteFile(specPath, spec, 0600); err != nil {
+			return nil, fmt.Errorf("failed to write harness spec: %w", err)
+		}
+		args = append(args, specPath)
+	}
+	if req.NoTrace {
+		args = append(args, "--no-trace")
+	}
+
+	cmd := exec.CommandContext(ctx, "python3", args...)
 	cmd.Dir = tmpDir
 
 	output, err := cmd.Output()
