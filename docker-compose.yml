@@ -1,6 +1,9 @@
 services:
   dsatutor:
-    build: .
+    build:
+      context: .
+      # re-pull base images, so javanhut/oxigen:latest is the newest release
+      pull: true
     ports:
       - "8080:8080"
     restart: unless-stopped

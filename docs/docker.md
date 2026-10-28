@@ -16,9 +16,12 @@ Then open http://localhost:8080 in your browser.
 ### Build Locally
 
 ```bash
-docker build -t dsatutor .
+docker build --pull -t dsatutor .
 docker run -p 8080:8080 dsatutor
 ```
+
+`--pull` fetches the newest Oxigen release (see [Image Details](#image-details));
+with podman use `podman build --pull=always`.
 
 ## Configuration
 
@@ -48,7 +51,10 @@ For local development and testing, use the included docker-compose.yml:
 docker compose up --build
 ```
 
-This builds the image and starts the container with port 8080 exposed.
+This builds the image and starts the container with port 8080 exposed. The
+compose file sets `pull: true`, so Docker Compose re-pulls the base images on
+every build. podman-compose ignores that setting; build with
+`podman-compose build --pull always` instead.
 
 To run in the background:
 
@@ -74,11 +80,14 @@ powers the practice problems. The `oxigen` binary goes to `/usr/local/bin` and
 its standard library to `/usr/local/lib/oxigen/stdlib`, where the binary looks
 for it.
 
-The Oxigen release is pinned by the `OXIGEN_VERSION` build argument (default
-`0.2.1`). To ship another release:
+The Oxigen release comes from the `OXIGEN_VERSION` build argument, which
+defaults to `latest`. A build only gets the newest release if it re-pulls that
+tag (`docker build --pull`, `podman build --pull=always`); otherwise it reuses
+whichever `latest` is cached. The publishing workflow always pulls. To pin a
+release instead:
 
 ```bash
-docker build --build-arg OXIGEN_VERSION=0.2.0 -t dsatutor .
+docker build --build-arg OXIGEN_VERSION=0.2.2 -t dsatutor .
 ```
 
 ## Automated Publishing with GitHub Actions

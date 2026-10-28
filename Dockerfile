@@ -1,6 +1,8 @@
-# Oxigen release to ship for Oxigen solutions (see docs/oxigen.md). Override
-# with --build-arg OXIGEN_VERSION=<tag> from https://hub.docker.com/r/javanhut/oxigen.
-ARG OXIGEN_VERSION=0.2.1
+# Oxigen release to ship for Oxigen solutions (see docs/oxigen.md). latest
+# tracks the newest release; build with --pull so a cached copy isn't reused.
+# Pin one with --build-arg OXIGEN_VERSION=<tag> from
+# https://hub.docker.com/r/javanhut/oxigen.
+ARG OXIGEN_VERSION=latest
 
 # Oxigen's release image: a static binary plus its standard library
 FROM docker.io/javanhut/oxigen:${OXIGEN_VERSION} AS oxigen
