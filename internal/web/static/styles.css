@@ -3506,7 +3506,7 @@ input[type="range"] { accent-color: var(--accent); }
 .cm-editor-container .CodeMirror {
   height: 100%;
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.6;
 }
 
@@ -3530,14 +3530,23 @@ input[type="range"] { accent-color: var(--accent); }
   border-right: 1px solid var(--border);
 }
 
-.cm-s-paper .CodeMirror-linenumber { color: var(--code-gutter); padding: 0 10px 0 6px; }
+.cm-s-paper .CodeMirror-lines { padding: 12px 0; }
+
+/* Left padding is also set inline by editor.js (LINE_PADDING) for the
+   hanging indent of wrapped lines. */
+.cm-s-paper.CodeMirror pre.CodeMirror-line,
+.cm-s-paper.CodeMirror pre.CodeMirror-line-like { padding: 0 12px; }
+
+.cm-s-paper .CodeMirror-linenumber { color: var(--code-gutter); padding: 0 12px 0 10px; }
+.cm-s-paper .CodeMirror-activeline .CodeMirror-linenumber { color: var(--text-dim); }
 .cm-s-paper .CodeMirror-cursor { border-left: 2px solid var(--mark); }
 .cm-s-paper .CodeMirror-selected,
 .cm-s-paper.CodeMirror-focused .CodeMirror-selected,
 .cm-s-paper .CodeMirror-line::selection,
 .cm-s-paper .CodeMirror-line > span::selection,
 .cm-s-paper .CodeMirror-line > span > span::selection { background: var(--code-selection); }
-.cm-s-paper .CodeMirror-activeline-background { background: rgba(var(--ink-rgb), 0.04); }
+.cm-s-paper .CodeMirror-activeline-background { background: rgba(var(--ink-rgb), 0.035); }
+.cm-s-paper.CodeMirror:not(.CodeMirror-focused) .CodeMirror-activeline-background { background: transparent; }
 .cm-s-paper .CodeMirror-matchingbracket { color: var(--code-text) !important; background: rgba(var(--accent-rgb), 0.16); text-decoration: none; }
 .cm-s-paper .CodeMirror-nonmatchingbracket { color: var(--error); }
 
@@ -3603,7 +3612,7 @@ input[type="range"] { accent-color: var(--accent); }
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 13px;
   max-height: 200px;
   overflow-y: auto;
   z-index: 1000;

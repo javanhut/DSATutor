@@ -56,7 +56,9 @@
     'stack', 'queue', 'visited', 'seen', 'memo', 'dp', 'graph',
   ]);
 
-  // Completion from a fixed word list
+  // Completion from a fixed word list plus the identifiers already in the
+  // editor. The word being typed is left out, so finishing a word and
+  // pressing Enter starts a new line instead of "accepting" it.
   function wordHint(words) {
     return function(editor) {
       const cur = editor.getCursor();
@@ -64,14 +66,15 @@
       const start = token.start;
       const end = cur.ch;
       const word = token.string.slice(0, end - start);
+      const empty = { list: [], from: cur, to: cur };
+      if (!/^[A-Za-z_]\w*$/.test(word)) return empty;
 
-      const list = words.filter(function(item) {
+      const own = editor.getValue().match(/[A-Za-z_]\w+/g) || [];
+      const seen = {};
+      const list = words.concat(own).filter(function(item) {
+        if (seen[item] || item === word) return false;
+        seen[item] = true;
         return item.toLowerCase().startsWith(word.toLowerCase());
-      }).map(function(item) {
-        return {
-          text: item,
-          displayText: item
-        };
       });
 
       return {
@@ -139,6 +142,23 @@
   // Store editor instances globally
   window.dsaEditors = {};
 
+  // CodeMirror measures character widths once and caches them. The editor is
+  // often created before IBM Plex Mono has loaded, and measuring the fallback
+  // font leaves the cursor drifting off the text, so re-measure once the web
+  // fonts arrive.
+  function refreshAll() {
+    Object.keys(window.dsaEditors).forEach(function(id) {
+      window.dsaEditors[id].refresh();
+    });
+  }
+  if (document.fonts) {
+    document.fonts.addEventListener('loadingdone', refreshAll);
+    document.fonts.ready.then(refreshAll);
+  }
+
+  // Width of the line padding in styles.css (.cm-s-paper pre.CodeMirror-line)
+  const LINE_PADDING = 12;
+
   // Create a CodeMirror editor
   function createEditor(containerId, options) {
     options = options || {};
@@ -178,20 +198,37 @@
       electricChars: true,
       matchBrackets: true,
       autoCloseBrackets: true,
+      styleActiveLine: true,
       lineWrapping: true,
       extraKeys: {
+        // Spaces to the next tab stop, or indent the selected lines
         'Tab': function(cm) {
           if (cm.somethingSelected()) {
             cm.indentSelection('add');
-          } else {
-            cm.replaceSelection('    ', 'end');
+            return;
           }
+          const unit = cm.getOption('indentUnit');
+          cm.replaceSelection(' '.repeat(unit - cm.getCursor().ch % unit), 'end');
+        },
+        // In leading whitespace, delete back to the previous tab stop
+        'Backspace': function(cm) {
+          const cur = cm.getCursor();
+          const before = cm.getLine(cur.line).slice(0, cur.ch);
+          if (cm.somethingSelected() || cur.ch === 0 || /\S/.test(before)) {
+            return CodeMirror.Pass;
+          }
+          const unit = cm.getOption('indentUnit');
+          const to = Math.floor((cur.ch - 1) / unit) * unit;
+          cm.replaceRange('', CodeMirror.Pos(cur.line, to), cur, '+delete');
         },
         'Shift-Tab': function(cm) {
           cm.indentSelection('subtract');
         },
         'Ctrl-Space': 'autocomplete',
         'Ctrl-/': function(cm) {
+          cm.toggleComment();
+        },
+        'Cmd-/': function(cm) {
           cm.toggleComment();
         }
       },
@@ -204,16 +241,37 @@
     // Set initial content
     editor.setValue(initialContent);
 
-    // Auto-show hints while typing
+    // Auto-show hints while typing, but not inside comments or strings
     editor.on('inputRead', function(cm, change) {
       if (change.text[0] && /\w/.test(change.text[0])) {
         const cur = cm.getCursor();
         const token = cm.getTokenAt(cur);
-        if (token.string.length >= 2) {
+        if (token.string.length >= 2 && !/comment|string/.test(token.type || '')) {
           cm.showHint({ completeSingle: false });
         }
       }
     });
+
+    // Wrapped lines continue under their own indentation, not at column 0
+    editor.on('renderLine', function(cm, line, elt) {
+      const off = CodeMirror.countColumn(line.text, null, cm.getOption('tabSize')) * cm.defaultCharWidth();
+      elt.style.textIndent = '-' + off + 'px';
+      elt.style.paddingLeft = (LINE_PADDING + off) + 'px';
+    });
+
+    // CodeMirror only re-measures on window resizes; also do it when the
+    // editor's own box changes, e.g. it was created hidden or a panel moved.
+    if (window.ResizeObserver) {
+      let size = '';
+      new ResizeObserver(function() {
+        const wrapper = editor.getWrapperElement();
+        const now = wrapper.offsetWidth + 'x' + wrapper.offsetHeight;
+        if (now !== size && wrapper.offsetWidth > 0) {
+          size = now;
+          editor.refresh();
+        }
+      }).observe(editor.getWrapperElement());
+    }
 
     // Handle change callback
     if (options.onChange) {
