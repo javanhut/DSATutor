@@ -30,6 +30,9 @@ The course is built on well-replicated learning research; see
 ## Features
 
 - **Algorithm Animations**: step-by-step walkthroughs with synchronized code highlighting
+- **Voice lessons**: every lesson section has a Listen button; speech is
+  synthesized server-side by [Piper](docs/tts.md), so narration works the same
+  wherever the container runs
 - **Practice judge**: Python or [Oxigen](docs/oxigen.md) solutions run against
   visible and hidden tests, including linked-list, tree, graph and
   class-design problems
@@ -100,6 +103,7 @@ DSATutor/
 │   ├── practice/           # Problems (problems_*.go), categories, loader
 │   ├── judge/              # Runs code against a problem's tests and decides pass/fail
 │   ├── sandbox/            # Code execution: tracer.py, harness.py (Python), oxigen.go, harness_lib.oxi (Oxigen), security checks
+│   ├── tts/                # Lesson narration: Piper worker (speaker.py) behind /api/tts
 │   ├── contentcheck/       # Tests that hold content to docs/pedagogy.md
 │   ├── storage/            # JSON import/export
 │   ├── ui/                 # Console renderer
@@ -192,6 +196,7 @@ See [docs/visualizer-system.md](docs/visualizer-system.md) for detailed document
 | `/` | GET | Web interface |
 | `/api/chapters` | GET | List all chapters as JSON |
 | `/api/practice/*` | GET/POST | Practice problems, run and submit; see [docs/practice.md](docs/practice.md) |
+| `/api/tts` | POST | Lesson narration as `audio/wav`; see [docs/tts.md](docs/tts.md) |
 | `/static/*` | GET | Static assets |
 
 ## Development

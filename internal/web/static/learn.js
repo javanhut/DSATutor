@@ -162,6 +162,7 @@ function renderLesson(ch) {
   if (viz) viz.classList.toggle('hidden', !hasAnimations);
   if (memory) memory.classList.toggle('hidden', !hasAnimations);
   markChapterDone();
+  if (typeof initLessonAudio === 'function') initLessonAudio();
 }
 
 function renderLessonPath(ch) {

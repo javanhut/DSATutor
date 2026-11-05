@@ -73,6 +73,9 @@ docker compose down
 - **Base Image**: Python 3.12 slim (Debian Bookworm)
 - **Build Stage**: Go 1.22 (multi-stage build)
 - **Oxigen**: copied from [`javanhut/oxigen`](https://hub.docker.com/r/javanhut/oxigen)
+- **Piper TTS**: `piper-tts` plus one voice in `/app/voices` for lesson
+  narration (see [docs/tts.md](tts.md)); pick the voice with
+  `--build-arg PIPER_VOICE=<name>` (default `en_US-lessac-medium`)
 - **Exposed Port**: 8080
 
 The image includes Python 3.12 and Oxigen for the code execution sandbox that

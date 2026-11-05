@@ -30,6 +30,14 @@ WORKDIR /app
 COPY --from=oxigen /usr/local/bin/oxigen /usr/local/bin/oxigen
 COPY --from=oxigen /usr/local/lib/oxigen/stdlib /usr/local/lib/oxigen/stdlib
 
+# Piper voice for the lesson narration endpoint (/api/tts, see docs/tts.md).
+# Any voice listed by `python3 -m piper.download_voices` works here.
+ARG PIPER_VOICE=en_US-lessac-medium
+RUN pip install --no-cache-dir piper-tts && \
+    mkdir -p /app/voices && \
+    python3 -m piper.download_voices ${PIPER_VOICE} --data-dir /app/voices
+ENV DSATUTOR_TTS_VOICE=/app/voices/${PIPER_VOICE}.onnx
+
 # Copy the binary from builder stage
 COPY --from=builder /app/dsatutor /app/dsatutor
 

@@ -11,6 +11,7 @@ import (
 	"dsatutor/internal/chapter"
 	"dsatutor/internal/practice"
 	"dsatutor/internal/sandbox"
+	"dsatutor/internal/tts"
 )
 
 //go:embed static/*
@@ -22,6 +23,7 @@ type Server struct {
 	chapters       []chapter.Chapter
 	mux            *http.ServeMux
 	practiceServer *PracticeServer
+	tts            *tts.Engine
 }
 
 // NewServer wires handlers for static content and chapter data.
@@ -62,8 +64,11 @@ func (s *Server) Listen(addr string) error {
 }
 
 func (s *Server) routes() {
+	s.tts = tts.NewEngine()
 	s.mux.HandleFunc("/api/chapters", s.handleChapters)
 	s.mux.HandleFunc("/api/sandbox/execute", s.handleSandboxExecute)
+	s.mux.HandleFunc("/api/tts", s.handleTTS)
+	s.mux.HandleFunc("/api/tts/status", s.handleTTSStatus)
 
 	// Register practice routes if practice server is initialized
 	if s.practiceServer != nil {

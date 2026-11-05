@@ -7094,3 +7094,19 @@ details.self-check summary,
   .viz-state-panel { grid-template-columns: 1fr; }
   .problem-card .problem-title { white-space: normal; }
 }
+
+/* --------------------------------------------------------------------------
+   Lesson narration (tts.js): Listen buttons in lesson section headings
+   -------------------------------------------------------------------------- */
+
+h2 .tts-btn {
+  margin-left: 12px;
+  vertical-align: middle;
+  border-color: var(--border-light);
+}
+
+h2 .tts-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
