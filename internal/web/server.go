@@ -88,6 +88,13 @@ func (s *Server) handleChapters(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
+	// The "/" pattern matches every otherwise-unrouted path; without this
+	// check any typo or stale API URL gets the index page with a misleading
+	// 200 instead of a 404.
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
+	}
 	data, err := staticFiles.ReadFile("static/index.html")
 	if err != nil {
 		http.Error(w, "index not found", http.StatusInternalServerError)
