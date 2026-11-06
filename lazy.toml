@@ -8,8 +8,13 @@ default = "build"
 # Everything below depends on this first: it checks for Go and Python 3 (the
 # sandbox runs learners' code with python3) and installs only what is missing
 # with rvn.
+[commands.permissions]
+desc = "Adde permissions to all scripts"
+run = ["chmod +x scripts/*"]
+
 [commands.system-deps]
 desc = "Install the system packages DSA Tutor needs (go, python) with rvn"
+dep = ["permissions"]
 alias = ["setup"]
 run = ["scripts/system-deps.sh"]
 
