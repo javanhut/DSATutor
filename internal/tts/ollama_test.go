@@ -48,13 +48,29 @@ func fakeOllama(t *testing.T, models []string, speechCalls *atomic.Int64) *httpt
 func TestOllamaDetectsSpeechModels(t *testing.T) {
 	srv := fakeOllama(t, []string{"llama3:8b", "lfm3-audio:latest", "phonon:latest"}, nil)
 	t.Setenv("DSATUTOR_OLLAMA_URL", srv.URL)
-	models, reason := NewOllama().SpeechModels()
+	o := NewOllama()
+	o.prefer = "" // name order, whatever OS the tests run on
+	models, reason := o.SpeechModels()
 	if reason != "" {
 		t.Fatalf("unexpected reason: %s", reason)
 	}
 	want := []string{"lfm3-audio:latest", "phonon:latest"}
 	if len(models) != len(want) || models[0] != want[0] || models[1] != want[1] {
 		t.Errorf("SpeechModels = %v, want %v (llama3 must be excluded)", models, want)
+	}
+}
+
+// On macOS NewOllama prefers phonon; the preferred model must lead the list,
+// because the first available engine is the default voice.
+func TestOllamaPreferredModelFirst(t *testing.T) {
+	srv := fakeOllama(t, []string{"lfm3-audio:latest", "phonon:latest"}, nil)
+	t.Setenv("DSATUTOR_OLLAMA_URL", srv.URL)
+	o := NewOllama()
+	o.prefer = "phonon"
+	models, _ := o.SpeechModels()
+	want := []string{"phonon:latest", "lfm3-audio:latest"}
+	if len(models) != len(want) || models[0] != want[0] || models[1] != want[1] {
+		t.Errorf("SpeechModels = %v, want %v", models, want)
 	}
 }
 

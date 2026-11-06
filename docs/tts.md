@@ -18,7 +18,9 @@ picker in the chapter header (it appears when more than one engine works):
 
 The server discovers installed Ollama speech models from `/api/tags` (checked
 every 30s, so a newly pulled model shows up without a restart) and prefers
-them; Piper is the always-there fallback. If the engine a learner picked
+them; Piper is the always-there fallback. The first available engine is the
+default voice: phonon when the server runs on macOS and phonon is installed,
+otherwise the Ollama models in name order. If the engine a learner picked
 fails mid-session, the server silently falls back to the next engine and
 names the one actually used in the `X-TTS-Engine` response header.
 

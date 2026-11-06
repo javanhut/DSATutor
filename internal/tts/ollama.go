@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -37,27 +38,39 @@ var speechModelPrefixes = []string{"lfm3-audio", "phonon"}
 type Ollama struct {
 	baseURL string
 	voice   string // optional, e.g. "Zoey" for phonon; empty lets the model pick
+	prefer  string // model listed first, making it the default voice; "" keeps name order
 	client  *http.Client
 
 	mu        sync.Mutex
 	lastCheck time.Time
-	models    []string // detected speech models, sorted
+	models    []string // detected speech models: prefer first, then by name
 	reason    string   // why empty, surfaced by /api/tts/status
 }
 
 // NewOllama reads its configuration from the environment:
 // DSATUTOR_OLLAMA_URL (default http://localhost:11434, the compose file sets
-// http://ollama:11434) and DSATUTOR_TTS_OLLAMA_VOICE.
+// http://ollama:11434) and DSATUTOR_TTS_OLLAMA_VOICE. On macOS phonon, the
+// Mac-native (MLX) voice, is preferred over the other speech models.
 func NewOllama() *Ollama {
 	url := os.Getenv("DSATUTOR_OLLAMA_URL")
 	if url == "" {
 		url = "http://localhost:11434"
 	}
-	return &Ollama{
+	o := &Ollama{
 		baseURL: strings.TrimRight(url, "/"),
 		voice:   os.Getenv("DSATUTOR_TTS_OLLAMA_VOICE"),
 		client:  &http.Client{Timeout: ollamaSynthTimeout},
 	}
+	if runtime.GOOS == "darwin" {
+		o.prefer = "phonon"
+	}
+	return o
+}
+
+// isModel reports whether an installed model name ("phonon", "phonon:latest")
+// is the model called base.
+func isModel(name, base string) bool {
+	return name == base || strings.HasPrefix(name, base+":")
 }
 
 // SpeechModels returns the installed speech-capable models, or a reason why
@@ -109,7 +122,7 @@ func (o *Ollama) fetchModels() ([]string, string) {
 	var models []string
 	for _, m := range tags.Models {
 		for _, prefix := range prefixes {
-			if m.Name == prefix || strings.HasPrefix(m.Name, prefix+":") {
+			if isModel(m.Name, prefix) {
 				models = append(models, m.Name)
 				break
 			}
@@ -119,6 +132,11 @@ func (o *Ollama) fetchModels() ([]string, string) {
 		return nil, fmt.Sprintf("no speech models installed on ollama at %s (try: ollama pull lfm3-audio, or ollama pull phonon)", o.baseURL)
 	}
 	sort.Strings(models)
+	if o.prefer != "" {
+		sort.SliceStable(models, func(i, j int) bool {
+			return isModel(models[i], o.prefer) && !isModel(models[j], o.prefer)
+		})
+	}
 	return models, ""
 }
 
