@@ -51,10 +51,13 @@ For local development and testing, use the included docker-compose.yml:
 docker compose up --build
 ```
 
-This builds the image and starts the container with port 8080 exposed. The
-compose file sets `pull: true`, so Docker Compose re-pulls the base images on
-every build. podman-compose ignores that setting; build with
-`podman-compose build --pull always` instead.
+This builds the image and starts the container with port 8080 exposed, plus
+an `ollama` service for the high-quality narration voices — pull them once
+with `docker compose exec ollama ollama pull lfm3-audio` (see
+[docs/tts.md](tts.md), including a macOS note about using a native Ollama for
+GPU speed). The compose file sets `pull: true`, so Docker Compose re-pulls
+the base images on every build. podman-compose ignores that setting; build
+with `podman-compose build --pull always` instead.
 
 To run in the background:
 

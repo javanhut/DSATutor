@@ -259,7 +259,7 @@ print(longest_two_distinct("eceba"))  # 3, from "ece"`,
             ____
     return 0 if best == len(nums) + 1 else best`,
 				Blanks:      []string{"window_sum += nums[right]", "window_sum >= target", "min(best, right - left + 1)", "left += 1"},
-				Explanation: "Growing adds nums[right] to the sum. Because all numbers are positive, a window with sum >= target stays valid if it grows, so for the shortest answer we shrink while it is still valid, recording the length before each removal. The removal is subtracting nums[left] and moving left forward. Trace: at right = 4 the window [3,1,2,4] (sum 10) records 4, shrinks to [1,2,4] (7) and records 3, then [2,4] (6) is invalid. At right = 5, [2,4,3] (9) records 3, [4,3] (7) records 2, and [3] stops the loop.",
+				Explanation: "Blank by blank. Grow: window_sum += nums[right] brings the new element into the sum. Shrink while valid: because all numbers are positive, a window with sum >= target would stay valid if it grew, so the shortest candidates come from shrinking while window_sum >= target still holds. Record before each removal: the window spans left..right, which is right - left + 1 elements, and min(best, right - left + 1) keeps the shortest length seen so far. Finally left += 1 goes with the subtraction above it: together they actually drop nums[left] from the window. Trace: at right = 4 the window [3,1,2,4] (sum 10) records 4, shrinks to [1,2,4] (7) and records 3, then [2,4] (6) is invalid. At right = 5, [2,4,3] (9) records 3, [4,3] (7) records 2, and [3] stops the loop. Answer 2.",
 			},
 			{
 				Title:  "Count windows of size k with a high average",
@@ -275,7 +275,7 @@ print(longest_two_distinct("eceba"))  # 3, from "ece"`,
             count += 1                      # Record the answer
     return count`,
 				Blanks:      []string{"arr[right - k]", "right >= k - 1"},
-				Explanation: "Once the window would hold k + 1 elements (right >= k), the element leaving is arr[right - k]. A window only counts once it is complete, which first happens at right = k - 1. The qualifying windows are [2,5,5] = 12, [5,5,5] = 15 and [5,5,8] = 18, all >= 12.",
+				Explanation: "First blank: after arr[right] is added, the window should be the k elements arr[right - k + 1 .. right], so the value that just fell off its left edge is arr[right - k] — one position before the window. Dropping arr[right - k + 1] instead would eject a value that still belongs. The guard right >= k matches: the first time anything must leave is when a (k+1)-th element has been added. Second blank: a window only counts once it is complete, which first happens at right = k - 1 (indices 0..k-1), so counting is gated on right >= k - 1; before that the sum covers fewer than k elements. Comparing window_sum >= threshold * k checks the average without division. For arr = [2,2,2,2,5,5,5,8], k = 3: the qualifying windows are [2,5,5] = 12, [5,5,5] = 15 and [5,5,8] = 18, all >= 4 * 3 -> count 3.",
 			},
 		},
 		Animations: []Storyboard{

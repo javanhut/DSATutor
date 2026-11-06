@@ -6,7 +6,8 @@ run:
 	@GOCACHE=$(GOCACHE) go run ./cmd/tutor
 
 serve:
-	@GOCACHE=$(GOCACHE) go run ./cmd/tutor -serve -addr=:8080
+	@scripts/tts-setup.sh
+	@GOCACHE=$(GOCACHE) scripts/serve.sh
 
 clean:
 	@rm -rf $(GOCACHE)

@@ -298,7 +298,7 @@ def climb_rolling(n):
         a, b, c = ____
     return ____`,
 				Blanks:      []string{"b, c, a + b + c", "c"},
-				Explanation: "Optimise space: each step shifts the window by one, so the old T(i-2) becomes the new T(i-3), the old T(i-1) becomes T(i-2), and the new T(i-1) is the sum of all three old values. The tuple assignment computes a + b + c from the old values before any variable changes. After the last pass, c holds T(n).",
+				Explanation: "Each step shifts the window by one: the old T(i-2) becomes the new T(i-3), the old T(i-1) becomes the new T(i-2), and the newest value is a + b + c, the sum of all three old ones — so the first blank is b, c, a + b + c. Writing it as one tuple assignment matters: the whole right side is evaluated from the old values before any variable changes, where separate lines (a = b, then b = c, then c = a + b + c) would feed already-overwritten values into the sum. After the last pass c is the newest value computed, so the second blank returns c, which is T(n). For n = 4: (a, b, c) starts at (0, 1, 1), i = 3 gives (1, 1, 2), i = 4 gives (1, 2, 4), and c = 4 = T(4).",
 			},
 		},
 		CheckQuestions: []CheckQuestion{

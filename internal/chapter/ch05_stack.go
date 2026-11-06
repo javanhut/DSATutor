@@ -248,7 +248,7 @@ This chapter starts with the plain stack (matching brackets, evaluating expressi
             ____
     return ''.join(stack)`,
 				Blanks:      []string{"stack", "stack.pop()", "stack.append(ch)"},
-				Explanation: "A backspace resolves the most recent character on screen, the top, but only if there is one: check \"stack\" before popping (\"a##b\" has a second '#' with nothing to delete). Any other character is pushed. What's left on the stack is the text on screen.",
+				Explanation: "Blank by blank. The guard is just stack: an empty list is falsy in Python, so if stack: reads \"only if something is still on screen\" — popping an empty list raises IndexError, and the second '#' of \"a##b\" hits exactly that case and must do nothing instead. The deletion is stack.pop(): a backspace removes the most recent surviving character, which is the top. Every other character goes on screen with stack.append(ch). For \"ab#c\": push a, push b, '#' pops b, push c -> join gives \"ac\". For \"a##b\": push a, '#' pops it, '#' finds the stack empty, push b -> \"b\".",
 			},
 			{
 				Title:  "Next smaller element",
@@ -262,7 +262,7 @@ This chapter starts with the plain stack (matching brackets, evaluating expressi
         stack.append(i)
     return answer`,
 				Blanks:      []string{"nums[stack[-1]] > x", "stack.pop()"},
-				Explanation: "Now a smaller arriving value resolves the waiting ones, so pop while the top's value is greater than x, and record x as the popped index's answer at pop time. The stack stays increasing because everything larger than x leaves before x is pushed.",
+				Explanation: "First blank: the stack holds indices still waiting for a smaller value, increasing from bottom to top, so an arriving x resolves the top while nums[stack[-1]] > x — stack[-1] peeks at the top without removing it, and the strict > matches \"strictly smaller\". Second blank: answer[stack.pop()] = x does two jobs in one line: pop() removes the top index AND returns it, and that index's answer is the x that beat it. The stack stays increasing because everything larger than x leaves before x is pushed. For [4, 8, 5, 2, 6]: 8 waits above 4; 5 pops 8 (answer[1] = 5); 2 pops 5 then 4 (answer[2] = 2, answer[0] = 2); 6 pops nothing. Indices 3 and 4 never meet a smaller value and keep -1 -> [2, 5, 2, -1, -1].",
 			},
 		},
 		Animations: []Storyboard{

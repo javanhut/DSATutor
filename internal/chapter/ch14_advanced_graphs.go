@@ -362,7 +362,7 @@ def mst_cost(n, edges):
             return ____  # still improving: negative cycle
     return dist`,
 				Blanks:      []string{"n - 1", "dist[a] + w < dist[b]", "None"},
-				Explanation: "A shortest route without a negative cycle repeats no node, so it has at most n - 1 edges and n - 1 rounds are enough. Here updating in place is fine because there is no hop limit; it only makes convergence faster. If a further pass still finds an improvement, some cycle keeps lowering the cost forever. On edges (0,1,2), (0,2,3), (2,1,-2) the answer is [0, 1, 3]; Dijkstra would have finalised node 1 at 2 too early.",
+				Explanation: "Blank by blank. n - 1 rounds are enough because a shortest route that repeats no node uses at most n - 1 edges, and each round locks in routes one edge longer. dist[a] + w < dist[b] is relaxation: the best known route to a, extended by this edge, beats the best known route to b, so record the improvement — and while dist[a] is still infinity the test is false, so unreached nodes never propagate. The last blank is None: if a full extra pass can still relax an edge, a reachable negative cycle keeps lowering costs forever and no finite answer exists. On (0,1,2), (0,2,3), (2,1,-2) from 0: the first round sets node 1 to 2, node 2 to 3, then (2,1,-2) immediately improves node 1 to 3 - 2 = 1; the checking pass finds nothing left, so [0, 1, 3] is returned. Dijkstra would have finalised node 1 at 2 too early.",
 			},
 			{
 				Title:  "Kruskal's MST with union-find",
@@ -383,7 +383,7 @@ def mst_cost(n, edges):
             total += cost
     return total`,
 				Blanks:      []string{"find(parent[x])", "(cost, a, b) for a, b, cost in edges", "root_a != root_b"},
-				Explanation: "Putting cost first in each tuple makes sorted() order edges from cheapest to most expensive. An edge between two different roots joins two components, and by the cut property the cheapest such edge is safe; an edge inside one component would close a cycle, so it is skipped. On the cable example from Prim's worked example this also returns 6.",
+				Explanation: "Blank by blank. The find blank is the recursive call find(parent[x]): it follows parents to the chain's root, and assigning the result back to parent[x] is path compression — every node on the walk ends up pointing straight at the root, so later finds are nearly O(1). Returning parent[x] without recursing would report x's immediate parent, not the component's root, and two nodes of one component could then look different. The sort blank reorders each (a, b, cost) into (cost, a, b), because sorted() compares tuples by their first field: cheapest edge first. root_a != root_b keeps an edge only when it joins two different components — the cheapest edge crossing a cut is always safe (the cut property) — while an edge inside one component would close a cycle and is skipped. On the cable example from Prim's worked example the kept edges again total 6.",
 			},
 		},
 		CheckQuestions: []CheckQuestion{

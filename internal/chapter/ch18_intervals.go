@@ -224,7 +224,7 @@ You don't need to know which meeting ended, only that one did, which is why star
             arrow_at = ____           # shoot as far right as this balloon allows
     return arrows`,
 				Blanks:      []string{"lambda p: p[1]", "start > arrow_at", "end"},
-				Explanation: "This is activity selection again, so sort by end. Shoot each new arrow at the end of the earliest-ending balloon it must hit: that position hits that balloon and as many later ones as possible (exchange argument: any other arrow for this balloon is at or left of its end, so moving it right to the end can only hit more). Balloons are closed intervals, so a balloon starting exactly at arrow_at is still hit; a new arrow is needed only when start > arrow_at. [[10,16],[2,8],[1,6],[7,12]] needs 2 arrows (at 6 and 12), and [[1,2],[2,3],[3,4],[4,5]] needs 2 (at 2 and 4).",
+				Explanation: "This is activity selection again. First blank: sort by each balloon's end, key=lambda p: p[1] (p[1] is the second field of the [start, end] pair). Second blank: balloons are closed intervals, so a balloon starting exactly at arrow_at is still burst; a new arrow is needed only when start > arrow_at — writing >= would waste an arrow on a balloon already hit. Third blank: shoot the new arrow at this balloon's end, the rightmost position that still bursts it, which hits as many later balloons as possible (exchange argument: any other arrow for this balloon sits at or left of its end, so moving it right to the end can only hit more). [[10,16],[2,8],[1,6],[7,12]] sorts to ends 6, 8, 12, 16 and needs 2 arrows (at 6 and 12); [[1,2],[2,3],[3,4],[4,5]] needs 2 (at 2 and 4).",
 			},
 		},
 		CheckQuestions: []CheckQuestion{

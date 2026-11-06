@@ -236,7 +236,7 @@ x &= MASK`,
 				Code: `def is_power_of_two(n):
     return n > 0 and ____`,
 				Blanks:      []string{"n & (n - 1) == 0"},
-				Explanation: "Clearing the lowest 1 bit of a number with exactly one 1 bit leaves 0; any other positive number still has a 1 bit left. The n > 0 check comes first because 0 & -1 == 0 would otherwise count 0 as a power of two. In Python & binds more tightly than ==, so n & (n - 1) == 0 is (n & (n - 1)) == 0.",
+				Explanation: "Clearing the lowest 1 bit of a number with exactly one 1 bit leaves 0; any other positive number still has a 1 bit left. The n > 0 check comes first because 0 & -1 == 0 would otherwise count 0 as a power of two. In Python & binds more tightly than ==, so n & (n - 1) == 0 is (n & (n - 1)) == 0. Trace: 8 = 1000 and 7 = 0111 share no bits, so 8 & 7 == 0; 6 = 110 and 5 = 101 share the 4-bit, so 6 & 5 == 4 and 6 is rejected.",
 			},
 			{
 				Title:  "Get, set and clear one bit",

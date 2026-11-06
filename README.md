@@ -30,9 +30,10 @@ The course is built on well-replicated learning research; see
 ## Features
 
 - **Algorithm Animations**: step-by-step walkthroughs with synchronized code highlighting
-- **Voice lessons**: every lesson section has a Listen button; speech is
-  synthesized server-side by [Piper](docs/tts.md), so narration works the same
-  wherever the container runs
+- **Voice lessons**: every lesson section has a Listen button with a choice of
+  [narration voices](docs/tts.md) — Ollama speech models (lfm3-audio, phonon)
+  when available, with the bundled Piper voice as fallback — all synthesized
+  server-side, so narration works the same wherever the container runs
 - **Practice judge**: Python or [Oxigen](docs/oxigen.md) solutions run against
   visible and hidden tests, including linked-list, tree, graph and
   class-design problems
@@ -73,9 +74,14 @@ Builds and tests go through ImLazy (`lazy.toml`); `imlazy list` shows the tasks.
 
 ```sh
 imlazy setup    # installs Go, Python 3 and Oxigen with rvn if missing
-imlazy serve    # http://localhost:8080
+imlazy serve    # http://localhost:8080 — also auto-sets-up narration voices
 imlazy test     # unit tests, content checks, and every reference solution through the judge
 ```
+
+`imlazy serve` detects your OS and architecture and downloads whatever the
+[narration voices](docs/tts.md) still need (Piper always; Ollama speech
+models best-effort), then starts the app. Nothing voice-related is fatal:
+with no network or no Ollama the app runs with whatever voices it has.
 
 ### Command Line Options
 

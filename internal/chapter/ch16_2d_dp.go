@@ -363,7 +363,7 @@ def best_value_unbounded(weights, values, capacity):   # unlimited copies of eac
             # on a mismatch the block is broken: run[i][j] stays 0
     return best`,
 				Blanks:      []string{"run[i - 1][j - 1] + 1", "max(best, run[i][j])"},
-				Explanation: "Same table as LCS, but the state means 'ending exactly here', so a match can only extend the diagonal (the block must continue in both strings) and a mismatch resets to 0 instead of skipping one side. Because a block can end anywhere, the answer is the maximum over all cells, not the bottom-right cell, the same 'max over states' answer as Chapter 15's Longest Increasing Subsequence. For \"abcde\" and \"xbcdy\": run[2][2] = 1 (b), run[3][3] = 2 (bc), run[4][4] = 3 (bcd).",
+				Explanation: "Blank by blank. On a match, the block ending at a[i - 1] and b[j - 1] is the block that ended one letter earlier in BOTH strings, extended by one: run[i][j] = run[i - 1][j - 1] + 1, the diagonal cell. It can only be the diagonal: the cells above and to the left describe blocks ending at a different letter, and unlike LCS there is no max-and-skip, because a substring must be contiguous — on a mismatch run[i][j] simply stays 0. Second blank: a best block can end at any cell, so collect the answer as you go with best = max(best, run[i][j]); returning run[m][n] would only measure a block ending at the final letters of both strings. For \"abcde\" and \"xbcdy\": run[2][2] = 1 (b), run[3][3] = 2 (bc), run[4][4] = 3 (bcd), then 'e' vs 'y' mismatches and best stays 3.",
 			},
 			{
 				Title:  "Unbounded knapsack in one row",
@@ -379,7 +379,7 @@ def best_value_unbounded(weights, values, capacity):   # unlimited copies of eac
     # Locate the answer
     return best[capacity]`,
 				Blanks:      []string{"range(weights[i], capacity + 1)", "best[w - weights[i]] + values[i]"},
-				Explanation: "Items may be reused, so 'take one more' must read the CURRENT row at w - weights[i]: in the 2D table that is best[i][w - weight]. Looping w forwards does exactly that, because the smaller capacities have already been updated for this item. Starting at weights[i] skips capacities the item doesn't fit in. A backwards loop would read the previous row and give the 0/1 answer, 10, instead of 12.",
+				Explanation: "First blank: w runs forwards, range(weights[i], capacity + 1). Starting at weights[i] skips the capacities the item cannot fit in at all, and forwards is the unbounded trick: by the time w is reached, the smaller capacities are already updated for THIS item, so the recurrence may use it again. Second blank: taking one more copy is worth best[w - weights[i]] + values[i] — the best packing of the room that remains, plus this copy's value — and the surrounding max keeps the skip option. Loop w backwards and best[w - weights[i]] still holds the previous item's row, which is exactly the 0/1 rule from the worked example: it gives 10 here instead of 12. Forwards with weight 2, value 3: best[2] = 3, best[4] = 6, best[6] = 9, best[8] = 12 — four copies.",
 			},
 		},
 		CheckQuestions: []CheckQuestion{

@@ -6,4 +6,33 @@ services:
       pull: true
     ports:
       - "8080:8080"
+    environment:
+      # Where to find Ollama for the high-quality narration voices
+      # (lfm3-audio, phonon). Defaults to the ollama service below; on macOS
+      # a natively installed Ollama uses the GPU (Metal) and is much faster:
+      #   DSATUTOR_OLLAMA_URL=http://host.docker.internal:11434 docker compose up
+      # (with podman use http://host.containers.internal:11434). Narration
+      # falls back to the bundled Piper voice when Ollama has no speech
+      # models; see docs/tts.md.
+      DSATUTOR_OLLAMA_URL: ${DSATUTOR_OLLAMA_URL:-http://ollama:11434}
+    depends_on:
+      - ollama
     restart: unless-stopped
+
+  # Serves the lfm3-audio / phonon narration voices. Models are pulled once
+  # into the volume:
+  #   docker compose exec ollama ollama pull lfm3-audio
+  # scripts/tts-setup.sh starts this service and pulls the models when no
+  # native Ollama is found.
+  ollama:
+    image: docker.io/ollama/ollama:latest
+    ports:
+      # Published so a natively run app (imlazy serve) can use this Ollama
+      # too. If a native Ollama already listens on 11434, stop one of them.
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  ollama-models:

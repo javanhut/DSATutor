@@ -20,11 +20,20 @@ alias = ["b"]
 run = ["go build -o dsatutor ./cmd/tutor"]
 watch = ["**/*.go", "internal/web/static/*", "internal/sandbox/*.py"]
 
-[commands.serve]
-desc = "Run the web app on http://localhost:8080"
+# Narration is optional: the script detects the OS/arch, downloads whatever
+# voice pieces are missing (Piper venv + voice, Ollama speech models) and
+# never fails the build — worst case the app runs with fewer voices.
+[commands.narration]
+desc = "Set up lesson narration voices (Piper + Ollama, best effort)"
 dep = ["system-deps"]
+alias = ["tts"]
+run = ["scripts/tts-setup.sh"]
+
+[commands.serve]
+desc = "Run the web app on http://localhost:8080 with narration set up"
+dep = ["system-deps", "narration"]
 alias = ["run", "r"]
-run = ["go run ./cmd/tutor -serve -addr=:8080"]
+run = ["scripts/serve.sh"]
 
 # The content tests run every reference solution through the real judge and
 # check each chapter and problem against docs/pedagogy.md.

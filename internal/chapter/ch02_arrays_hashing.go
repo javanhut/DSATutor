@@ -115,7 +115,9 @@ groups = {key: ["bca"]}`,
 				Description: "Build a value -> how-many-times table in one pass, then answer questions by comparing or reading counts.",
 				WhyItWorks: `Many questions don't care where items are, only how many of each there are: are two words anagrams, which value is most common, can these letters spell that note. A count table keeps exactly that information and throws away the order. Building it touches each item once with an O(1) dict update, so it costs O(n) time and O(k) space for k distinct items.
 
-Two collections are rearrangements of each other exactly when their count tables are equal: same keys, same counts. Comparing tables costs O(k), not O(n^2) of pairwise matching. When the keys come from a small fixed alphabet (26 lowercase letters), a list of 26 counters indexed by ord(ch) - ord('a') works too, and its size doesn't grow with the input, so it is O(1) space. A tuple of those counts is hashable, so it can itself be a dict key, which is how you group items that share the same counts.`,
+Two collections are rearrangements of each other exactly when their count tables are equal: same keys, same counts. Comparing tables costs O(k), not O(n^2) of pairwise matching. When the keys come from a small fixed alphabet (26 lowercase letters), a list of 26 counters indexed by ord(ch) - ord('a') works too, and its size doesn't grow with the input, so it is O(1) space. A tuple of those counts is hashable, so it can itself be a dict key, which is how you group items that share the same counts.
+
+The table is built with one line per item: counts[ch] = counts.get(ch, 0) + 1. Read the right side first. counts.get(ch, 0) asks "how many ch so far?" and the 0 is the answer when ch isn't in the dict yet, so a character's first appearance starts from zero. The obvious counts[ch] += 1 can't do that: it reads counts[ch] before any value was stored and raises KeyError. Then + 1 counts the occurrence you are looking at right now, and the assignment stores the new total back under ch. For "aab" the line runs three times: 'a' 0+1=1, 'a' 1+1=2, 'b' 0+1=1.`,
 				Intuition: "Counting votes after an election. Nobody re-reads the ballots in order to compare two polling stations; they keep a tally sheet with one row per candidate and add a mark for each ballot. Two stations voted identically exactly when their tally sheets match, whatever order the ballots came in.",
 				CoreIdeas: []string{
 					"counts[x] = counts.get(x, 0) + 1 is the basic counting line; collections.Counter(items) does the whole loop.",
@@ -139,6 +141,7 @@ Two collections are rearrangements of each other exactly when their count tables
 def letter_counts(word):
     counts = {}
     for ch in word:
+        # .get(ch, 0) = ch's count so far, or 0 on its first appearance
         counts[ch] = counts.get(ch, 0) + 1
     return counts
 
@@ -279,7 +282,7 @@ return -1`,
 					},
 					{
 						Subgoal:     "Count each item",
-						Explanation: "Compute every character's count once, in a single pass, and keep them in a dict. At most 26 keys exist, so the table is O(1) space.",
+						Explanation: "Compute every character's count once, in a single pass, and keep them in a dict. The update line reads right to left: counts.get(ch, 0) is ch's count so far, where the 0 default means a first-time character starts from zero (plain counts[ch] += 1 would raise KeyError there); + 1 adds this occurrence; the assignment stores the new total back. At most 26 keys exist, so the table is O(1) space.",
 						Code: `counts = {}
 for ch in s:
     counts[ch] = counts.get(ch, 0) + 1`,
@@ -322,7 +325,7 @@ for ch in s:
         count_of[x] = ____
     return pairs`,
 				Blanks:      []string{"target - x", "count_of.get(x, 0) + 1"},
-				Explanation: "Look up before you store: every earlier copy of target - x forms one pair with x, so add how many there were. Then record x by adding one to its count. For [1, 5, 3, 3, 3]: 1 adds 0, 5 adds 1 (the 1), the first 3 adds 0, the second adds 1, the third adds 2, for a total of 4. Storing x before the lookup would wrongly pair a 3 with itself.",
+				Explanation: "First blank, the look-up: x's partner must satisfy x + partner == target, so the partner's value is target - x, and every earlier copy of it forms one pair with x. The .get(..., 0) around the blank means \"0 pairs\" when that value never appeared. Second blank, the store: count_of.get(x, 0) + 1 reads x's count so far (the 0 default makes x's first appearance start from zero, where count_of[x] += 1 would raise KeyError), adds one for this copy, and the assignment saves it back. For [1, 5, 3, 3, 3], target 6: 1 adds 0, 5 adds 1 (the earlier 1), the first 3 adds 0, the second adds 1, the third adds 2, total 4. Storing x before the look-up would wrongly pair a 3 with itself.",
 			},
 			{
 				Title:  "Can the note be built from the magazine?",
@@ -337,7 +340,7 @@ for ch in s:
         ____
     return True`,
 				Blanks:      []string{"available.get(ch, 0) + 1", "0", "available[ch] -= 1"},
-				Explanation: "Count each item in the magazine, then spend one letter for each letter of the note. If a needed letter's count is already 0, the magazine has run out of it. This is counting with a dict: order never matters, only how many of each letter are left. O(n + m) time, O(1) space for a fixed alphabet.",
+				Explanation: "Blank by blank. First, the counting line: available.get(ch, 0) reads ch's count so far, and the 0 default lets a letter's first appearance start from zero, where available[ch] += 1 would raise KeyError; + 1 adds this letter and the assignment stores the total. Second, the run-out check: available.get(ch, 0) == 0 asks \"is there none of ch left?\", and the same 0 default also covers a note letter the magazine never contained. Third, the spend: the check just guaranteed available[ch] exists and is at least 1, so available[ch] -= 1 is safe and uses one copy up. For note = \"aa\", magazine = \"ab\": counts {a: 1, b: 1}; the first 'a' spends a to 0, the second finds 0 and returns False. O(n + m) time, O(1) space for a fixed alphabet.",
 			},
 		},
 		CheckQuestions: []CheckQuestion{

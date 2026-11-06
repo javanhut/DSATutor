@@ -309,7 +309,7 @@ for read in range(1, len(nums)):`,
             ____
     return result`,
 				Blanks:      []string{"nums[left] * nums[left]", "left += 1", "right -= 1"},
-				Explanation: "Compare and decide: the end with the larger absolute value has the largest remaining square, so it goes into the last empty slot. Move the pointer that was used, because its value is now placed. For [-4, -1, 0, 3, 10]: 10 vs -4 -> 100; -4 vs 3 -> 16; -1 vs 3 -> 9; -1 vs 0 -> 1; then 0. Each step places one value, so O(n).",
+				Explanation: "Blank by blank. In the if-branch the left end has the larger absolute value, so the slot gets nums[left] * nums[left] — squaring a negative already makes it positive, so the product needs no abs. Then left += 1: the used value is placed, so that pointer steps inward. The else-branch used the right value, so right -= 1 mirrors it. Moving the wrong pointer would place one value twice and never place another. For [-4, -1, 0, 3, 10]: 10 vs -4 -> 100 (right moves); -4 vs 3 -> 16 (left moves); -1 vs 3 -> 9; -1 vs 0 -> 1; then 0. Each step fills one slot from the back, so O(n).",
 			},
 			{
 				Title:  "Move the zeros to the end",
@@ -322,7 +322,7 @@ for read in range(1, len(nums)):`,
             ____
     return nums`,
 				Blanks:      []string{"nums[read] != 0", "write += 1"},
-				Explanation: "Invariant: nums[0:write] holds the nonzero values seen so far, in order, and nums[write:read] holds only zeros. A nonzero value at read is swapped into slot write (swapping a zero back to read), and write advances. When read finishes, all zeros are behind write. O(n) time, O(1) memory.",
+				Explanation: "First blank: the condition is nums[read] != 0, because the invariant is that nums[0:write] holds the nonzero values seen so far, in order, while nums[write:read] holds only zeros — so only a nonzero at read deserves a slot. The swap moves it into slot write and parks a zero back at read. Second blank: write += 1 extends the nonzero region past the value just placed; forgetting it would make every later swap overwrite the same slot. For [0, 1, 0, 3, 12]: read=1 swaps 1 into slot 0 -> [1, 0, 0, 3, 12]; read=3 swaps 3 into slot 1 -> [1, 3, 0, 0, 12]; read=4 swaps 12 into slot 2 -> [1, 3, 12, 0, 0]. O(n) time, O(1) memory.",
 			},
 		},
 		CheckQuestions: []CheckQuestion{

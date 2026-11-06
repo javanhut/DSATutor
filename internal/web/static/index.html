@@ -16,6 +16,7 @@
   <!-- CodeMirror 5 - stable, no ES module conflicts -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/hint/show-hint.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='90'%3E%F0%9F%8E%93%3C/text%3E%3C/svg%3E">
   <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/python/python.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/mode/simple.min.js"></script>
@@ -469,6 +470,7 @@
               </label>
             </div>
             <div class="control-group">
+              <select id="tts-voice" class="tts-voice hidden" title="Narration voice"></select>
               <button id="toggle-edit" class="btn-small ghost">Edit</button>
               <button id="download-json" class="btn-small ghost">Export</button>
             </div>

@@ -7012,6 +7012,7 @@ function selectChapter(ch) {
   state.current = ch;
   state.storyboardIndex = 0;
   state.visualizerIndex = 0;
+  saveLastView({ type: 'chapter', number: ch.number });
   el("detail-empty").classList.add("hidden");
   el("detail").classList.remove("hidden");
   el("detail-slug").textContent = `Chapter ${pad(ch.number)}`;
@@ -7553,10 +7554,12 @@ setupAnimationControls();
 // Initialize sandbox controls
 setupSandboxControls();
 
-loadChapters().catch((err) => {
-  console.error(err);
-  alert("Failed to load chapters");
-});
+loadChapters()
+  .then(() => restoreLastView()) // put the learner back where the last visit left off
+  .catch((err) => {
+    console.error(err);
+    alert("Failed to load chapters");
+  });
 
 // Practice Mode State and Functions
 const practiceState = {
@@ -7644,6 +7647,7 @@ async function loadProblem(id) {
 function showPracticeList() {
   el('practice-list').classList.remove('hidden');
   el('practice-mode').classList.add('hidden');
+  saveLastView({ type: 'practice' });
 }
 
 function showProblem() {
@@ -7746,6 +7750,7 @@ async function openProblem(problemId, opts = {}) {
   // Reset all practice state for new problem
   saveDraft();
   practiceState.currentProblem = problem;
+  saveLastView({ type: 'problem', id: problemId });
   practiceState.hintsRevealed = 0;
   practiceState.currentTestCase = problem.testCases?.findIndex(tc => !tc.hidden) ?? 0;
   if (practiceState.currentTestCase < 0) practiceState.currentTestCase = 0;
@@ -8960,6 +8965,7 @@ function setupPracticeControls() {
           if (detailEmptyEl) detailEmptyEl.classList.remove('hidden');
           if (detailEl) detailEl.classList.add('hidden');
         }
+        saveLastView(state.current ? { type: 'chapter', number: state.current.number } : null);
       }
     };
   }

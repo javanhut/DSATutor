@@ -293,7 +293,7 @@ def knn_predict(points, prices, query, k):
         total += ____
     return total / ____`,
 				Blanks:      []string{"k", "price", "k"},
-				Explanation: "Regression differs from classification only in the last step: instead of counting labels, average the neighbours' values. nsmallest(k, ...) keeps the k closest (distance, price) pairs, the loop adds their prices, and dividing by k gives the mean.",
+				Explanation: "Regression differs from classification only in the last step: instead of counting labels, average the neighbours' values. nsmallest(k, ...) keeps the k closest (distance, price) pairs, the loop adds their prices, and dividing by k gives the mean. With k = 2 and nearest pairs (1, 300) and (4, 320): total = 620, prediction 620 / 2 = 310.",
 			},
 			{
 				Title:  "MapReduce: hottest temperature per city",

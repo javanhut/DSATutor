@@ -23,7 +23,7 @@ type Server struct {
 	chapters       []chapter.Chapter
 	mux            *http.ServeMux
 	practiceServer *PracticeServer
-	tts            *tts.Engine
+	tts            *tts.Service
 }
 
 // NewServer wires handlers for static content and chapter data.
@@ -64,7 +64,7 @@ func (s *Server) Listen(addr string) error {
 }
 
 func (s *Server) routes() {
-	s.tts = tts.NewEngine()
+	s.tts = tts.NewService()
 	s.mux.HandleFunc("/api/chapters", s.handleChapters)
 	s.mux.HandleFunc("/api/sandbox/execute", s.handleSandboxExecute)
 	s.mux.HandleFunc("/api/tts", s.handleTTS)

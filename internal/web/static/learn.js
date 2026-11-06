@@ -112,6 +112,40 @@ function chapterForCategory(categoryId) {
 }
 
 // ---------------------------------------------------------------------------
+// Last view: refreshing the page returns to where the learner was
+// ---------------------------------------------------------------------------
+
+const LAST_VIEW_KEY = 'dsatutor_last_view';
+
+// view is {type: 'chapter', number}, {type: 'problem', id}, {type: 'practice'}
+// or null to forget. app.js calls this from selectChapter, openProblem and
+// the practice toggle.
+function saveLastView(view) {
+  try {
+    if (view) localStorage.setItem(LAST_VIEW_KEY, JSON.stringify(view));
+    else localStorage.removeItem(LAST_VIEW_KEY);
+  } catch (e) { /* storage may be unavailable; refresh just starts fresh */ }
+}
+
+// Called once at startup, after the chapter list has loaded.
+async function restoreLastView() {
+  const view = loadJSON(LAST_VIEW_KEY, null);
+  if (!view) return;
+  try {
+    if (view.type === 'chapter' && state.chapters.some(c => c.number === view.number)) {
+      goToChapter(view.number);
+    } else if (view.type === 'problem') {
+      await goToProblem(view.id);
+    } else if (view.type === 'practice') {
+      await enterPractice();
+      showPracticeList();
+    }
+  } catch (e) {
+    console.error('Could not restore the last view:', e);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Chapter progress (retrieval questions answered, completions done)
 // ---------------------------------------------------------------------------
 

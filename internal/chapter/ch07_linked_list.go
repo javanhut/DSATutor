@@ -377,7 +377,7 @@ def push_front(head, node):      # head is a sentinel
         curr = curr.next
     return ____`,
 				Blanks:      []string{"head", "curr.next", "curr", "dummy.next"},
-				Explanation: "The dummy gives the first node a predecessor, so deleting a leading 6 is the same as deleting any other. To delete curr, its predecessor skips over it: prev.next = curr.next. prev moves only when curr is kept, because after a deletion prev is still the predecessor of the next candidate. Return dummy.next, since the old head may have been removed (as in [7,7]).",
+				Explanation: "Blank by blank. ListNode(0, head) builds the dummy in front of the real list, so even the first node has a predecessor and a leading 6 is deleted by the same move as any other. Deleting is the predecessor's job: prev.next = curr.next makes prev point past curr, which drops curr out of the chain. In the else branch prev = curr: prev advances only over kept nodes, because right after a deletion prev is already the predecessor of the next candidate and must stay put. Return dummy.next rather than head, since the old head may itself have been deleted. For [7,7] with val = 7: both nodes are skipped one after the other, prev never leaves the dummy, and dummy.next is None, the empty list.",
 			},
 			{
 				Title:  "Delete the middle node",
@@ -392,7 +392,7 @@ def push_front(head, node):      # head is a sentinel
     slow.next = ____
     return dummy.next`,
 				Blanks:      []string{"dummy", "fast.next.next", "slow.next.next"},
-				Explanation: "Starting slow one node behind (on the dummy) while fast starts on head makes slow stop on the predecessor of the middle instead of on the middle itself, which is what deletion needs. Then slow.next = slow.next.next unlinks the middle. For [1] the loop never runs, slow is still the dummy, and the only node is removed.",
+				Explanation: "Blank by blank. slow starts on the dummy, one node behind fast: keeping that offset makes slow stop on the predecessor of the middle rather than the middle itself, and the predecessor is what deletion needs, because a singly linked list can't be walked backwards. fast = fast.next.next moves fast two nodes per turn while slow moves one, so when fast runs out, slow has covered half the list. slow.next = slow.next.next then unlinks the middle: slow's pointer skips over it. For [1,2,3,4]: slow=dummy, fast=1; then slow=1, fast=3; then slow=2, fast=None; slow.next skips the 3, giving [1,2,4]. For [1] the loop never runs, slow is still the dummy, and the only node is removed.",
 			},
 		},
 		CheckQuestions: []CheckQuestion{

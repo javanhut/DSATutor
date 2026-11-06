@@ -534,7 +534,7 @@ return True`,
 
     return any(color[v] == WHITE and visit(v) for v in range(n))`,
 				Blanks:      []string{"GRAY", "GRAY", "BLACK"},
-				Explanation: "A node turns GRAY when we enter it and BLACK when all its descendants are done. Meeting a GRAY node means we walked back into the current path: a cycle. Meeting a BLACK node is harmless, which is why the diamond 0->1, 0->2, 1->3, 2->3 returns False while 0->1->2->0 returns True.",
+				Explanation: "Blank by blank. Entering a node turns it GRAY: it sits on the path currently being explored. Meeting a GRAY neighbour therefore means the walk has come back around into its own path — a cycle — so that comparison is against GRAY. Once every descendant is finished the node turns BLACK; meeting a BLACK node later is harmless, because everything reachable from it was already explored without finding a cycle. The three colours are the point: a single visited flag can't tell those two meetings apart and would wrongly call the diamond 0->1, 0->2, 1->3, 2->3 a cycle (3 is reached twice). With the colours, the second visit to 3 finds it BLACK and returns False, while 0->1, 1->2, 2->0 walks back into GRAY 0 and returns True.",
 			},
 		},
 		CheckQuestions: []CheckQuestion{

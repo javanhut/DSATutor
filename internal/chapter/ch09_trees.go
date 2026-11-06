@@ -342,9 +342,12 @@ def rightSideView(root):
 
     return height(root) != -1`,
 				Blanks: []string{"0", "abs(left_h - right_h) > 1", "1 + max(left_h, right_h)"},
-				Explanation: "Handle the empty tree: height 0. Ask the children, then combine: if either child reported -1, or the heights " +
-					"differ by more than 1, pass -1 up; otherwise return to the parent the height 1 + max(left_h, right_h). Folding the " +
-					"\"unbalanced\" signal into the return value keeps it one O(n) pass instead of recomputing heights at every node (O(n^2)).",
+				Explanation: "Blank by blank. The empty tree has height 0, and that base case feeds every leaf's children. The imbalance test " +
+					"is abs(left_h - right_h) > 1, straight from the definition; it sits beside the two == -1 checks so a failure anywhere " +
+					"below also bubbles up. The combine line returns 1 + max(left_h, right_h): a node is one level above its taller child. " +
+					"Folding the \"unbalanced\" signal into the return value keeps it one O(n) pass instead of recomputing heights at every " +
+					"node (O(n^2)). For the left chain 1 -> 2 -> 3: height(3) = 1 + max(0, 0) = 1, height(2) = 1 + max(1, 0) = 2, and at " +
+					"the root abs(2 - 0) > 1 sends -1 up: unbalanced.",
 			},
 			{
 				Title:  "Search in a binary search tree",
@@ -358,7 +361,7 @@ def rightSideView(root):
             node = ____
     return node`,
 				Blanks:      []string{"node.left", "node.right"},
-				Explanation: "Everything smaller than node.val lives in the left subtree and everything larger in the right, so one comparison discards a whole subtree. The loop walks one root-to-leaf path: O(h) time and O(1) space.",
+				Explanation: "Everything smaller than node.val lives in the left subtree and everything larger in the right. So when val < node.val, the target can only be on the left: node = node.left; otherwise val is larger (the loop condition already rules out equal) and node = node.right. Each comparison discards a whole subtree, and the loop walks one root-to-leaf path: O(h) time, O(1) space. Searching 5 under root 4 with right child 7 and 7's left child 5: 5 > 4 goes right, 5 < 7 goes left, found.",
 			},
 		},
 		Animations: []Storyboard{

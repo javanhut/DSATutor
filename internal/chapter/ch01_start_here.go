@@ -380,7 +380,7 @@ for i in range(2, len(ordered)):
         nums[i], nums[smallest] = ____
     return nums`,
 				Blanks:      []string{"i + 1", "smallest", "nums[smallest], nums[i]"},
-				Explanation: "The scan starts at i + 1 because positions 0..i-1 are already sorted and position i is the current candidate. Comparing against nums[smallest] (not nums[i]) keeps the minimum of everything scanned so far. The swap puts that minimum at position i; Python's tuple assignment swaps without a temporary variable.",
+				Explanation: "Blank by blank. The scan starts at i + 1: smallest = i already makes position i the first candidate, and everything before i is sorted and final, so only the rest needs scanning. The comparison is nums[j] < nums[smallest]: smallest tracks the best index found so far, so every j competes against the running minimum. Comparing with nums[i] instead would leave smallest at the last value smaller than the starting one, not the minimum: on [4, 3, 1, 2] it would pick the 2, not the 1. The swap's right side is nums[smallest], nums[i]: Python builds the right-hand pair first, then assigns, so the two slots trade values without a temporary. Trace [4, 3, 1, 2]: pass i=0 ends with smallest=2, swap -> [1, 3, 4, 2]; i=1 finds 2 at index 3 -> [1, 2, 4, 3]; i=2 -> [1, 2, 3, 4].",
 			},
 			{
 				Title:  "Largest gap between sorted neighbours",
@@ -392,7 +392,7 @@ for i in range(2, len(ordered)):
         best = max(best, ____)
     return best`,
 				Blanks:      []string{"sorted(nums)", "ordered[i] - ordered[i - 1]"},
-				Explanation: "Optimise: sorting makes neighbours the only pairs that count, exactly as in the worked example. Each gap is ordered[i] - ordered[i - 1], already non-negative because the list is sorted. Sorting is O(n log n) and the pass O(n), so the total is O(n log n).",
+				Explanation: "First blank: ordered = sorted(nums) builds a new sorted copy. It must be sorted(nums), not nums.sort() — .sort() sorts in place and returns None, so ordered would be None and the loop would crash. Sorting makes neighbours the only pairs that can hold the largest gap, exactly as in the worked example. Second blank: the loop starts at i = 1, so each neighbour pair is ordered[i] and ordered[i - 1], and their gap ordered[i] - ordered[i - 1] is already non-negative because the list is ascending; max keeps the biggest seen. For [3, 9, 1, 6]: ordered = [1, 3, 6, 9], gaps 2, 3, 3 -> best = 3. Sorting is O(n log n) and the pass O(n), so the total is O(n log n).",
 			},
 		},
 		CheckQuestions: []CheckQuestion{

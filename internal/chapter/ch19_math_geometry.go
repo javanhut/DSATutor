@@ -334,7 +334,7 @@ return result`,
         exp //= 2
     return result`,
 				Blanks:      []string{"exp % 2 == 1", "result * base % mod", "base * base % mod"},
-				Explanation: "The structure is the same as fast_power. The only change is reducing modulo mod after each multiplication, which is allowed because (a * b) % m == ((a % m) * (b % m)) % m, and which keeps the numbers small. mod_pow(3, 13, 1000) gives 323, the last three digits of 1594323.",
+				Explanation: "Blank by blank. exp % 2 == 1 reads the lowest binary digit of the exponent: when it is 1, the power of base this round stands for belongs in the answer. result = result * base % mod multiplies it in and reduces straight away — allowed because (a * b) % m == ((a % m) * (b % m)) % m — so the numbers stay small instead of growing to millions of digits. base = base * base % mod squares the base, so round by round it holds base^1, base^2, base^4, ..., while exp //= 2 discards the digit just handled. mod_pow(3, 13, 1000) with 13 = 1101 in binary: result collects 3, then 3 * 81 = 243, then 243 * 561 % 1000 = 323 — the last three digits of 3^13 = 1594323.",
 			},
 			{
 				Title:  "Rotate a matrix 180 degrees in place",
