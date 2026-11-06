@@ -42,8 +42,19 @@ names the one actually used in the `X-TTS-Engine` response header.
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/tts` | POST | `{"text": "...", "engine": "ollama:lfm3-audio:latest"}` (engine optional, ≤ 2000 chars) → `audio/wav`, `X-TTS-Engine` header |
-| `/api/tts/status` | GET | `{"available": bool, "default": "...", "engines": [{"id", "label", "available", "reason"}]}` |
+| `/api/tts` | POST | `{"text": "...", "engine": "ollama:phonon:latest", "voice": "Zoey"}` (engine and voice optional, ≤ 2000 chars) → `audio/wav`, `X-TTS-Engine` header |
+| `/api/tts/status` | GET | `{"available": bool, "default": "...", "engines": [{"id", "label", "available", "reason", "voices"}]}` |
+
+### Named voices
+
+Ollama speech models come with several named voices (phonon has Zoey, Alfie
+and some 35 more; lfm3-audio has one male and one female voice per language).
+The server reads them from Ollama's `/api/show` and lists them per engine in
+`voices`; the page then shows a second picker beside the voice picker, and
+remembers the choice per engine. Omitting `voice` selects the engine's
+default, which is `DSATUTOR_TTS_OLLAMA_VOICE` when that is set. A voice the
+engine does not have is ignored rather than rejected, so a fallback engine
+or a remembered voice that no longer exists still produces audio.
 
 ## Docker Compose (recommended for the Ollama voices)
 
@@ -76,7 +87,7 @@ the phonon voices on a Mac.
 | Variable | Default | Meaning |
 |----------|---------|---------|
 | `DSATUTOR_OLLAMA_URL` | `http://localhost:11434` | Ollama server for the speech models (compose sets `http://ollama:11434`) |
-| `DSATUTOR_TTS_OLLAMA_VOICE` | *(model default)* | Voice name passed to Ollama, e.g. `Zoey` for phonon |
+| `DSATUTOR_TTS_OLLAMA_VOICE` | *(model default)* | Voice name passed to Ollama when the learner has not picked one, e.g. `Zoey` for phonon |
 | `DSATUTOR_TTS_OLLAMA_MODELS` | *(empty)* | Extra comma-separated model names to treat as speech models |
 | `DSATUTOR_TTS_VOICE` | *(auto: `./voices`, `/app/voices`)* | Path to the Piper `.onnx` voice |
 

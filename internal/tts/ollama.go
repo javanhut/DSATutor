@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -37,14 +38,15 @@ var speechModelPrefixes = []string{"lfm3-audio", "phonon"}
 // one with NewOllama.
 type Ollama struct {
 	baseURL string
-	voice   string // optional, e.g. "Zoey" for phonon; empty lets the model pick
+	voice   string // server-wide default, e.g. "Zoey" for phonon; empty lets the model pick
 	prefer  string // model listed first, making it the default voice; "" keeps name order
 	client  *http.Client
 
 	mu        sync.Mutex
 	lastCheck time.Time
-	models    []string // detected speech models: prefer first, then by name
-	reason    string   // why empty, surfaced by /api/tts/status
+	models    []string            // detected speech models: prefer first, then by name
+	voices    map[string][]string // named voices per detected model
+	reason    string              // why models is empty, surfaced by /api/tts/status
 }
 
 // NewOllama reads its configuration from the environment:
@@ -84,7 +86,51 @@ func (o *Ollama) SpeechModels() (models []string, reason string) {
 	}
 	o.lastCheck = time.Now()
 	o.models, o.reason = o.fetchModels()
+	o.voices = map[string][]string{}
+	for _, model := range o.models {
+		o.voices[model] = o.fetchVoices(model)
+	}
 	return o.models, o.reason
+}
+
+// Voices returns the named voices an installed speech model offers (phonon's
+// "Zoey", "Alfie", ...), as of the last SpeechModels check. It is empty for
+// a model with no choice of voice.
+func (o *Ollama) Voices(model string) []string {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return o.voices[model]
+}
+
+// fetchVoices asks /api/show which voices a model has. The "default" entry
+// is dropped, since a request without a voice already selects it. A failure
+// only means the model is offered without a voice choice.
+func (o *Ollama) fetchVoices(model string) []string {
+	payload, err := json.Marshal(map[string]string{"model": model})
+	if err != nil {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, o.baseURL+"/api/show", bytes.NewReader(payload))
+	if err != nil {
+		return nil
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := o.client.Do(req)
+	if err != nil {
+		return nil
+	}
+	defer resp.Body.Close()
+	var show struct {
+		Voices []string `json:"voices"`
+	}
+	if resp.StatusCode != http.StatusOK || json.NewDecoder(resp.Body).Decode(&show) != nil {
+		return nil
+	}
+	return slices.DeleteFunc(show.Voices, func(v string) bool {
+		return strings.EqualFold(v, "default")
+	})
 }
 
 func (o *Ollama) fetchModels() ([]string, string) {
@@ -141,15 +187,20 @@ func (o *Ollama) fetchModels() ([]string, string) {
 }
 
 // Synthesize asks Ollama's OpenAI-compatible speech endpoint for a WAV
-// rendering of text with the given model.
-func (o *Ollama) Synthesize(ctx context.Context, model, text string) ([]byte, error) {
+// rendering of text with the given model. voice names one of the model's
+// voices; empty means the server-wide default (DSATUTOR_TTS_OLLAMA_VOICE),
+// or the model's own default when that is unset too.
+func (o *Ollama) Synthesize(ctx context.Context, model, voice, text string) ([]byte, error) {
 	body := map[string]string{
 		"model":           model,
 		"input":           text,
 		"response_format": "wav",
 	}
-	if o.voice != "" {
-		body["voice"] = o.voice
+	if voice == "" {
+		voice = o.voice
+	}
+	if voice != "" {
+		body["voice"] = voice
 	}
 	payload, err := json.Marshal(body)
 	if err != nil {

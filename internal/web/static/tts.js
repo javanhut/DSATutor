@@ -3,7 +3,8 @@
 // when an Ollama server has them installed, and Piper, which ships in the
 // Docker image, as the always-there fallback. The voice picker in the
 // chapter header remembers the learner's choice; the server falls back to
-// the other engines automatically if the chosen one fails.
+// the other engines automatically if the chosen one fails. Engines with
+// several named voices (phonon's Zoey, Alfie, ...) get a second picker.
 //
 // Playback is paragraph-aware: each section reads block by block with the
 // current block highlighted, hovering any paragraph shows a play button that
@@ -14,6 +15,7 @@
 // engine works, none of this UI appears.
 
 const TTS_ENGINE_KEY = 'dsatutor_tts_engine';
+const TTS_SPEAKER_KEY = 'dsatutor_tts_speakers'; // engine id -> chosen voice name
 
 // Cards that get narration controls, and what counts as one readable block.
 const TTS_CARDS = '.overview-card, .tutorial-card, .lesson-card, .memory-card';
@@ -23,6 +25,7 @@ const TTS_EXCLUDED = 'pre, details, .hidden, .ladder, .check-choices, .pattern-c
 const ttsState = {
   status: null,  // /api/tts/status payload, null until fetched once
   engine: '',    // selected engine id; '' lets the server pick its default
+  speaker: '',   // named voice of that engine; '' is the engine's default
   session: null, // the active playback; see speakSection
 };
 
@@ -38,6 +41,7 @@ async function ttsStatus() {
     const engines = (ttsState.status.engines || []).filter(e => e.available);
     ttsState.engine = engines.some(e => e.id === saved) ? saved : '';
     initVoicePicker(engines);
+    initSpeakerPicker();
   }
   return ttsState.status;
 }
@@ -59,6 +63,34 @@ function initVoicePicker(engines) {
     stopLessonAudio();
     ttsState.engine = picker.value;
     saveJSON(TTS_ENGINE_KEY, picker.value);
+    initSpeakerPicker();
+  };
+}
+
+// The speaker picker sits beside the voice picker and lists the named voices
+// of the engine in use. It only shows for an engine that has some, and the
+// choice is remembered per engine.
+function initSpeakerPicker() {
+  const picker = el('tts-speaker');
+  if (!picker) return;
+  const status = ttsState.status || {};
+  const id = ttsState.engine || status.default;
+  const engine = (status.engines || []).find(e => e.id === id);
+  const voices = (engine && engine.voices) || [];
+  const saved = loadJSON(TTS_SPEAKER_KEY, {}) || {};
+  ttsState.speaker = voices.includes(saved[id]) ? saved[id] : '';
+  if (!voices.length) {
+    picker.classList.add('hidden');
+    return;
+  }
+  picker.innerHTML = ['', ...voices].map(v =>
+    `<option value="${escapeHtml(v)}"${v === ttsState.speaker ? ' selected' : ''}>${escapeHtml(v || 'Default voice')}</option>`
+  ).join('');
+  picker.classList.remove('hidden');
+  picker.onchange = () => {
+    stopLessonAudio();
+    ttsState.speaker = picker.value;
+    saveJSON(TTS_SPEAKER_KEY, { ...(loadJSON(TTS_SPEAKER_KEY, {}) || {}), [id]: picker.value });
   };
 }
 
@@ -169,6 +201,7 @@ function speechChunks(text, max = 600) {
 async function fetchSpeech(text, retried) {
   const body = { text };
   if (ttsState.engine) body.engine = ttsState.engine;
+  if (ttsState.speaker) body.voice = ttsState.speaker;
   const res = await fetch('/api/tts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

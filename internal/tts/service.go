@@ -10,6 +10,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 )
@@ -30,10 +31,11 @@ var (
 
 // EngineStatus describes one selectable narration engine.
 type EngineStatus struct {
-	ID        string `json:"id"`    // e.g. "ollama:lfm3-audio" or "piper"
-	Label     string `json:"label"` // shown in the UI's voice picker
-	Available bool   `json:"available"`
-	Reason    string `json:"reason,omitempty"`
+	ID        string   `json:"id"`    // e.g. "ollama:lfm3-audio" or "piper"
+	Label     string   `json:"label"` // shown in the UI's voice picker
+	Available bool     `json:"available"`
+	Reason    string   `json:"reason,omitempty"`
+	Voices    []string `json:"voices,omitempty"` // named voices to choose from, if the engine has any
 }
 
 // Status is the /api/tts/status payload.
@@ -82,6 +84,7 @@ func (s *Service) Status() Status {
 			ID:        "ollama:" + model,
 			Label:     "Ollama · " + strings.TrimSuffix(model, ":latest"),
 			Available: true,
+			Voices:    s.ollama.Voices(model),
 		})
 	}
 	available, voice, reason := s.piper.Status()
@@ -108,8 +111,9 @@ func (s *Service) Status() Status {
 
 // Synthesize renders text with the requested engine ("" means the default),
 // falling back to the remaining engines in preference order if it fails.
-// It returns the audio and the id of the engine that produced it.
-func (s *Service) Synthesize(ctx context.Context, text, engine string) ([]byte, string, error) {
+// voice picks one of the engine's named voices ("" means its default). It
+// returns the audio and the id of the engine that produced it.
+func (s *Service) Synthesize(ctx context.Context, text, engine, voice string) ([]byte, string, error) {
 	text = strings.TrimSpace(text)
 	if text == "" || len(text) > MaxTextLen {
 		return nil, "", ErrInvalidText
@@ -124,22 +128,29 @@ func (s *Service) Synthesize(ctx context.Context, text, engine string) ([]byte, 
 	}
 
 	var lastErr error
-	for _, id := range candidates {
-		key := fmt.Sprintf("%s|%x", id, sha256.Sum256([]byte(text)))
+	for _, e := range candidates {
+		// The voice only applies to an engine that has it. Any other engine
+		// (a fallback, or a model that dropped a remembered voice) speaks
+		// in its default voice: Ollama rejects names it does not know.
+		v := ""
+		if slices.Contains(e.Voices, voice) {
+			v = voice
+		}
+		key := fmt.Sprintf("%s|%s|%x", e.ID, v, sha256.Sum256([]byte(text)))
 		if wav, ok := s.cacheGet(key); ok {
-			return wav, id, nil
+			return wav, e.ID, nil
 		}
 		var wav []byte
-		if model, ok := strings.CutPrefix(id, "ollama:"); ok {
-			wav, err = s.ollama.Synthesize(ctx, model, text)
+		if model, ok := strings.CutPrefix(e.ID, "ollama:"); ok {
+			wav, err = s.ollama.Synthesize(ctx, model, v, text)
 		} else {
 			wav, err = s.piper.Synthesize(ctx, text)
 		}
 		if err == nil {
 			s.cachePut(key, wav)
-			return wav, id, nil
+			return wav, e.ID, nil
 		}
-		lastErr = fmt.Errorf("%s: %w", id, err)
+		lastErr = fmt.Errorf("%s: %w", e.ID, err)
 		if ctx.Err() != nil {
 			break
 		}
@@ -152,9 +163,9 @@ func (s *Service) Synthesize(ctx context.Context, text, engine string) ([]byte, 
 // is currently down falls back silently; only an id the server has never
 // heard of (e.g. a model that was removed) errors, which the frontend
 // recovers from by refetching /api/tts/status.
-func (s *Service) candidates(engine string) ([]string, error) {
+func (s *Service) candidates(engine string) ([]EngineStatus, error) {
 	known := engine == ""
-	var order []string
+	var order []EngineStatus
 	for _, e := range s.Status().Engines {
 		if e.ID == engine {
 			known = true
@@ -163,9 +174,9 @@ func (s *Service) candidates(engine string) ([]string, error) {
 			continue
 		}
 		if e.ID == engine {
-			order = append([]string{e.ID}, order...)
+			order = append([]EngineStatus{e}, order...)
 		} else {
-			order = append(order, e.ID)
+			order = append(order, e)
 		}
 	}
 	if !known {

@@ -21,7 +21,7 @@ func TestServiceRejectsInvalidText(t *testing.T) {
 	t.Setenv("DSATUTOR_OLLAMA_URL", "http://127.0.0.1:1")
 	s := NewService()
 	for _, text := range []string{"", "   ", string(bytes.Repeat([]byte("a"), MaxTextLen+1))} {
-		if _, _, err := s.Synthesize(context.Background(), text, ""); !errors.Is(err, ErrInvalidText) {
+		if _, _, err := s.Synthesize(context.Background(), text, "", ""); !errors.Is(err, ErrInvalidText) {
 			t.Errorf("Synthesize(%d chars) error = %v, want ErrInvalidText", len(text), err)
 		}
 	}
@@ -35,7 +35,7 @@ func TestServiceUnavailableWithoutEngines(t *testing.T) {
 	if st.Available || st.Default != "" {
 		t.Errorf("Status = %+v, want unavailable with no default", st)
 	}
-	if _, _, err := s.Synthesize(context.Background(), "hello", ""); !errors.Is(err, ErrUnavailable) {
+	if _, _, err := s.Synthesize(context.Background(), "hello", "", ""); !errors.Is(err, ErrUnavailable) {
 		t.Errorf("Synthesize error = %v, want ErrUnavailable", err)
 	}
 }
@@ -52,14 +52,14 @@ func TestServiceUsesOllamaAndCaches(t *testing.T) {
 		t.Fatalf("Status = %+v, want default ollama:lfm3-audio:latest", st)
 	}
 
-	wav, engine, err := s.Synthesize(context.Background(), "hello", "")
+	wav, engine, err := s.Synthesize(context.Background(), "hello", "", "")
 	if err != nil || engine != "ollama:lfm3-audio:latest" {
 		t.Fatalf("Synthesize = engine %q, err %v", engine, err)
 	}
 	if !bytes.HasPrefix(wav, []byte("RIFF")) {
 		t.Errorf("unexpected audio: %q", wav)
 	}
-	if _, _, err := s.Synthesize(context.Background(), "hello", ""); err != nil {
+	if _, _, err := s.Synthesize(context.Background(), "hello", "", ""); err != nil {
 		t.Fatal(err)
 	}
 	if calls.Load() != 1 {
@@ -72,8 +72,36 @@ func TestServiceRejectsUnknownEngine(t *testing.T) {
 	srv := fakeOllama(t, []string{"phonon:latest"}, nil)
 	t.Setenv("DSATUTOR_OLLAMA_URL", srv.URL)
 	s := NewService()
-	if _, _, err := s.Synthesize(context.Background(), "hello", "ollama:gone:latest"); !errors.Is(err, ErrUnknownEngine) {
+	if _, _, err := s.Synthesize(context.Background(), "hello", "ollama:gone:latest", ""); !errors.Is(err, ErrUnknownEngine) {
 		t.Errorf("Synthesize error = %v, want ErrUnknownEngine", err)
+	}
+}
+
+func TestServiceVoiceSelection(t *testing.T) {
+	disablePiper(t)
+	srv := fakeOllama(t, []string{"phonon:latest"}, nil)
+	t.Setenv("DSATUTOR_OLLAMA_URL", srv.URL)
+	s := NewService()
+
+	if got := s.Status().Engines[0].Voices; len(got) != 2 || got[0] != "Alfie" || got[1] != "Zoey" {
+		t.Fatalf("status voices = %v, want [Alfie Zoey]", got)
+	}
+	// The same text in each voice: a chosen voice reaches Ollama, an unknown
+	// one falls back to the default, and no voice is served another's audio
+	// from the cache.
+	for voice, want := range map[string]string{
+		"Zoey":   "RIFFfake-wav-for-phonon:latest#Zoey",
+		"Alfie":  "RIFFfake-wav-for-phonon:latest#Alfie",
+		"":       "RIFFfake-wav-for-phonon:latest",
+		"Nobody": "RIFFfake-wav-for-phonon:latest",
+	} {
+		wav, engine, err := s.Synthesize(context.Background(), "hello", "ollama:phonon:latest", voice)
+		if err != nil || engine != "ollama:phonon:latest" {
+			t.Fatalf("voice %q: engine %q, err %v", voice, engine, err)
+		}
+		if string(wav) != want {
+			t.Errorf("voice %q: audio = %q, want %q", voice, wav, want)
+		}
 	}
 }
 

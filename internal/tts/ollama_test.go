@@ -11,7 +11,9 @@ import (
 )
 
 // fakeOllama serves just enough of the Ollama API for the tests: /api/tags
-// with the given model names, and /v1/audio/speech returning fake WAV bytes.
+// with the given model names, /api/show listing voices for phonon models
+// only, and /v1/audio/speech returning fake WAV bytes that name the model
+// and, after a "#", the voice the request asked for.
 func fakeOllama(t *testing.T, models []string, speechCalls *atomic.Int64) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
@@ -25,6 +27,17 @@ func fakeOllama(t *testing.T, models []string, speechCalls *atomic.Int64) *httpt
 		}
 		json.NewEncoder(w).Encode(map[string]any{"models": list})
 	})
+	mux.HandleFunc("/api/show", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Model string `json:"model"`
+		}
+		json.NewDecoder(r.Body).Decode(&req)
+		show := map[string]any{"capabilities": []string{"speech"}}
+		if isModel(req.Model, "phonon") {
+			show["voices"] = []string{"Alfie", "default", "Zoey"}
+		}
+		json.NewEncoder(w).Encode(show)
+	})
 	mux.HandleFunc("/v1/audio/speech", func(w http.ResponseWriter, r *http.Request) {
 		if speechCalls != nil {
 			speechCalls.Add(1)
@@ -32,13 +45,18 @@ func fakeOllama(t *testing.T, models []string, speechCalls *atomic.Int64) *httpt
 		var req struct {
 			Model string `json:"model"`
 			Input string `json:"input"`
+			Voice string `json:"voice"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Model == "" || req.Input == "" {
 			http.Error(w, "bad request", http.StatusBadRequest)
 			return
 		}
 		w.Header().Set("Content-Type", "audio/wav")
-		w.Write([]byte("RIFFfake-wav-for-" + req.Model))
+		wav := "RIFFfake-wav-for-" + req.Model
+		if req.Voice != "" {
+			wav += "#" + req.Voice
+		}
+		w.Write([]byte(wav))
 	})
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
@@ -97,11 +115,25 @@ func TestOllamaUnreachable(t *testing.T) {
 func TestOllamaSynthesize(t *testing.T) {
 	srv := fakeOllama(t, []string{"phonon:latest"}, nil)
 	t.Setenv("DSATUTOR_OLLAMA_URL", srv.URL)
-	wav, err := NewOllama().Synthesize(context.Background(), "phonon:latest", "hello")
+	wav, err := NewOllama().Synthesize(context.Background(), "phonon:latest", "", "hello")
 	if err != nil {
 		t.Fatalf("Synthesize: %v", err)
 	}
 	if !strings.HasPrefix(string(wav), "RIFF") {
 		t.Errorf("unexpected audio payload: %q", wav)
+	}
+}
+
+func TestOllamaListsVoices(t *testing.T) {
+	srv := fakeOllama(t, []string{"lfm3-audio:latest", "phonon:latest"}, nil)
+	t.Setenv("DSATUTOR_OLLAMA_URL", srv.URL)
+	o := NewOllama()
+	o.SpeechModels()
+	got := o.Voices("phonon:latest")
+	if len(got) != 2 || got[0] != "Alfie" || got[1] != "Zoey" {
+		t.Errorf(`Voices(phonon) = %v, want [Alfie Zoey] ("default" is implied, not listed)`, got)
+	}
+	if got := o.Voices("lfm3-audio:latest"); len(got) != 0 {
+		t.Errorf("Voices(lfm3-audio) = %v, want none", got)
 	}
 }

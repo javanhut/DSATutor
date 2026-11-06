@@ -17,8 +17,9 @@ func (s *Server) handleTTSStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleTTS renders a chunk of lesson text as WAV audio with the requested
-// engine (or the default), falling back to the other engines on failure. The
-// X-TTS-Engine header names the engine that actually produced the audio.
+// engine (or the default) and, optionally, one of that engine's named
+// voices, falling back to the other engines on failure. The X-TTS-Engine
+// header names the engine that actually produced the audio.
 func (s *Server) handleTTS(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -27,12 +28,13 @@ func (s *Server) handleTTS(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Text   string `json:"text"`
 		Engine string `json:"engine"`
+		Voice  string `json:"voice"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	wav, engine, err := s.tts.Synthesize(r.Context(), req.Text, req.Engine)
+	wav, engine, err := s.tts.Synthesize(r.Context(), req.Text, req.Engine, req.Voice)
 	switch {
 	case errors.Is(err, tts.ErrInvalidText), errors.Is(err, tts.ErrUnknownEngine):
 		http.Error(w, err.Error(), http.StatusBadRequest)
