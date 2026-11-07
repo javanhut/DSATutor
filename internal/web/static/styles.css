@@ -7164,3 +7164,20 @@ h2 .tts-btn.active {
 h2 .tts-skip {
   margin-left: 6px;
 }
+
+/* Listen and Skip for a practice problem, at the right of the tab row. */
+.panel-tts {
+  display: flex;
+  gap: 6px;
+}
+
+.panel-tts .tts-btn {
+  padding: 4px 10px;
+  border-color: var(--border-light);
+}
+
+.panel-tts .tts-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}

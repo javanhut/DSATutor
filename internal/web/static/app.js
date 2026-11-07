@@ -7771,6 +7771,7 @@ async function openProblem(problemId, opts = {}) {
   if (descTab) descTab.click();
 
   showProblem();
+  if (typeof initPracticeAudio === 'function') initPracticeAudio();
 }
 
 // Reset all practice panels to initial state when switching problems

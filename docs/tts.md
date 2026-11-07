@@ -35,6 +35,11 @@ names the one actually used in the `X-TTS-Engine` response header.
 - The UI (`static/tts.js`) splits section text into sentence-sized chunks and
   prefetches the next chunk while the current one plays: audio starts within
   a couple of seconds and plays without gaps.
+- Lessons get a Listen button per section. A practice problem gets one in the
+  header of its problem panel, which reads the open tab: the Description
+  (statement and examples), the revealed Hints, or the Solution. Code blocks,
+  constraints and collapsed answers are skipped. The voice pickers move into
+  the header of whichever view is on screen.
 - If no engine works, `/api/tts/status` reports why per engine and the Listen
   buttons simply don't appear. The feature is fully optional.
 

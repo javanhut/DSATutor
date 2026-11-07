@@ -10,17 +10,27 @@
 // current block highlighted, hovering any paragraph shows a play button that
 // starts reading from there, and a Skip control jumps to the next block.
 //
+// Practice problems get the same controls: one Listen button in the problem
+// panel's header reads the open tab (Description, Hints or Solution).
+//
 // Loaded after learn.js and app.js; renderLesson (learn.js) calls
-// initLessonAudio() after each chapter render. When /api/tts/status says no
-// engine works, none of this UI appears.
+// initLessonAudio() after each chapter render and openProblem (app.js) calls
+// initPracticeAudio() after each problem render. When /api/tts/status says
+// no engine works, none of this UI appears.
 
 const TTS_ENGINE_KEY = 'dsatutor_tts_engine';
 const TTS_SPEAKER_KEY = 'dsatutor_tts_speakers'; // engine id -> chosen voice name
 
 // Cards that get narration controls, and what counts as one readable block.
 const TTS_CARDS = '.overview-card, .tutorial-card, .lesson-card, .memory-card';
-const TTS_BLOCKS = 'p, li, h3, h4, .worked-step-head';
-const TTS_EXCLUDED = 'pre, details, .hidden, .ladder, .check-choices, .pattern-choices';
+// A practice problem is read one tab at a time.
+const TTS_PRACTICE_TABS = '#problem-description, #problem-hints, #problem-solution';
+// The entries after .worked-step-head are the parts of a practice problem
+// that are not plain paragraphs: its examples, hint labels and the titles of
+// the solution walkthrough steps.
+const TTS_BLOCKS = 'p, li, h3, h4, .worked-step-head, .example-header, .example-io > div, .example-explanation, .hint-type, .walkthrough-header .subgoal';
+// Constraints are skipped like code: they are all symbols (1 <= n <= 10^4).
+const TTS_EXCLUDED = 'pre, details, .hidden, .ladder, .check-choices, .pattern-choices, .problem-constraints, .chapter-links';
 
 const ttsState = {
   status: null,  // /api/tts/status payload, null until fetched once
@@ -46,8 +56,9 @@ async function ttsStatus() {
   return ttsState.status;
 }
 
-// The picker lives in the chapter header next to Edit/Export; it only shows
-// when there is an actual choice to make.
+// The picker lives in the header of the chapter or practice problem on
+// screen (see placePickers); it only shows when there is an actual choice to
+// make.
 function initVoicePicker(engines) {
   const picker = el('tts-voice');
   if (!picker) return;
@@ -94,30 +105,73 @@ function initSpeakerPicker() {
   };
 }
 
+// One pair of pickers serves lessons and practice problems: it moves into
+// the header of whichever is on screen, ahead of that header's own buttons
+// (anchorId names one of them).
+function placePickers(anchorId) {
+  const anchor = el(anchorId);
+  const pickers = [el('tts-voice'), el('tts-speaker')].filter(Boolean);
+  if (anchor && pickers.length) anchor.parentElement.prepend(...pickers);
+}
+
+// Adds the Listen and Skip buttons to host; section() returns the element
+// to read when Listen is pressed.
+function addListenButtons(host, section) {
+  const btn = document.createElement('button');
+  btn.className = 'btn-small ghost tts-btn';
+  btn.textContent = 'Listen';
+  btn.title = 'Read this section aloud';
+  btn.onclick = () => {
+    const card = section();
+    if (ttsState.session && ttsState.session.btn === btn) stopLessonAudio();
+    else if (card) speakSection(card, btn);
+  };
+  host.appendChild(btn);
+  const skip = document.createElement('button');
+  skip.className = 'btn-small ghost tts-btn tts-skip hidden';
+  skip.textContent = 'Skip ›';
+  skip.title = 'Skip to the next paragraph';
+  skip.onclick = skipLessonAudio;
+  host.appendChild(skip);
+}
+
 async function initLessonAudio() {
   stopLessonAudio();
   if (!(await ttsStatus()).available) return;
+  placePickers('toggle-edit');
   initParagraphPlay();
   document.querySelectorAll(`#standard-chapter-content :is(${TTS_CARDS})`).forEach(card => {
     if (card.closest('#lesson-practice-section')) return; // just a problem list
     const heading = card.querySelector('h2');
     if (!heading || heading.querySelector('.tts-btn')) return;
-    const btn = document.createElement('button');
-    btn.className = 'btn-small ghost tts-btn';
-    btn.textContent = 'Listen';
-    btn.title = 'Read this section aloud';
-    btn.onclick = () => {
-      if (ttsState.session && ttsState.session.btn === btn) stopLessonAudio();
-      else speakSection(card, btn);
-    };
-    heading.appendChild(btn);
-    const skip = document.createElement('button');
-    skip.className = 'btn-small ghost tts-btn tts-skip hidden';
-    skip.textContent = 'Skip ›';
-    skip.title = 'Skip to the next paragraph';
-    skip.onclick = skipLessonAudio;
-    heading.appendChild(skip);
+    addListenButtons(heading, () => card);
   });
+}
+
+// The problem panel is reused for every problem, so its buttons are added
+// once; each call still stops whatever the previous problem was reading.
+async function initPracticeAudio() {
+  stopLessonAudio();
+  if (!(await ttsStatus()).available) return;
+  placePickers('practice-run');
+  initParagraphPlay();
+  const panel = document.querySelector('#practice-mode .problem-panel');
+  const header = panel && panel.querySelector('.panel-header');
+  if (!header || el('practice-tts')) return;
+  const host = document.createElement('div');
+  host.id = 'practice-tts';
+  host.className = 'panel-tts';
+  header.appendChild(host);
+  addListenButtons(host, () => panel.querySelector(`:is(${TTS_PRACTICE_TABS}).active`));
+  // Switching tabs, revealing a hint and unlocking the solution all replace
+  // the text being read, so they end the narration. The Visualize tab has
+  // nothing to read.
+  panel.addEventListener('click', e => {
+    const tab = e.target.closest('.tab-btn');
+    if (tab) host.classList.toggle('hidden', tab.dataset.tab === 'visualization');
+    if (tab || e.target.closest('#reveal-hint, #unlock-solution')) stopLessonAudio();
+  });
+  el('practice-back')?.addEventListener('click', stopLessonAudio);
 }
 
 function stopLessonAudio() {
@@ -323,6 +377,18 @@ async function speakSection(card, btn, startBlock = 0) {
   }
 }
 
+// blockSection finds the section a block is read with and that section's
+// Listen button: a lesson card, or the open tab of a practice problem.
+function blockSection(block) {
+  const card = block.closest(`#standard-chapter-content :is(${TTS_CARDS})`);
+  if (card) {
+    if (card.closest('#lesson-practice-section')) return null; // just a problem list
+    return { card, btn: card.querySelector('h2 .tts-btn') };
+  }
+  const tab = block.closest(TTS_PRACTICE_TABS);
+  return tab && { card: tab, btn: document.querySelector('#practice-tts .tts-btn') };
+}
+
 // A single floating play button follows the hovered paragraph, so any block
 // can start playback from there without cluttering the text with controls.
 function initParagraphPlay() {
@@ -333,19 +399,19 @@ function initParagraphPlay() {
   fab.title = 'Listen from this paragraph';
   fab.textContent = '▶';
   document.body.appendChild(fab);
-  let target = null; // the hovered block and its card
+  let target = null; // the hovered block, its section and that section's Listen button
   const hide = () => { fab.classList.add('hidden'); target = null; };
 
   document.addEventListener('mouseover', e => {
     if (!e.target.closest) return;
     if (e.target.closest('#tts-para-play')) return; // hovering the button itself
     const block = e.target.closest(TTS_BLOCKS);
-    const card = block && block.closest(`#standard-chapter-content :is(${TTS_CARDS})`);
-    if (!block || !card || card.closest('#lesson-practice-section') || block.closest(TTS_EXCLUDED)) {
+    const section = block && !block.closest(TTS_EXCLUDED) && blockSection(block);
+    if (!section || !section.btn) {
       hide();
       return;
     }
-    target = { card, block };
+    target = { ...section, block };
     const r = block.getBoundingClientRect();
     fab.style.top = `${r.top - 1}px`;
     fab.style.left = `${Math.max(2, r.left - 26)}px`;
@@ -356,10 +422,8 @@ function initParagraphPlay() {
 
   fab.onclick = () => {
     if (!target) return;
-    const { card, block } = target;
+    const { card, btn, block } = target;
     hide();
-    const btn = card.querySelector('h2 .tts-btn');
-    if (!btn) return;
     const blocks = speechBlocks(card);
     const idx = blocks.findIndex(b => b.el === block || b.el.contains(block) || block.contains(b.el));
     speakSection(card, btn, Math.max(0, idx));
