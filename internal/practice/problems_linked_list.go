@@ -42,7 +42,11 @@ const randomListValidator = `def check(raw, args, result, expected):
 `
 
 // LinkedListProblems contains all linked-list category problems, in ladder
-// order: each one adds a single new idea to the ones before it.
+// order: each one adds a single new idea to the ones before it. Reversal,
+// dummy heads and fast/slow pointers come first, then problems that combine
+// them (Reorder List, the two Add Two Numbers problems, where II reads the
+// digits through stacks and prepends), then hash maps over nodes (random
+// pointers, LRU Cache) and divide and conquer (Merge k Sorted Lists).
 var LinkedListProblems = []*Problem{
 	{
 		ID:              "reverse-linked-list",
@@ -180,7 +184,7 @@ def reverseList(head):
 		Slug:            "merge-two-sorted-lists",
 		Difficulty:      "Easy",
 		Category:        "linked-list",
-		Tags:            []string{"Linked List", "Recursion"},
+		Tags:            []string{"Linked List", "Recursion", "Google", "Google L3", "Google Phone Screen"},
 		RelatedChapters: []int{7, 3},
 		Description: `You receive the heads of two singly linked lists, list1 and list2. Each list is already sorted in non-decreasing order.
 
@@ -308,7 +312,7 @@ def mergeTwoLists(list1, list2):
 		SelfCheck: []SelfCheck{
 			{Prompt: "Why is a single assignment enough to attach the leftovers after the loop, instead of a second loop?", Answer: "The leftover list is already a chain of sorted nodes, and every value in it is at least as large as tail.val. Linking its head to tail.next brings the whole chain along, because the nodes are still connected to each other. A loop would only copy links that already exist."},
 			{Prompt: "What would go wrong if you used < instead of <= when comparing the fronts?", Answer: "The merged list would still be sorted, since on a tie either node is a valid next choice. Only stability changes: equal values from list2 would come before those from list1. For plain integers the output is identical, which is why the tests can't tell the difference."},
-			{Prompt: "What if you had k sorted lists instead of two? How could you reuse this function?", Answer: "Merge them in pairs: merge lists 0 and 1, 2 and 3, and so on, then repeat on the results until one list remains. Each round touches every node once and halves the number of lists, so it costs O(N log k). That is the main solution of Merge K Sorted Lists (Order 9)."},
+			{Prompt: "What if you had k sorted lists instead of two? How could you reuse this function?", Answer: "Merge them in pairs: merge lists 0 and 1, 2 and 3, and so on, then repeat on the results until one list remains. Each round touches every node once and halves the number of lists, so it costs O(N log k). That is the main solution of Merge K Sorted Lists (Order 10)."},
 		},
 	},
 	{
@@ -829,14 +833,179 @@ def addTwoNumbers(l1, l2):
 		},
 	},
 	{
+		ID:              "add-two-numbers-ii",
+		Number:          445,
+		Order:           7,
+		Title:           "Add Two Numbers II",
+		Slug:            "add-two-numbers-ii",
+		Difficulty:      "Medium",
+		Category:        "linked-list",
+		Tags:            []string{"Linked List", "Math", "Stack", "Google", "Google L3", "Google Phone Screen"},
+		RelatedChapters: []int{7, 5, 19},
+		Description: `Two non-negative integers are stored as linked lists, one decimal digit per node, with the **most significant digit first**: the head holds the leading digit and the last node holds the ones digit. For example 342 is stored as 3 -> 4 -> 2.
+
+Return a new linked list, in the same most-significant-first format, holding the sum of the two numbers. Neither number has leading zeros, except the number 0 itself, which is the single node [0], and the answer must not have leading zeros either.
+
+The two lists may have different lengths. Try to solve it without reversing the input lists.`,
+		Constraints: []string{
+			"Each list has between 1 and 100 nodes",
+			"0 <= Node.val <= 9",
+			"The stored numbers have no leading zeros (except 0 itself)",
+		},
+		Examples: []Example{
+			{Input: "l1 = [7,2,4,3], l2 = [5,6,4]", Output: "[7,8,0,7]", Explanation: "7243 + 564 = 7807. The ones digits 3 and 4 are the last nodes of each list, so the lists line up at their tails, not their heads: 3+4 = 7, 4+6 = 10 (write 0, carry 1), 2+5+1 = 8, and 7 is copied down."},
+			{Input: "l1 = [2,4,3], l2 = [5,6,4]", Output: "[8,0,7]", Explanation: "243 + 564 = 807."},
+			{Input: "l1 = [0], l2 = [0]", Output: "[0]"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"l1": []int{7, 2, 4, 3}, "l2": []int{5, 6, 4}}, Expected: []int{7, 8, 0, 7}, Note: "example 1: different lengths, so the lists line up at the tail (adding head to head gives the wrong sum)"},
+			{Input: map[string]interface{}{"l1": []int{2, 4, 3}, "l2": []int{5, 6, 4}}, Expected: []int{8, 0, 7}, Note: "example 2: same length with a carry in the middle"},
+			{Input: map[string]interface{}{"l1": []int{0}, "l2": []int{0}}, Expected: []int{0}, Note: "example 3: zero plus zero"},
+			{Input: map[string]interface{}{"l1": []int{5}, "l2": []int{5}}, Expected: []int{1, 0}, Hidden: true, Note: "the final carry becomes a new head node (forgetting it gives [0])"},
+			{Input: map[string]interface{}{"l1": []int{9, 9, 9}, "l2": []int{1}}, Expected: []int{1, 0, 0, 0}, Hidden: true, Note: "carry ripples through every digit and past the front"},
+			{Input: map[string]interface{}{"l1": []int{1}, "l2": []int{9, 9}}, Expected: []int{1, 0, 0}, Hidden: true, Note: "first list shorter: 1 + 99 = 100"},
+			{Input: map[string]interface{}{"l1": []int{1, 2, 3}, "l2": []int{4, 5, 6}}, Expected: []int{5, 7, 9}, Hidden: true, Note: "no carry at all (catches building the answer in the wrong direction: [9,7,5])"},
+		},
+		TimeComplexity:  "O(m + n)",
+		SpaceComplexity: "O(m + n)",
+		StarterCode: `# ListNode(val, next) is provided
+def addTwoNumbers(l1, l2):
+    # Write your solution here
+    pass`,
+		Harness: Harness{
+			ParamTypes: map[string]string{"l1": "ListNode", "l2": "ListNode"},
+			ReturnType: "ListNode",
+		},
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "Column addition starts at the ones digit, which is now at the end of each list, and a singly linked list can't be walked backwards. What structure would hand you the digits back in the reverse of the order you read them?"},
+			{Level: 2, Type: "insight", Content: "Push each list's digits onto a stack (Chapter 5) while walking forwards; popping then yields the digits from the ones place upward, exactly as Add Two Numbers walked them. The answer's digits are produced lowest first but must be stored highest first, so put each new digit node in front of the current head instead of behind a tail (Chapter 7).", ChapterRef: 7},
+			{Level: 3, Type: "plan", Content: "1. Stack the digits: walk each list and push its digits onto its own stack.\n2. Add one column: while either stack has digits or the carry is non-zero, start from the carry and add the popped top of each non-empty stack.\n3. Split the total: the digit is total % 10 and the new carry is total // 10.\n4. Prepend the digit: create a node holding the digit whose next is the current head, and make it the new head.\n5. Return the head."},
+			{Level: 4, Type: "skeleton", Content: `def addTwoNumbers(l1, l2):
+    stack1, stack2 = [], []
+    while l1:
+        stack1.append(l1.val)
+        l1 = l1.next
+    while l2:
+        stack2.append(l2.val)
+        l2 = l2.next
+    head = None
+    carry = 0
+    while ____:
+        total = carry
+        if stack1:
+            total += ____
+        if stack2:
+            total += ____
+        carry, digit = divmod(total, 10)
+        head = ____
+    return head`},
+		},
+		Solution: Solution{
+			Code: `def addTwoNumbers(l1, l2):
+    stack1, stack2 = [], []
+    while l1:
+        stack1.append(l1.val)
+        l1 = l1.next
+    while l2:
+        stack2.append(l2.val)
+        l2 = l2.next
+    head = None
+    carry = 0
+    while stack1 or stack2 or carry:
+        total = carry
+        if stack1:
+            total += stack1.pop()
+        if stack2:
+            total += stack2.pop()
+        carry, digit = divmod(total, 10)
+        head = ListNode(digit, head)
+    return head`,
+			Explanation: "Builds on Add Two Numbers (the previous problem): the same column loop with a carry, running while either number has digits or a carry remains. The new twist is that the digits are stored in the opposite order to the one addition needs, so the input is read through stacks to get the ones digit first, and the output is built by prepending (as Reverse Linked List did when it pointed each node at the one before it) so the highest digit ends up at the head.",
+			BruteForce:  "Reverse both lists (Reverse Linked List), run Add Two Numbers on them, and reverse the result: three extra passes, and it destroys the caller's input lists unless you reverse them back. Converting both lists to integers also works in Python but overflows in languages with fixed-size integers once the numbers pass about 19 digits. Both work around the order instead of reading the digits in the order addition needs.",
+			KeyInsight:  "A stack reverses order for free: pushing the digits head to tail and popping them gives the ones digit first. And prepending each new node reverses the output for free, so the digits computed lowest first end up highest first, with no list reversal anywhere.",
+			WhyItWorks:  "After the two walks, the top of each stack is that number's ones digit, and each pop moves one place value up, so the k-th iteration adds the two digits of place value 10^(k-1) (or 0 once a stack is empty) plus the carry, exactly like column addition. Invariant: after k iterations, the list starting at head holds the lowest k digits of the sum, most significant first, because each new digit belongs one place above everything already in the list and is placed in front of it. The carry is at most 1 (9 + 9 + 1 = 19), and the loop continues while carry is non-zero, so a final carry becomes the new leading 1. The loop runs max(m, n) + 1 times at most, so time is O(m + n), and the stacks use O(m + n) extra space.",
+			CommonMistakes: []string{
+				"Adding the heads together as if the lists were aligned at the front. With different lengths, [7,2,4,3] + [5,6,4] would add 7 to 5. Align at the ones digit, which is the tail: read the digits through stacks (or reverse first).",
+				"Appending each new digit at the tail as in Add Two Numbers. The digits come out lowest first, so the answer is written backwards ([1,2,3] + [4,5,6] gives [9,7,5]). Prepend each new node with ListNode(digit, head).",
+				"Stopping when both stacks are empty and dropping the last carry: [5] + [5] returns [0] instead of [1,0]. Keep carry in the loop condition.",
+			},
+			TimeComplexity:  "O(m + n)",
+			SpaceComplexity: "O(m + n) for the two stacks",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Stack the digits", Explanation: "Walking forwards and pushing leaves each number's ones digit on top. For [7,2,4,3] the stack is [7,2,4,3] with 3 on top.", CodeSnippet: "while l1:\n    stack1.append(l1.val)\n    l1 = l1.next", LineStart: 2, LineEnd: 8},
+				{Title: "Add one column", Explanation: "Exactly the loop of Add Two Numbers, but the digits come from the stacks. An empty stack contributes 0, which handles lists of different lengths.", CodeSnippet: "while stack1 or stack2 or carry:\n    total = carry\n    if stack1:\n        total += stack1.pop()", LineStart: 11, LineEnd: 16},
+				{Title: "Split the total", Explanation: "divmod(10, 10) is (1, 0): write 0 here and carry 1 into the next place up.", CodeSnippet: "carry, digit = divmod(total, 10)", LineStart: 17, LineEnd: 17},
+				{Title: "Prepend the digit", Explanation: "The new digit is one place above everything already built, so it goes in front. On example 1 the list grows 7, then 0 -> 7, then 8 -> 0 -> 7, then 7 -> 8 -> 0 -> 7.", CodeSnippet: "head = ListNode(digit, head)", LineStart: 18, LineEnd: 18},
+				{Title: "Return the head", Explanation: "head is the most significant digit. A final carry was already prepended as the leading 1 by the last iteration.", CodeSnippet: "return head", LineStart: 19, LineEnd: 19},
+			},
+			Alternatives: []AltSolution{
+				{
+					Name: "Brute force: reverse, add, prepend",
+					Code: `def addTwoNumbers(l1, l2):
+    def reverse(node):
+        prev = None
+        while node:
+            nxt = node.next
+            node.next = prev
+            prev = node
+            node = nxt
+        return prev
+
+    a, b = reverse(l1), reverse(l2)
+    head = None
+    carry = 0
+    while a or b or carry:
+        total = carry
+        if a:
+            total += a.val
+            a = a.next
+        if b:
+            total += b.val
+            b = b.next
+        carry, digit = divmod(total, 10)
+        head = ListNode(digit, head)
+    return head`,
+					TimeComplexity:  "O(m + n)",
+					SpaceComplexity: "O(1) besides the output",
+					Explanation:     "Reverse Linked List turns both inputs into the format of Add Two Numbers, then the same carry loop runs directly on the nodes. Prepending makes a third reversal unnecessary. It uses no stacks, but it modifies the input lists, which the follow-up asks you not to do.",
+				},
+				{
+					Name: "Convert to integers and back",
+					Code: `def addTwoNumbers(l1, l2):
+    def to_int(node):
+        value = 0
+        while node:
+            value = value * 10 + node.val
+            node = node.next
+        return value
+
+    total = to_int(l1) + to_int(l2)
+    head = None
+    while True:
+        total, digit = divmod(total, 10)
+        head = ListNode(digit, head)
+        if total == 0:
+            return head`,
+					TimeComplexity:  "O(m + n)",
+					SpaceComplexity: "O(1) besides the output",
+					Explanation:     "Most-significant-first is the natural order for reading a number (value * 10 + digit). It relies on Python's unlimited integers, so in Java or C++ the 100-digit inputs overflow, which is why interviewers expect the digit-by-digit version.",
+				},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "Why does prepending each digit give the right order, when Add Two Numbers appended behind a tail?", Answer: "In both problems the digits are produced lowest place first. Add Two Numbers wanted the lowest digit at the head, so appending kept that order. Here the highest digit must be at the head, and each new digit belongs above every digit produced so far, so putting it in front keeps the list most significant first at every step."},
+			{Prompt: "How could you solve it in O(1) extra space without modifying the input lists?", Answer: "Find both lengths, then walk the longer list alone until the remaining lengths are equal, and walk both together, writing digit sums (possibly 10 or more) into new nodes. Then fix the carries from the back: reverse the result list, propagate carries in one pass, and reverse back (or recurse). This avoids the stacks but needs more passes and more care, so the stack version is the usual interview answer."},
+		},
+	},
+	{
 		ID:              "copy-list-with-random-pointer",
 		Number:          138,
-		Order:           7,
+		Order:           8,
 		Title:           "Copy List with Random Pointer",
 		Slug:            "copy-list-with-random-pointer",
 		Difficulty:      "Medium",
 		Category:        "linked-list",
-		Tags:            []string{"Hash Table", "Linked List"},
+		Tags:            []string{"Hash Table", "Linked List", "Google", "Google L4", "Google Onsite"},
 		RelatedChapters: []int{7, 2},
 		Description: `Each node of this linked list has a value, a next pointer, and an extra pointer called random that can point to any node of the same list (including itself) or be None.
 
@@ -995,12 +1164,12 @@ def copyRandomList(head):
 	{
 		ID:              "lru-cache",
 		Number:          146,
-		Order:           8,
+		Order:           9,
 		Title:           "LRU Cache",
 		Slug:            "lru-cache",
 		Difficulty:      "Medium",
 		Category:        "linked-list",
-		Tags:            []string{"Hash Table", "Linked List", "Design", "Doubly-Linked List"},
+		Tags:            []string{"Hash Table", "Linked List", "Design", "Doubly-Linked List", "Google", "Google L4", "Google Onsite"},
 		RelatedChapters: []int{7, 2},
 		Description: `Design a key-value cache with a fixed capacity that evicts the Least Recently Used key when it is full. Implement the class LRUCache:
 
@@ -1221,12 +1390,12 @@ class LRUCache:
 	{
 		ID:              "merge-k-sorted-lists",
 		Number:          23,
-		Order:           9,
+		Order:           10,
 		Title:           "Merge k Sorted Lists",
 		Slug:            "merge-k-sorted-lists",
 		Difficulty:      "Hard",
 		Category:        "linked-list",
-		Tags:            []string{"Linked List", "Divide and Conquer", "Heap (Priority Queue)", "Merge Sort"},
+		Tags:            []string{"Linked List", "Divide and Conquer", "Heap (Priority Queue)", "Merge Sort", "Google", "Google L5", "Google Onsite"},
 		RelatedChapters: []int{7, 8, 11},
 		Description: `You are given a Python list lists of k linked lists. Each linked list is sorted in non-decreasing order, and any of them may be empty (None).
 

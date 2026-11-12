@@ -7755,6 +7755,37 @@ function renderProblemsList() {
     });
   }
 
+  // Topic filter: the problems' tags (String, Tree, Greedy...), which cut
+  // across the technique categories. Most common first.
+  const topicFilter = el('filter-topic');
+  if (topicFilter && topicFilter.options.length <= 1) {
+    const counts = {};
+    practiceState.problems.forEach(p => (p.tags || []).forEach(t => { counts[t] = (counts[t] || 0) + 1; }));
+    const option = ([tag, n]) => {
+      const opt = document.createElement('option');
+      opt.value = tag;
+      opt.textContent = `${tag} (${n})`;
+      return opt;
+    };
+    // Company tags ("Google", "Google L4", "Google Phone Screen") get their
+    // own group in a fixed order; topics follow, most common first.
+    const company = Object.entries(counts).filter(([tag]) => tag === 'Google' || tag.startsWith('Google '));
+    const rank = tag => ['Google', 'Google L3', 'Google L4', 'Google L5', 'Google Phone Screen', 'Google Onsite', 'Google OA'].indexOf(tag);
+    if (company.length) {
+      const group = document.createElement('optgroup');
+      group.label = 'Google interview prep';
+      company.sort((a, b) => rank(a[0]) - rank(b[0])).forEach(e => group.appendChild(option(e)));
+      topicFilter.appendChild(group);
+    }
+    const topics = document.createElement('optgroup');
+    topics.label = 'Topics';
+    Object.entries(counts)
+      .filter(([tag]) => !(tag === 'Google' || tag.startsWith('Google ')))
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .forEach(e => topics.appendChild(option(e)));
+    topicFilter.appendChild(topics);
+  }
+
   renderReviewBar();
   filterProblems();
 }
@@ -9086,6 +9117,11 @@ function setupPracticeControls() {
     statusFilter.onchange = () => filterProblems();
   }
 
+  const topicFilter = el('filter-topic');
+  if (topicFilter) {
+    topicFilter.onchange = () => filterProblems();
+  }
+
   // Search filter
   const searchFilter = el('filter-search');
   if (searchFilter) {
@@ -9106,6 +9142,7 @@ function filterProblems() {
   const difficulty = el('filter-difficulty')?.value || 'all';
   const category = el('filter-category')?.value || 'all';
   const status = el('filter-status')?.value || 'all';
+  const topic = el('filter-topic')?.value || 'all';
   const search = el('filter-search')?.value?.toLowerCase() || '';
 
   const cards = document.querySelectorAll('.problem-card');
@@ -9133,8 +9170,13 @@ function filterProblems() {
       show = false;
     }
 
+    if (topic !== 'all' && !(problem.tags || []).includes(topic)) {
+      show = false;
+    }
+
     if (search && !problem.title.toLowerCase().includes(search) &&
-        !problem.id.toLowerCase().includes(search)) {
+        !problem.id.toLowerCase().includes(search) &&
+        !(problem.tags || []).some(t => t.toLowerCase().includes(search))) {
       show = false;
     }
 

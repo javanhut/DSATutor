@@ -144,7 +144,7 @@ def networkDelayTime(times, n, k):
 		Slug:            "swim-in-rising-water",
 		Difficulty:      "Hard",
 		Category:        "advanced-graphs",
-		Tags:            []string{"Graph", "Dijkstra", "Heap", "Binary Search", "Matrix"},
+		Tags:            []string{"Graph", "Dijkstra", "Heap", "Binary Search", "Matrix", "Google", "Google L5", "Google Phone Screen"},
 		RelatedChapters: []int{14, 11, 13},
 		Description: `You are given an n x n grid where grid[r][c] is the elevation of cell (r, c). The elevations are all different and are exactly the numbers 0 to n^2 - 1 in some order.
 
@@ -279,7 +279,7 @@ def swimInWater(grid):
 		Slug:            "min-cost-to-connect-all-points",
 		Difficulty:      "Medium",
 		Category:        "advanced-graphs",
-		Tags:            []string{"Graph", "Minimum Spanning Tree", "Prim", "Kruskal", "Union-Find", "Heap"},
+		Tags:            []string{"Graph", "Minimum Spanning Tree", "Prim", "Kruskal", "Union-Find", "Heap", "Google", "Google L4", "Google Phone Screen"},
 		RelatedChapters: []int{14, 11, 13},
 		Description: `You are given **points** on a plane, where points[i] = [x, y]. Joining two points [x1, y1] and [x2, y2] costs their **Manhattan distance**, |x1 - x2| + |y1 - y2|. Any pair of points may be joined, and joins are undirected.
 
@@ -699,7 +699,7 @@ def findItinerary(tickets):
 		Slug:            "alien-dictionary",
 		Difficulty:      "Hard",
 		Category:        "advanced-graphs",
-		Tags:            []string{"Graph", "Topological Sort", "String", "BFS"},
+		Tags:            []string{"Graph", "Topological Sort", "String", "BFS", "Google", "Google L5", "Google Onsite"},
 		RelatedChapters: []int{14, 13},
 		Description: `An alien language uses lowercase English letters, but in an unknown order. You are given **words**, a list that is claimed to be sorted in lexicographic order of that alien alphabet.
 

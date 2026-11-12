@@ -758,7 +758,7 @@ def isInterleave(s1, s2, s3):
 		Slug:            "edit-distance",
 		Difficulty:      "Medium",
 		Category:        "2d-dp",
-		Tags:            []string{"String", "Dynamic Programming"},
+		Tags:            []string{"String", "Dynamic Programming", "Google", "Google L4", "Google Onsite"},
 		RelatedChapters: []int{16, 15},
 		Description: `Given two strings word1 and word2, return the smallest number of single-letter edits that turn word1 into word2. One edit is one of:
 
@@ -1113,7 +1113,7 @@ def numDistinct(s, t):
 		Slug:            "burst-balloons",
 		Difficulty:      "Hard",
 		Category:        "2d-dp",
-		Tags:            []string{"Array", "Dynamic Programming", "Interval DP"},
+		Tags:            []string{"Array", "Dynamic Programming", "Interval DP", "Google", "Google L5", "Google Onsite"},
 		RelatedChapters: []int{16, 15, 8},
 		Description: `A row of n balloons has a number painted on each: nums[i] for balloon i. You must burst all of them, one at a time, in any order you choose.
 

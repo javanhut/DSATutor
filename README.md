@@ -39,6 +39,8 @@ The course is built on well-replicated learning research; see
   that sees the lesson or problem, your code and your last run, and coaches
   you toward the bug, the pattern and the complexity instead of handing over
   the answer; replies can be read aloud with the narration voices
+- **Google interview prep**: 74 problems tagged with the Google level (L3–L5)
+  and round they were reported in from 2024–2026; filter by **Topic → Google**
 - **Practice judge**: Python or [Oxigen](docs/oxigen.md) solutions run against
   visible and hidden tests, including linked-list, tree, graph and
   class-design problems

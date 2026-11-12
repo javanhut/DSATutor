@@ -99,7 +99,7 @@ For sorted neighbours the general overlap test a.start < b.end and b.start < a.e
 		Slug:            "merge-intervals",
 		Difficulty:      "Medium",
 		Category:        "intervals",
-		Tags:            []string{"Array", "Sorting", "Intervals"},
+		Tags:            []string{"Array", "Sorting", "Intervals", "Google", "Google L4", "Google Phone Screen"},
 		RelatedChapters: []int{18, 17},
 		Description: `You are given a list of intervals, where intervals[i] = [start, end] with start <= end. Two intervals overlap if they share at least one point; here intervals are closed, so [1,4] and [4,5] overlap at 4.
 
@@ -407,7 +407,7 @@ start >= current_end is not strict because touching intervals are allowed here.`
 		Slug:            "meeting-rooms-ii",
 		Difficulty:      "Medium",
 		Category:        "intervals",
-		Tags:            []string{"Array", "Sorting", "Heap (Priority Queue)", "Intervals"},
+		Tags:            []string{"Array", "Sorting", "Heap (Priority Queue)", "Intervals", "Google", "Google L4", "Google Phone Screen"},
 		RelatedChapters: []int{18, 11, 17},
 		Description: `You are given a list of meetings, where intervals[i] = [start, end] means meeting i runs during the half-open time range [start, end). A room is free again at the exact moment its meeting ends, so a meeting ending at 5 and one starting at 5 can use the same room.
 

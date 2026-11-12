@@ -2,9 +2,11 @@ package practice
 
 // ArraysHashingProblems is the arrays-hashing ladder (chapter 2). Order runs
 // from the plainest use of a set to problems that combine several ideas:
-// set -> counting -> seen-so-far map -> grouping by a key -> bucketing by
-// count -> several sets at once -> a self-describing format -> prefix and
-// suffix products -> "only start at the start of a run".
+// set -> counting -> turning counts into pairs -> turning counts into
+// triplets -> seen-so-far map -> a map kept between calls -> grouping by a
+// key -> bucketing by count -> several sets at once -> a self-describing
+// format -> a map and an array kept in sync -> prefix and suffix products ->
+// "only start at the start of a run" -> the array as its own hash table.
 var ArraysHashingProblems = []*Problem{
 	{
 		ID:              "contains-duplicate",
@@ -218,14 +220,270 @@ def isAnagram(s, t):
 		},
 	},
 	{
+		ID:              "longest-palindrome",
+		Number:          409,
+		Order:           3,
+		Title:           "Longest Palindrome",
+		Slug:            "longest-palindrome",
+		Difficulty:      "Easy",
+		Category:        "arrays-hashing",
+		Tags:            []string{"Hash Table", "String", "Greedy", "Google", "Google L3", "Google OA"},
+		RelatedChapters: []int{2, 17},
+		Description: `A palindrome is a string that reads the same forwards and backwards, such as "racecar" or "abba".
+
+You are given a string s made of English letters. You may pick any of its letters (each position at most once) and arrange the picked letters in any order you like. Return the length of the longest palindrome you can build this way.
+
+Letters are case-sensitive: "A" and "a" are different letters, so "Aa" is not a palindrome. You don't have to return the palindrome itself, only its length.`,
+		Constraints: []string{
+			"1 <= s.length <= 2000",
+			"s consists of lowercase and/or uppercase English letters",
+		},
+		Examples: []Example{
+			{Input: `s = "abccccdd"`, Output: "7", Explanation: "Use the four c's and the two d's as mirrored pairs and put one leftover letter (a or b) in the middle, for example \"dccaccd\"."},
+			{Input: `s = "z"`, Output: "1", Explanation: "A single letter is already a palindrome."},
+			{Input: `s = "aaabbb"`, Output: "5", Explanation: "Each letter appears 3 times. Two a's and two b's form pairs, and one of the leftovers goes in the middle, for example \"ababa\"."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"s": "abccccdd"}, Expected: 7, Note: "pairs plus one leftover letter in the middle"},
+			{Input: map[string]interface{}{"s": "z"}, Expected: 1, Note: "single letter"},
+			{Input: map[string]interface{}{"s": "aaabbb"}, Expected: 5, Note: "two odd counts: only one odd letter may sit in the middle"},
+			{Input: map[string]interface{}{"s": "Aa"}, Expected: 1, Hidden: true, Note: "case-sensitive: A and a don't pair"},
+			{Input: map[string]interface{}{"s": "abc"}, Expected: 1, Hidden: true, Note: "no pairs at all, but one letter can still be the centre"},
+			{Input: map[string]interface{}{"s": "bbbb"}, Expected: 4, Hidden: true, Note: "all counts even: no centre letter to add"},
+			{Input: map[string]interface{}{"s": "ccc"}, Expected: 3, Hidden: true, Note: "one odd count used in full"},
+			{Input: map[string]interface{}{"s": "AAaaBBbbx"}, Expected: 9, Hidden: true, Note: "mixed case pairs plus a centre"},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def longestPalindrome(s):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "Picture the palindrome you're building. Every letter on the left half has a mirror twin on the right half. Which letters, if any, are allowed to have no twin?"},
+			{Level: 2, Type: "insight", Content: "Only how many of each letter you have matters, not where they were, so count the letters with a dictionary (counting, from Chapter 2, as in Valid Anagram). Every letter contributes its pairs: count // 2 * 2 characters. On top of that, exactly one letter with a leftover (an odd count) may sit alone in the centre, adding 1.", ChapterRef: 2},
+			{Level: 3, Type: "plan", Content: "1. Count each item: build letter -> how many times it appears.\n2. Use the pairs: add count // 2 * 2 for every letter.\n3. Remember a leftover: note whether any count is odd.\n4. Return the answer: add 1 for the centre if a leftover exists."},
+			{Level: 4, Type: "skeleton", Content: `def longestPalindrome(s):
+    counts = {}
+    for ch in s:
+        counts[ch] = counts.get(ch, 0) + 1
+    length = 0
+    has_odd = False
+    for count in counts.values():
+        length += ____
+        if ____:
+            has_odd = True
+    if has_odd:
+        ____
+    return length`},
+		},
+		Solution: Solution{
+			Code: `def longestPalindrome(s):
+    counts = {}
+    for ch in s:
+        counts[ch] = counts.get(ch, 0) + 1
+    length = 0
+    has_odd = False
+    for count in counts.values():
+        length += count // 2 * 2
+        if count % 2 == 1:
+            has_odd = True
+    if has_odd:
+        length += 1
+    return length`,
+			Explanation: "Count every letter, take all of its complete pairs, and add one extra letter for the centre if any letter had a leftover. Builds on Valid Anagram: the same letter -> count dictionary, but instead of comparing two sets of counts we turn one set of counts into an answer (pairs mirror each other, one odd letter sits in the middle).",
+			BruteForce:  "Try every subset of the letters and every arrangement of each subset, keep the ones that read the same both ways, and report the longest. With n letters that is far more than 2^n candidates, hopeless even for n = 30. The waste: positions and arrangements are irrelevant; whether a multiset of letters can form a palindrome depends only on how many of each letter it holds.",
+			KeyInsight:  "In a palindrome, positions pair up around the centre, so every letter appears an even number of times, except at most one letter that takes the single middle spot. So the answer is the sum of the even parts of all counts, plus 1 if anything is left over.",
+			WhyItWorks:  "Upper bound: a palindrome of length L pairs position i with position L-1-i, so each letter is used an even number of times, apart from the middle position when L is odd. A letter with count c can therefore contribute at most c // 2 * 2 paired characters, and at most one extra character overall can be unpaired. Achievability: place the pairs symmetrically from the outside in, then put one leftover letter (if any) in the middle. Both bounds meet, so the formula is exactly the maximum.",
+			CommonMistakes: []string{
+				"Adding every odd count in full, as if every odd letter could be the centre. For \"aaabbb\" that gives 6, but only one letter may sit unpaired. Add count // 2 * 2 for every letter and a single +1 at the end.",
+				"Forgetting the centre letter entirely, so \"abc\" returns 0 instead of 1. If any count is odd, one leftover can go in the middle.",
+				"Lower-casing the string first. The problem is case-sensitive, so \"Aa\" can't pair up and the answer is 1, not 2.",
+			},
+			TimeComplexity:  "O(n)",
+			SpaceComplexity: "O(1)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Count each item", Explanation: "One pass builds letter -> count. There are at most 52 letters, so the dictionary has constant size.", CodeSnippet: "for ch in s:\n    counts[ch] = counts.get(ch, 0) + 1", LineStart: 3, LineEnd: 4},
+				{Title: "Use the pairs", Explanation: "count // 2 * 2 is the largest even number not above count: every full pair can be mirrored. For \"abccccdd\" that is 0 + 0 + 4 + 2 = 6.", CodeSnippet: "for count in counts.values():\n    length += count // 2 * 2", LineStart: 7, LineEnd: 8},
+				{Title: "Remember a leftover", Explanation: "An odd count leaves one letter unpaired. We only need to know whether at least one such letter exists, not how many.", CodeSnippet: "if count % 2 == 1:\n    has_odd = True", LineStart: 9, LineEnd: 10},
+				{Title: "Return the answer", Explanation: "One leftover can sit in the centre, so add 1 if there is any. For \"abccccdd\" that gives 6 + 1 = 7.", CodeSnippet: "if has_odd:\n    length += 1\nreturn length", LineStart: 11, LineEnd: 13},
+			},
+			Alternatives: []AltSolution{
+				{
+					Name: "Pair letters with a set as you go",
+					Code: `def longestPalindrome(s):
+    unpaired = set()
+    length = 0
+    for ch in s:
+        if ch in unpaired:
+            unpaired.remove(ch)
+            length += 2
+        else:
+            unpaired.add(ch)
+    if unpaired:
+        return length + 1
+    return length`,
+					TimeComplexity:  "O(n)",
+					SpaceComplexity: "O(1)",
+					Explanation:     "Contains Duplicate's set, used to match each letter with its twin: a letter waiting in the set finds its partner and the pair adds 2. Whatever is left unpaired at the end can supply one centre letter.",
+				},
+				{
+					Name: "Sort, then pair neighbours",
+					Code: `def longestPalindrome(s):
+    letters = sorted(s)
+    length = 0
+    i = 0
+    while i + 1 < len(letters):
+        if letters[i] == letters[i + 1]:
+            length += 2
+            i += 2
+        else:
+            i += 1
+    if length < len(letters):
+        length += 1
+    return length`,
+					TimeComplexity:  "O(n log n)",
+					SpaceComplexity: "O(n)",
+					Explanation:     "After sorting, equal letters sit together, so pairs are adjacent. If some letter was not used in a pair, one of them can be the centre. Correct but slower than counting because of the sort.",
+				},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "Why can at most one letter with an odd count contribute its leftover?", Answer: "In a palindrome every position except the exact middle has a mirror partner holding the same letter. Only the middle position (present when the length is odd) can hold a letter without a twin, and there is just one middle, so at most one leftover letter fits."},
+			{Prompt: "What if you had to return the palindrome itself, not its length?", Answer: "Build the left half from the counts: for each letter add count // 2 copies. Pick any odd-count letter as the middle (or none). The answer is left + middle + reversed(left). The counting step is unchanged; only the output step grows."},
+			{Prompt: "Why is the space O(1) even though we store a dictionary?", Answer: "The keys are English letters, upper and lower case, so the dictionary never holds more than 52 entries however long s is. A bound that doesn't grow with n is O(1)."},
+		},
+	},
+	{
+		ID:              "number-of-unequal-triplets-in-array",
+		Number:          2475,
+		Order:           4,
+		Title:           "Number of Unequal Triplets in Array",
+		Slug:            "number-of-unequal-triplets-in-array",
+		Difficulty:      "Easy",
+		Category:        "arrays-hashing",
+		Tags:            []string{"Array", "Hash Table", "Sorting", "Google", "Google L3", "Google Phone Screen"},
+		RelatedChapters: []int{2, 1},
+		Description: `You are given a list of positive integers nums. A triplet of positions (i, j, k) with i < j < k is called unequal when the three values nums[i], nums[j] and nums[k] are all different from each other: nums[i] != nums[j], nums[j] != nums[k] and nums[i] != nums[k].
+
+Return how many unequal triplets of positions exist. Triplets are counted by position, so two triplets that use the same values at different positions are counted separately.`,
+		Constraints: []string{
+			"3 <= nums.length <= 100",
+			"1 <= nums[i] <= 1000",
+		},
+		Examples: []Example{
+			{Input: "nums = [4,4,2,4,3]", Output: "3", Explanation: "The only values are 4, 2 and 3. A valid triplet needs the 2, the 3 and one of the three 4s, which gives 3 choices of positions: (0,2,4), (1,2,4) and (2,3,4)."},
+			{Input: "nums = [1,1,1,1,1]", Output: "0", Explanation: "Every value is the same, so no triplet has three different values."},
+			{Input: "nums = [1,2,3]", Output: "1", Explanation: "The single triplet (0,1,2) uses three different values."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"nums": []int{4, 4, 2, 4, 3}}, Expected: 3, Note: "one repeated value pairs with two singletons"},
+			{Input: map[string]interface{}{"nums": []int{1, 1, 1, 1, 1}}, Expected: 0, Note: "all equal values"},
+			{Input: map[string]interface{}{"nums": []int{1, 2, 3}}, Expected: 1, Note: "minimum length, all different"},
+			{Input: map[string]interface{}{"nums": []int{1, 2, 1}}, Expected: 0, Hidden: true, Note: "first and last are equal: nums[i] != nums[k] must be checked too"},
+			{Input: map[string]interface{}{"nums": []int{1, 2, 3, 4}}, Expected: 4, Hidden: true, Note: "all distinct: every one of the 4 position triplets counts"},
+			{Input: map[string]interface{}{"nums": []int{1, 1, 2, 3}}, Expected: 2, Hidden: true, Note: "count position triplets, not combinations of distinct values"},
+			{Input: map[string]interface{}{"nums": []int{5, 1, 5, 1, 5, 2}}, Expected: 6, Hidden: true, Note: "groups of sizes 3, 2 and 1 interleaved: 3 * 2 * 1"},
+			{Input: map[string]interface{}{"nums": []int{7, 7, 8}}, Expected: 0, Hidden: true, Note: "only two distinct values can never form a triplet"},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def unequalTriplets(nums):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "Does the order of the positions really matter here? If you knew only how many times each value appears, could you count the triplets without looking at positions at all?"},
+			{Level: 2, Type: "insight", Content: "Any three positions holding three different values form exactly one triplet with i < j < k, so only the counts matter (counting with a dictionary, Chapter 2). Process the value groups one at a time. For the current group of size c, let before be the number of elements in groups already processed and after the number in groups still to come. Choosing one element from before, one from this group and one from after gives before * c * after triplets, and each triplet is counted exactly once: when its middle group is the current one.", ChapterRef: 2},
+			{Level: 3, Type: "plan", Content: "1. Count each item: value -> how many times it appears.\n2. Split around the current group: before = elements in earlier groups, after = n - before - c.\n3. Combine the counts: add before * c * after.\n4. Move the group to the left side: before += c.\n5. Return the answer: the running total."},
+			{Level: 4, Type: "skeleton", Content: `def unequalTriplets(nums):
+    counts = {}
+    for num in nums:
+        counts[num] = counts.get(num, 0) + 1
+    total = 0
+    before = 0
+    n = len(nums)
+    for count in counts.values():
+        after = ____
+        total += ____
+        ____
+    return total`},
+		},
+		Solution: Solution{
+			Code: `def unequalTriplets(nums):
+    counts = {}
+    for num in nums:
+        counts[num] = counts.get(num, 0) + 1
+    total = 0
+    before = 0  # elements in the groups already processed
+    n = len(nums)
+    for count in counts.values():
+        after = n - before - count
+        total += before * count * after
+        before += count
+    return total`,
+			Explanation: "Count how often each value appears, then walk the value groups, multiplying the number of elements before the current group, inside it and after it. Builds on Longest Palindrome: there the letter counts were turned into pairs; here the value counts are turned into triplets by multiplication, so we never look at individual positions.",
+			BruteForce:  "Three nested loops over i < j < k, checking that the three values are pairwise different: n(n-1)(n-2)/6 checks, O(n^3). With n = 100 that is about 160,000 checks, which is fine here, but at n = 10^5 it would be over 10^14. The waste: it examines every triplet one by one, even though all the triplets drawn from the same three value groups behave identically.",
+			KeyInsight:  "Positions with equal values are interchangeable, so a triplet is determined by choosing three different groups and one element from each. Splitting the groups into those before, the current one and those after counts each choice exactly once.",
+			WhyItWorks:  "Fix any order of the value groups (the dictionary's order). A set of three positions with three different values touches exactly three groups, and exactly one of them is the middle one in that order. When the loop is on that middle group, the triplet is one of the before * count * after choices; on every other iteration it is not counted, because then the triplet doesn't have exactly one element on each side. Each set of three positions corresponds to exactly one triple i < j < k, so the sum is exactly the number of unequal triplets.",
+			CommonMistakes: []string{
+				"Checking only neighbouring pairs, nums[i] != nums[j] and nums[j] != nums[k], and forgetting nums[i] != nums[k]. Then [1,2,1] counts a triplet. All three pairs must differ.",
+				"Counting combinations of distinct values instead of positions. [4,4,2,4,3] has only one set of three distinct values but 3 position triplets. Multiply by the group sizes.",
+				"Counting each triplet several times, for example adding left * count * right for every possible ordering of the three groups, which gives 6 times the answer. Count each triplet only when its middle group is the current one.",
+			},
+			TimeComplexity:  "O(n)",
+			SpaceComplexity: "O(n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Count each item", Explanation: "One pass builds value -> group size. For [4,4,2,4,3] the groups are 4:3, 2:1, 3:1.", CodeSnippet: "for num in nums:\n    counts[num] = counts.get(num, 0) + 1", LineStart: 3, LineEnd: 4},
+				{Title: "Split around the current group", Explanation: "before counts the elements of earlier groups; after is everything that is neither before nor in this group.", CodeSnippet: "for count in counts.values():\n    after = n - before - count", LineStart: 8, LineEnd: 9},
+				{Title: "Combine the counts", Explanation: "One element from each side and one from this group: before * count * after triplets. For [4,4,2,4,3]: 0*3*2 = 0, then 3*1*1 = 3, then 4*1*0 = 0, total 3.", CodeSnippet: "total += before * count * after", LineStart: 10, LineEnd: 10},
+				{Title: "Move the group to the left side", Explanation: "The current group is now an earlier group for every group still to come.", CodeSnippet: "before += count\nreturn total", LineStart: 11, LineEnd: 12},
+			},
+			Alternatives: []AltSolution{
+				{
+					Name: "Brute force: check every triplet",
+					Code: `def unequalTriplets(nums):
+    n = len(nums)
+    total = 0
+    for i in range(n):
+        for j in range(i + 1, n):
+            for k in range(j + 1, n):
+                if nums[i] != nums[j] and nums[j] != nums[k] and nums[i] != nums[k]:
+                    total += 1
+    return total`,
+					TimeComplexity:  "O(n^3)",
+					SpaceComplexity: "O(1)",
+					Explanation:     "Checks every triplet directly. With n <= 100 it is fast enough here, which is why this is an Easy problem, but it is the version an interviewer will ask you to improve.",
+				},
+				{
+					Name: "Sort, then split around each run",
+					Code: `def unequalTriplets(nums):
+    ordered = sorted(nums)
+    n = len(ordered)
+    total = 0
+    start = 0
+    while start < n:
+        end = start
+        while end < n and ordered[end] == ordered[start]:
+            end += 1
+        total += start * (end - start) * (n - end)
+        start = end
+    return total`,
+					TimeComplexity:  "O(n log n)",
+					SpaceComplexity: "O(n)",
+					Explanation:     "Sorting makes each value group a contiguous run, so start is the number of elements before the run and n - end the number after it. Same counting argument, with a sort instead of a dictionary.",
+				},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "Why may we ignore the condition i < j < k and just count sets of three positions?", Answer: "Any three different positions can be listed in increasing order in exactly one way, so each set of three positions is exactly one triple with i < j < k. Counting sets is the same as counting ordered triples."},
+			{Prompt: "Why does the order in which the dictionary visits the groups not matter?", Answer: "The argument only needs some fixed order of the groups: each triplet is counted when its middle group (in that order) is processed. Any order gives each triplet exactly one middle group, so every order yields the same total."},
+			{Prompt: "What if you had to count pairs (i, j) with nums[i] != nums[j] instead?", Answer: "The same trick with one side: for each group of size c, add before * c and then before += c. Equivalently, total pairs n(n-1)/2 minus, for each group, c(c-1)/2 equal pairs."},
+		},
+	},
+	{
 		ID:              "two-sum",
 		Number:          1,
-		Order:           3,
+		Order:           5,
 		Title:           "Two Sum",
 		Slug:            "two-sum",
 		Difficulty:      "Easy",
 		Category:        "arrays-hashing",
-		Tags:            []string{"Array", "Hash Table"},
+		Tags:            []string{"Array", "Hash Table", "Google", "Google L3", "Google Phone Screen"},
 		RelatedChapters: []int{2, 3},
 		Description: `You are given a list of integers nums and an integer target. Exactly one pair of different positions i and j has nums[i] + nums[j] == target. Return those two positions as a list [i, j].
 
@@ -334,9 +592,145 @@ You may not use the same position twice (but two different positions may hold th
 		},
 	},
 	{
+		ID:              "logger-rate-limiter",
+		Number:          359,
+		Order:           6,
+		Title:           "Logger Rate Limiter",
+		Slug:            "logger-rate-limiter",
+		Difficulty:      "Easy",
+		Category:        "arrays-hashing",
+		Tags:            []string{"Hash Table", "Design", "Data Stream", "Google", "Google L3", "Google Phone Screen"},
+		RelatedChapters: []int{2},
+		Description: `A logging system receives a stream of messages. Each message is a string and arrives with a timestamp, a whole number of seconds. To avoid flooding the log, the same message may be printed at most once every 10 seconds: if a message was last printed at time t, it may be printed again only at time t + 10 or later. Different messages don't affect each other.
+
+Design a class Logger:
+
+- Logger() creates the logger with nothing printed yet.
+- shouldPrintMessage(timestamp, message) returns true if the message should be printed at this timestamp, and false otherwise. When it returns true, the message counts as printed at that timestamp. When it returns false, nothing is recorded: a rejected message does not restart its 10-second wait.
+
+Calls arrive in chronological order: each timestamp is greater than or equal to the previous one. Several messages may share the same timestamp.`,
+		Constraints: []string{
+			"0 <= timestamp <= 10^9",
+			"Timestamps are passed in non-decreasing order",
+			"1 <= message.length <= 30",
+			"At most 10^4 calls are made to shouldPrintMessage",
+		},
+		Examples: []Example{
+			{Input: `["Logger","shouldPrintMessage","shouldPrintMessage","shouldPrintMessage","shouldPrintMessage","shouldPrintMessage","shouldPrintMessage","shouldPrintMessage"]
+[[],[1,"ping"],[2,"pong"],[3,"ping"],[8,"pong"],[10,"ping"],[11,"ping"],[12,"pong"]]`, Output: "[null,true,true,false,false,false,true,true]", Explanation: "\"ping\" prints at 1, so it is blocked until 11: the calls at 3 and 10 return false and the call at 11 returns true. \"pong\" prints at 2, so it is blocked at 8 and allowed again at 12."},
+			{Input: `["Logger","shouldPrintMessage","shouldPrintMessage","shouldPrintMessage"]
+[[],[5,"a"],[14,"a"],[15,"a"]]`, Output: "[null,true,false,true]", Explanation: "After printing at 5, \"a\" may print again at exactly 15, but not at 14."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"operations": []string{"Logger", "shouldPrintMessage", "shouldPrintMessage", "shouldPrintMessage", "shouldPrintMessage", "shouldPrintMessage", "shouldPrintMessage", "shouldPrintMessage"}, "values": [][]interface{}{{}, {1, "ping"}, {2, "pong"}, {3, "ping"}, {8, "pong"}, {10, "ping"}, {11, "ping"}, {12, "pong"}}}, Expected: []interface{}{nil, true, true, false, false, false, true, true}, Note: "two messages with independent 10-second windows"},
+			{Input: map[string]interface{}{"operations": []string{"Logger", "shouldPrintMessage", "shouldPrintMessage", "shouldPrintMessage"}, "values": [][]interface{}{{}, {5, "a"}, {14, "a"}, {15, "a"}}}, Expected: []interface{}{nil, true, false, true}, Note: "exactly 10 seconds later is allowed, 9 is not"},
+			{Input: map[string]interface{}{"operations": []string{"Logger", "shouldPrintMessage", "shouldPrintMessage", "shouldPrintMessage", "shouldPrintMessage"}, "values": [][]interface{}{{}, {1, "x"}, {5, "x"}, {9, "x"}, {11, "x"}}}, Expected: []interface{}{nil, true, false, false, true}, Hidden: true, Note: "rejected calls must not restart the wait"},
+			{Input: map[string]interface{}{"operations": []string{"Logger", "shouldPrintMessage", "shouldPrintMessage", "shouldPrintMessage", "shouldPrintMessage"}, "values": [][]interface{}{{}, {0, "a"}, {0, "b"}, {0, "a"}, {9, "b"}}}, Expected: []interface{}{nil, true, true, false, false}, Hidden: true, Note: "timestamp 0 is a real print time (a stored 0 is not \"never printed\")"},
+			{Input: map[string]interface{}{"operations": []string{"Logger", "shouldPrintMessage", "shouldPrintMessage", "shouldPrintMessage"}, "values": [][]interface{}{{}, {100, "m"}, {1000000000, "m"}, {1000000005, "m"}}}, Expected: []interface{}{nil, true, true, false}, Hidden: true, Note: "huge gap, then a repeat inside the window at the maximum timestamp"},
+			{Input: map[string]interface{}{"operations": []string{"Logger", "shouldPrintMessage", "shouldPrintMessage", "shouldPrintMessage", "shouldPrintMessage", "shouldPrintMessage", "shouldPrintMessage", "shouldPrintMessage", "shouldPrintMessage"}, "values": [][]interface{}{{}, {1, "a"}, {2, "b"}, {3, "c"}, {11, "a"}, {11, "b"}, {12, "b"}, {12, "c"}, {13, "c"}}}, Expected: []interface{}{nil, true, true, true, true, false, true, false, true}, Hidden: true, Note: "three messages whose windows end one second apart"},
+			{Input: map[string]interface{}{"operations": []string{"Logger", "shouldPrintMessage", "shouldPrintMessage", "shouldPrintMessage", "shouldPrintMessage"}, "values": [][]interface{}{{}, {7, "same"}, {7, "same"}, {17, "same"}, {17, "same"}}}, Expected: []interface{}{nil, true, false, true, false}, Hidden: true, Note: "the same message twice in one second is printed once"},
+		},
+		TimeComplexity:  "O(1)",
+		SpaceComplexity: "O(m)",
+		StarterCode: `class Logger:
+    def __init__(self):
+        pass
+
+    def shouldPrintMessage(self, timestamp: int, message: str) -> bool:
+        pass`,
+		Harness: Harness{Mode: "design"},
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "To decide about a message right now, what is the one fact about that message's past that you need, and how could you look it up instantly by the message text?"},
+			{Level: 2, Type: "insight", Content: "Keep a dictionary from message to the earliest time it may print again (last print time + 10). A call is allowed exactly when timestamp >= that time; only then update the entry. This is the seen-so-far map from Chapter 2: Two Sum stored value -> index, here we store message -> next allowed time.", ChapterRef: 2},
+			{Level: 3, Type: "plan", Content: "1. Choose what to remember: message -> earliest timestamp it may print again.\n2. Look up before you store: if the current timestamp is earlier than that time, return False and change nothing.\n3. Record the current item: otherwise set the entry to timestamp + 10 and return True."},
+			{Level: 4, Type: "skeleton", Content: `class Logger:
+    def __init__(self):
+        self.next_allowed = ____
+
+    def shouldPrintMessage(self, timestamp: int, message: str) -> bool:
+        if ____:
+            return False
+        ____
+        return True`},
+		},
+		Solution: Solution{
+			Code: `class Logger:
+    def __init__(self):
+        # message -> earliest timestamp at which it may print again
+        self.next_allowed = {}
+
+    def shouldPrintMessage(self, timestamp: int, message: str) -> bool:
+        if timestamp < self.next_allowed.get(message, 0):
+            return False
+        self.next_allowed[message] = timestamp + 10
+        return True`,
+			Explanation: "Store, for each message, the earliest time it may print again. Each call is one dictionary lookup and, if the message prints, one update. Builds on Two Sum: the same \"look up, then store\" loop over a stream, but the dictionary maps each message to a time instead of an index, and it lives inside a class because the calls arrive one at a time.",
+			BruteForce:  "Keep a list of every printed (timestamp, message) and, for each call, scan the list for the same message within the last 10 seconds. After k prints that is O(k) per call, O(k^2) over a long stream. The waste: only the most recent print of this one message can block it, yet the scan looks at every print of every message.",
+			KeyInsight:  "Whether a message may print depends on a single number: when it was last printed. A dictionary keyed by message text returns that number in O(1).",
+			WhyItWorks:  "Invariant: next_allowed[m] is (last time m was printed) + 10 for every message printed so far, and messages never printed have no entry (read as 0, and timestamps are at least 0, so they always pass). A call prints exactly when timestamp >= last print + 10, which is the rule. Rejected calls change nothing, so the invariant still holds after them, and an accepted call updates exactly m's entry to the new print time + 10.",
+			CommonMistakes: []string{
+				"Updating the stored time on every call, including rejected ones. Then a message sent at 1, 5 and 11 is blocked at 11 because the clock restarted at 5. Only record the time when the message is printed.",
+				"Using > 10 instead of >= 10 for the gap. A message printed at 5 may print again at exactly 15. Compare timestamp < last + 10 to reject.",
+				"Writing if self.last.get(message): to test whether a message was printed. A message printed at time 0 stores 0, which is falsy, so it is printed again at once. Test with 'in' or compare against a default time.",
+			},
+			TimeComplexity:  "O(1) per call",
+			SpaceComplexity: "O(m)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Choose what to remember", Explanation: "For each message we only need one number: the earliest time it may print again. Storing last + 10 makes the check a single comparison.", CodeSnippet: "self.next_allowed = {}", LineStart: 3, LineEnd: 4},
+				{Title: "Look up before you store", Explanation: "A message never printed reads as 0, which every timestamp passes. If the timestamp is earlier than the stored time, reject without changing anything. With \"ping\" stored as 11, the calls at 3 and 10 are rejected.", CodeSnippet: "if timestamp < self.next_allowed.get(message, 0):\n    return False", LineStart: 7, LineEnd: 8},
+				{Title: "Record the current item", Explanation: "The message prints now, so its next allowed time moves to timestamp + 10.", CodeSnippet: "self.next_allowed[message] = timestamp + 10\nreturn True", LineStart: 9, LineEnd: 10},
+			},
+			Alternatives: []AltSolution{
+				{
+					Name: "Brute force: scan every printed line",
+					Code: `class Logger:
+    def __init__(self):
+        self.printed = []  # (timestamp, message) for every printed line
+
+    def shouldPrintMessage(self, timestamp: int, message: str) -> bool:
+        for when, text in self.printed:
+            if text == message and timestamp - when < 10:
+                return False
+        self.printed.append((timestamp, message))
+        return True`,
+					TimeComplexity:  "O(k) per call",
+					SpaceComplexity: "O(k)",
+					Explanation:     "Correct, and a natural first draft, but every call rescans all k lines printed so far.",
+				},
+				{
+					Name: "Queue of the last 10 seconds",
+					Code: `from collections import deque
+
+class Logger:
+    def __init__(self):
+        self.recent = deque()  # (timestamp, message) printed in the last 10 seconds
+        self.recent_messages = set()
+
+    def shouldPrintMessage(self, timestamp: int, message: str) -> bool:
+        while self.recent and timestamp - self.recent[0][0] >= 10:
+            _, old = self.recent.popleft()
+            self.recent_messages.discard(old)
+        if message in self.recent_messages:
+            return False
+        self.recent.append((timestamp, message))
+        self.recent_messages.add(message)
+        return True`,
+					TimeComplexity:  "O(1) amortized per call",
+					SpaceComplexity: "O(r)",
+					Explanation:     "Because timestamps only grow, prints older than 10 seconds can be dropped from the front of a queue. Memory then holds only the r messages printed in the last 10 seconds, instead of every message ever seen.",
+				},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "Why must a rejected call leave the dictionary unchanged?", Answer: "The rule is about the last time the message was printed, not the last time it was sent. A rejected message was not printed, so recording its time would push its next allowed time later than the rule says, and a message sent at 1, 5 and 11 would wrongly be blocked at 11."},
+			{Prompt: "The dictionary keeps every message forever. What if there are millions of distinct messages and memory matters?", Answer: "Since timestamps never decrease, any entry whose next allowed time is already in the past can be deleted without changing any answer. The queue alternative does this automatically: it drops prints older than 10 seconds, so memory is bounded by the messages printed in the last 10 seconds."},
+			{Prompt: "What changes if calls could arrive out of time order?", Answer: "Storing only the last print time is no longer enough, because an earlier timestamp could arrive after a later one and both the past and the future around it matter. You would need to keep the sorted print times per message (for example with bisect) and check the nearest print on each side."},
+		},
+	},
+	{
 		ID:              "group-anagrams",
 		Number:          49,
-		Order:           4,
+		Order:           7,
 		Title:           "Group Anagrams",
 		Slug:            "group-anagrams",
 		Difficulty:      "Medium",
@@ -455,12 +849,12 @@ Given a list of strings strs, put the words into groups so that two words share 
 	{
 		ID:              "top-k-frequent-elements",
 		Number:          347,
-		Order:           5,
+		Order:           8,
 		Title:           "Top K Frequent Elements",
 		Slug:            "top-k-frequent-elements",
 		Difficulty:      "Medium",
 		Category:        "arrays-hashing",
-		Tags:            []string{"Array", "Hash Table", "Bucket Sort", "Heap (Priority Queue)", "Counting"},
+		Tags:            []string{"Array", "Hash Table", "Bucket Sort", "Heap (Priority Queue)", "Counting", "Google", "Google L4", "Google Phone Screen"},
 		RelatedChapters: []int{2, 11},
 		Description: `You are given a list of integers nums and an integer k. The frequency of a value is how many times it appears in nums. Return the k distinct values with the highest frequencies.
 
@@ -579,7 +973,7 @@ def topKFrequent(nums, k):
 	{
 		ID:              "valid-sudoku",
 		Number:          36,
-		Order:           6,
+		Order:           9,
 		Title:           "Valid Sudoku",
 		Slug:            "valid-sudoku",
 		Difficulty:      "Medium",
@@ -699,7 +1093,7 @@ You only check the cells that are filled. You do not need to decide whether the 
 	{
 		ID:              "encode-and-decode-strings",
 		Number:          271,
-		Order:           7,
+		Order:           10,
 		Title:           "Encode and Decode Strings",
 		Slug:            "encode-and-decode-strings",
 		Difficulty:      "Medium",
@@ -834,9 +1228,200 @@ def decode(s):
 		},
 	},
 	{
+		ID:              "insert-delete-getrandom-o1",
+		Number:          380,
+		Order:           11,
+		Title:           "Insert Delete GetRandom O(1)",
+		Slug:            "insert-delete-getrandom-o1",
+		Difficulty:      "Medium",
+		Category:        "arrays-hashing",
+		Tags:            []string{"Array", "Hash Table", "Math", "Design", "Randomized", "Google", "Google L4", "Google Phone Screen"},
+		RelatedChapters: []int{2},
+		Description: `Design a class RandomizedSet that stores a set of distinct integers and supports three operations, each in O(1) average time:
+
+- RandomizedSet() creates an empty set.
+- insert(val) adds val if it is not already present. Returns true if val was added, false if it was already there.
+- remove(val) deletes val if it is present. Returns true if val was removed, false if it was not there.
+- getRandom() returns one of the values currently in the set, chosen at random so that every value has the same chance of being picked.
+
+getRandom is only called when the set holds at least one value.`,
+		Constraints: []string{
+			"-2^31 <= val <= 2^31 - 1",
+			"At most 2 * 10^5 calls are made in total",
+			"getRandom is only called when the set is not empty",
+		},
+		Examples: []Example{
+			{Input: `["RandomizedSet","insert","remove","insert","remove","insert","getRandom"]
+[[],[1],[2],[2],[1],[2],[]]`, Output: "[null,true,false,true,true,false,2]", Explanation: "1 is added, removing 2 fails because it is absent, 2 is added, 1 is removed, adding 2 again fails because it is present. The set is now {2}, so getRandom must return 2."},
+			{Input: `["RandomizedSet","insert","insert","remove","remove","insert","getRandom"]
+[[],[5],[5],[5],[5],[5],[]]`, Output: "[null,true,false,true,false,true,5]", Explanation: "A value can be inserted again after it has been removed."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"operations": []string{"RandomizedSet", "insert", "remove", "insert", "remove", "insert", "getRandom"}, "values": [][]int{{}, {1}, {2}, {2}, {1}, {2}, {}}}, Expected: []interface{}{nil, true, false, true, true, false, 2}, Note: "return values of insert and remove, then the one remaining value"},
+			{Input: map[string]interface{}{"operations": []string{"RandomizedSet", "insert", "insert", "remove", "remove", "insert", "getRandom"}, "values": [][]int{{}, {5}, {5}, {5}, {5}, {5}, {}}}, Expected: []interface{}{nil, true, false, true, false, true, 5}, Note: "duplicate insert, double remove, re-insert"},
+			{Input: map[string]interface{}{"operations": []string{"RandomizedSet", "insert", "insert", "insert", "remove", "remove", "remove", "insert", "getRandom"}, "values": [][]int{{}, {1}, {2}, {3}, {1}, {3}, {2}, {3}, {}}}, Expected: []interface{}{nil, true, true, true, true, true, true, true, 3}, Hidden: true, Note: "the element moved into a hole must get its new position recorded"},
+			{Input: map[string]interface{}{"operations": []string{"RandomizedSet", "insert", "insert", "remove", "getRandom", "insert", "remove", "getRandom"}, "values": [][]int{{}, {7}, {8}, {8}, {}, {8}, {7}, {}}}, Expected: []interface{}{nil, true, true, true, 7, true, true, 8}, Hidden: true, Note: "removing the value that is already last in the array"},
+			{Input: map[string]interface{}{"operations": []string{"RandomizedSet", "insert", "insert", "insert", "insert", "insert", "insert", "remove", "remove", "remove", "remove", "remove", "getRandom", "getRandom", "getRandom"}, "values": [][]int{{}, {1}, {2}, {3}, {4}, {5}, {6}, {1}, {2}, {3}, {4}, {5}, {}, {}, {}}}, Expected: []interface{}{nil, true, true, true, true, true, true, true, true, true, true, true, 6, 6, 6}, Hidden: true, Note: "after five removals getRandom may only ever return the survivor"},
+			{Input: map[string]interface{}{"operations": []string{"RandomizedSet", "insert", "insert", "remove", "getRandom", "remove"}, "values": [][]int{{}, {-2147483648}, {2147483647}, {-2147483648}, {}, {0}}}, Expected: []interface{}{nil, true, true, true, 2147483647, false}, Hidden: true, Note: "extreme 32-bit values; removing an absent 0"},
+			{Input: map[string]interface{}{"operations": []string{"RandomizedSet", "remove", "insert", "getRandom"}, "values": [][]int{{}, {1}, {1}, {}}}, Expected: []interface{}{nil, false, true, 1}, Hidden: true, Note: "remove on an empty set"},
+		},
+		TimeComplexity:  "O(1)",
+		SpaceComplexity: "O(n)",
+		StarterCode: `class RandomizedSet:
+    def __init__(self):
+        pass
+
+    def insert(self, val: int) -> bool:
+        pass
+
+    def remove(self, val: int) -> bool:
+        pass
+
+    def getRandom(self) -> int:
+        pass`,
+		Harness: Harness{Mode: "design"},
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "A set gives O(1) insert and remove but can't pick a random element quickly; a list can pick random.choice in O(1) but deleting from the middle is slow. What if you used both, and what would the list need to look like so random.choice is fair?"},
+			{Level: 2, Type: "insight", Content: "Keep the values packed in a list (so random.choice is uniform and O(1)) and a dictionary value -> index into that list (the value -> index map from Two Sum, Chapter 2). To delete from the middle in O(1), copy the last value into the hole, update that value's index, and pop the end. Order inside the list doesn't matter for a set.", ChapterRef: 2},
+			{Level: 3, Type: "plan", Content: "1. Choose what to remember: a list of values with no gaps, and a dict value -> its index.\n2. Insert: if val is new, record its index as len(list), then append it.\n3. Remove: if val is present, move the last value into val's slot, update the last value's index, pop the list's end, and delete val from the dict.\n4. Pick uniformly: random.choice on the list."},
+			{Level: 4, Type: "skeleton", Content: `import random
+
+class RandomizedSet:
+    def __init__(self):
+        self.values = []
+        self.index_of = {}
+
+    def insert(self, val: int) -> bool:
+        if val in self.index_of:
+            return False
+        self.index_of[val] = ____
+        self.values.append(val)
+        return True
+
+    def remove(self, val: int) -> bool:
+        if val not in self.index_of:
+            return False
+        position = self.index_of[val]
+        last = self.values[-1]
+        ____
+        ____
+        self.values.pop()
+        del self.index_of[val]
+        return True
+
+    def getRandom(self) -> int:
+        return random.choice(self.values)`},
+		},
+		Solution: Solution{
+			Code: `import random
+
+class RandomizedSet:
+    def __init__(self):
+        self.values = []    # the members, packed with no gaps
+        self.index_of = {}  # value -> its position in self.values
+
+    def insert(self, val: int) -> bool:
+        if val in self.index_of:
+            return False
+        self.index_of[val] = len(self.values)
+        self.values.append(val)
+        return True
+
+    def remove(self, val: int) -> bool:
+        if val not in self.index_of:
+            return False
+        position = self.index_of[val]
+        last = self.values[-1]
+        self.values[position] = last
+        self.index_of[last] = position
+        self.values.pop()
+        del self.index_of[val]
+        return True
+
+    def getRandom(self) -> int:
+        return random.choice(self.values)`,
+			Explanation: "Pair a packed list of the values (for uniform random picks) with a dictionary from each value to its list index (for O(1) membership and lookup). Removal fills the hole with the last element, so the list never has gaps. Builds on Logger Rate Limiter, the first class in this ladder that keeps a dictionary between calls, and on Two Sum's value -> index map; the new idea is keeping two structures in sync so that each covers the other's weakness.",
+			BruteForce:  "Keep only a list: insert checks 'val in list' (O(n)), remove calls list.remove (O(n), it searches and then shifts every later element), getRandom uses random.choice (O(1)). Or keep only a set: insert and remove are O(1) but getRandom must copy the set into a list first, O(n). The waste: the list scans for a value whose position could be remembered, and shifting elements after a delete preserves an order that a set doesn't care about.",
+			KeyInsight:  "A set has no order, so the list may be rearranged freely. Moving the last element into the deleted slot fills the hole in O(1), and the dictionary tells you exactly where the hole is.",
+			WhyItWorks:  "Invariant: values holds each member exactly once with no gaps, and index_of[v] == i exactly when values[i] == v. Insert appends at index len(values) and records that index, so the invariant holds. Remove writes last into position and records index_of[last] = position, pops the now-duplicate end, then deletes val's entry; if val was itself the last element, the write and the index update change nothing and the delete still removes it, which is why the delete must come after the update. Because values has no gaps and contains each member once, random.choice picks each member with probability 1/size.",
+			CommonMistakes: []string{
+				"Moving the last value into the hole but not updating its index in the dictionary. Its stored index then points past the end of the list (insert 1, 2, 3; remove 1; remove 3 crashes). Always set index_of[last] = position.",
+				"Deleting index_of[val] before writing index_of[last] = position. When val is the last element, the second line puts val straight back into the dictionary, so a later insert(val) returns false. Update first, delete last.",
+				"Storing the values only in a set and calling random.choice(list(self.items)). It is correct but copies the whole set on every getRandom, which is O(n). Keep the packed list alongside the dictionary.",
+			},
+			TimeComplexity:  "O(1) average per operation",
+			SpaceComplexity: "O(n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Choose what to remember", Explanation: "The list is what makes a uniform random pick O(1); the dictionary is what makes finding a value O(1). Each answers a question the other can't.", CodeSnippet: "self.values = []    # the members, packed with no gaps\nself.index_of = {}  # value -> its position in self.values", LineStart: 5, LineEnd: 6},
+				{Title: "Insert: append and record the position", Explanation: "A new value goes at the end, at index len(values), and the dictionary remembers that index. Inserting 1, 2, 3 gives values = [1, 2, 3] and index_of = {1: 0, 2: 1, 3: 2}.", CodeSnippet: "if val in self.index_of:\n    return False\nself.index_of[val] = len(self.values)\nself.values.append(val)", LineStart: 9, LineEnd: 12},
+				{Title: "Remove: fill the hole with the last item", Explanation: "Removing 1 from [1, 2, 3]: position = 0, last = 3. Write 3 into slot 0 and record index_of[3] = 0, giving [3, 2, 3]; pop the end to get [3, 2]; delete 1 from the dictionary.", CodeSnippet: "position = self.index_of[val]\nlast = self.values[-1]\nself.values[position] = last\nself.index_of[last] = position\nself.values.pop()\ndel self.index_of[val]", LineStart: 18, LineEnd: 23},
+				{Title: "Pick uniformly", Explanation: "The list holds every member exactly once with no gaps, so random.choice gives each the same chance.", CodeSnippet: "return random.choice(self.values)", LineStart: 26, LineEnd: 27},
+			},
+			Alternatives: []AltSolution{
+				{
+					Name: "Brute force: a plain list",
+					Code: `import random
+
+class RandomizedSet:
+    def __init__(self):
+        self.values = []
+
+    def insert(self, val: int) -> bool:
+        if val in self.values:
+            return False
+        self.values.append(val)
+        return True
+
+    def remove(self, val: int) -> bool:
+        if val not in self.values:
+            return False
+        self.values.remove(val)
+        return True
+
+    def getRandom(self) -> int:
+        return random.choice(self.values)`,
+					TimeComplexity:  "O(n) for insert and remove, O(1) for getRandom",
+					SpaceComplexity: "O(n)",
+					Explanation:     "Correct and simple, but every membership test scans the list and list.remove shifts the elements after the removed one.",
+				},
+				{
+					Name: "A set, copied on every getRandom",
+					Code: `import random
+
+class RandomizedSet:
+    def __init__(self):
+        self.items = set()
+
+    def insert(self, val: int) -> bool:
+        if val in self.items:
+            return False
+        self.items.add(val)
+        return True
+
+    def remove(self, val: int) -> bool:
+        if val not in self.items:
+            return False
+        self.items.remove(val)
+        return True
+
+    def getRandom(self) -> int:
+        return random.choice(list(self.items))`,
+					TimeComplexity:  "O(1) average for insert and remove, O(n) for getRandom",
+					SpaceComplexity: "O(n)",
+					Explanation:     "Moves the cost to the other side: membership is fast, but a set can't be indexed, so each random pick copies it into a list first.",
+				},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "Why is it allowed to move the last element into the removed element's slot?", Answer: "The structure represents a set, which has no order. Only which values are in the list matters (for membership and for a fair random pick), not where they sit, so swapping positions changes nothing a caller can observe. The dictionary is updated so it still knows where every value lives."},
+			{Prompt: "What changes if duplicates are allowed (LeetCode 381) and getRandom must be weighted by how many copies each value has?", Answer: "The list holds every copy, so random.choice is automatically weighted. The dictionary must map each value to a set of indices instead of one index. Remove takes any index from val's set, moves the last element there, and updates the last element's index set by removing its old index and adding the new one."},
+			{Prompt: "Why must del self.index_of[val] come after self.index_of[last] = position?", Answer: "When val is the last element, last == val. Writing index_of[last] = position re-creates val's entry. If the delete ran first, that write would leave val in the dictionary although it is no longer in the list. Running the delete last removes it in every case."},
+		},
+	},
+	{
 		ID:              "product-of-array-except-self",
 		Number:          238,
-		Order:           8,
+		Order:           12,
 		Title:           "Product of Array Except Self",
 		Slug:            "product-of-array-except-self",
 		Difficulty:      "Medium",
@@ -959,12 +1544,12 @@ Follow-up: use only O(1) extra space, not counting the output list.`,
 	{
 		ID:              "longest-consecutive-sequence",
 		Number:          128,
-		Order:           9,
+		Order:           13,
 		Title:           "Longest Consecutive Sequence",
 		Slug:            "longest-consecutive-sequence",
 		Difficulty:      "Medium",
 		Category:        "arrays-hashing",
-		Tags:            []string{"Array", "Hash Table", "Union Find"},
+		Tags:            []string{"Array", "Hash Table", "Union Find", "Google", "Google L4", "Google Onsite"},
 		RelatedChapters: []int{2},
 		Description: `You are given an unsorted list of integers nums. A consecutive run is a set of values x, x+1, x+2, ..., x+m-1 that are all present in nums (their positions in the list don't matter). Return the length m of the longest such run. Duplicate values count once. Return 0 for an empty list.
 
@@ -1061,6 +1646,119 @@ Your algorithm must run in O(n) time, so sorting is not allowed.`,
 			{Prompt: "The code has a while loop inside a for loop. Why is it O(n) and not O(n^2)?", Answer: "The while loop only runs from run starts, and it steps through the values of that run. Each value belongs to exactly one run, and each run is walked exactly once, so all while-steps added together are at most n. Nested loops multiply only when the inner loop can do a lot of work for many outer iterations."},
 			{Prompt: "Why loop over the set rather than over nums?", Answer: "nums can contain many copies of a run start. Each copy passes the \"start - 1 not present\" test, so looping over nums would walk the same run again for every copy, which can be O(n^2). The set holds each value once."},
 			{Prompt: "What if you also had to return the run itself, not just its length?", Answer: "Remember the best start along with the best length; at the end return list(range(best_start, best_start + longest)). The walk already knows start and end, so no extra passes are needed."},
+		},
+	},
+	{
+		ID:              "first-missing-positive",
+		Number:          41,
+		Order:           14,
+		Title:           "First Missing Positive",
+		Slug:            "first-missing-positive",
+		Difficulty:      "Hard",
+		Category:        "arrays-hashing",
+		Tags:            []string{"Array", "Hash Table", "Google", "Google L5", "Google Phone Screen"},
+		RelatedChapters: []int{2, 1},
+		Description: `You are given an unsorted list of integers nums. It may contain negative numbers, zeros and repeated values. Return the smallest positive integer (1, 2, 3, ...) that does not appear anywhere in nums.
+
+Your algorithm must run in O(n) time and use only O(1) extra memory. You are allowed to modify nums.`,
+		Constraints: []string{
+			"1 <= nums.length <= 10^5",
+			"-2^31 <= nums[i] <= 2^31 - 1",
+		},
+		Examples: []Example{
+			{Input: "nums = [1,2,0]", Output: "3", Explanation: "1 and 2 are present, so the smallest missing positive is 3."},
+			{Input: "nums = [3,4,-1,1]", Output: "2", Explanation: "1 is present but 2 is not."},
+			{Input: "nums = [7,8,9,11,12]", Output: "1", Explanation: "Not even 1 is present."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"nums": []int{1, 2, 0}}, Expected: 3, Note: "1 and 2 present, answer just past them"},
+			{Input: map[string]interface{}{"nums": []int{3, 4, -1, 1}}, Expected: 2, Note: "gap in the middle, with a negative value"},
+			{Input: map[string]interface{}{"nums": []int{7, 8, 9, 11, 12}}, Expected: 1, Note: "every value is larger than n"},
+			{Input: map[string]interface{}{"nums": []int{1}}, Expected: 2, Hidden: true, Note: "single element present: the answer is n + 1"},
+			{Input: map[string]interface{}{"nums": []int{2}}, Expected: 1, Hidden: true, Note: "single element, 1 missing"},
+			{Input: map[string]interface{}{"nums": []int{1, 1}}, Expected: 2, Hidden: true, Note: "duplicates: a swap loop that ignores them never stops"},
+			{Input: map[string]interface{}{"nums": []int{2, 1}}, Expected: 3, Hidden: true, Note: "needs a swap; Python's a[i], a[a[i]-1] = ... pitfall loops forever here"},
+			{Input: map[string]interface{}{"nums": []int{-5, -3, 0}}, Expected: 1, Hidden: true, Note: "no positive values at all"},
+			{Input: map[string]interface{}{"nums": []int{5, 4, 3, 2, 1}}, Expected: 6, Hidden: true, Note: "a reversed permutation of 1..n"},
+			{Input: map[string]interface{}{"nums": []int{2147483647, 1, 3}}, Expected: 2, Hidden: true, Note: "an extreme value far beyond n is ignored"},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def firstMissingPositive(nums):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "With n numbers, how large can the answer possibly be? And if a set of seen values is not allowed, is there an array of size n you already own that could record which of 1..n you have seen?"},
+			{Level: 2, Type: "insight", Content: "The answer is always between 1 and n + 1, because n numbers can cover at most 1..n. So only values 1..n matter, and each has a natural home: value v belongs at index v - 1. Use nums itself as the hash table (Chapter 2's \"set of seen values\", stored in place): swap every value in 1..n into its home, then the first index i with nums[i] != i + 1 gives the answer i + 1.", ChapterRef: 2},
+			{Level: 3, Type: "plan", Content: "1. Bound the answer: it lies in 1..n + 1, so values outside 1..n can be ignored.\n2. Send each value home: while nums[i] is in 1..n and its home slot doesn't already hold it, swap it into slot nums[i] - 1.\n3. Find the first slot that's wrong: scan for the first i where nums[i] != i + 1.\n4. Return the answer: that i + 1, or n + 1 if every slot is right."},
+			{Level: 4, Type: "skeleton", Content: `def firstMissingPositive(nums):
+    n = len(nums)
+    for i in range(n):
+        while ____ and ____:
+            home = nums[i] - 1
+            ____
+    for i in range(n):
+        if nums[i] != i + 1:
+            return ____
+    return ____`},
+		},
+		Solution: Solution{
+			Code: `def firstMissingPositive(nums):
+    n = len(nums)
+    for i in range(n):
+        # Keep swapping nums[i] into its home slot nums[i] - 1
+        while 1 <= nums[i] <= n and nums[nums[i] - 1] != nums[i]:
+            home = nums[i] - 1
+            nums[i], nums[home] = nums[home], nums[i]
+    for i in range(n):
+        if nums[i] != i + 1:
+            return i + 1
+    return n + 1`,
+			Explanation: "The answer lies in 1..n + 1, so every value in 1..n gets a home slot (value v at index v - 1). Swap values home in place, then the first slot not holding its own value names the missing number. Builds on Longest Consecutive Sequence: there a set answered \"is v present?\" for a run of values; here the same membership question is answered without a set, by turning the input array itself into the lookup table.",
+			BruteForce:  "Try 1, 2, 3, ... and scan the whole list for each candidate: up to n + 1 candidates times n comparisons, O(n^2). Putting the values in a set first makes it O(n) time but O(n) extra memory, which the problem forbids. The waste: the scan forgets what it learned about the array between candidates, and the set duplicates storage that the input array already provides.",
+			KeyInsight:  "Only the values 1..n can affect the answer, and there are exactly n slots. So the array can serve as its own presence table: slot v - 1 records whether v was seen, by holding v.",
+			WhyItWorks:  "Bound: n numbers can contain at most n distinct values from 1..n, so some value in 1..n + 1 is missing. Placement: each swap puts at least one value v into its home slot v - 1, where it then stays (the loop condition refuses to move a value already home), so there are at most n useful swaps in total and the whole first loop is O(n) despite the nested while. Afterwards, for every v in 1..n that occurs in nums, slot v - 1 holds v: if it didn't, the while loop at the index where v ended up would have moved it. So the first i with nums[i] != i + 1 is exactly the smallest missing positive, and if none exists, 1..n are all present and the answer is n + 1.",
+			CommonMistakes: []string{
+				"Writing the swap as nums[i], nums[nums[i] - 1] = nums[nums[i] - 1], nums[i]. Python assigns left to right, so nums[i] changes before nums[nums[i] - 1] is evaluated on the left, and the value lands in the wrong slot; [2,1] loops forever. Compute home = nums[i] - 1 first.",
+				"Using nums[i] != i + 1 as the loop condition. With duplicates such as [1,1], the second 1 is never at index 1 and its home already holds a 1, so it swaps 1 with 1 forever. Stop when the home slot already holds the value: nums[nums[i] - 1] != nums[i].",
+				"Returning n instead of n + 1 when every slot is correct. For [1] the answer is 2, and for [5,4,3,2,1] it is 6.",
+			},
+			TimeComplexity:  "O(n)",
+			SpaceComplexity: "O(1)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Bound the answer", Explanation: "With n slots, the answer is between 1 and n + 1, so only values 1..n need a place. Negatives, zero and anything above n are left wherever they are.", CodeSnippet: "n = len(nums)", LineStart: 2, LineEnd: 2},
+				{Title: "Send each value home", Explanation: "Value v belongs at index v - 1. For [3,4,-1,1]: i = 0 swaps 3 home ([-1,4,3,1]); i = 1 swaps 4 home ([-1,1,3,4]), then 1 home ([1,-1,3,4]). Each swap settles one value for good, so the total work is O(n).", CodeSnippet: "while 1 <= nums[i] <= n and nums[nums[i] - 1] != nums[i]:\n    home = nums[i] - 1\n    nums[i], nums[home] = nums[home], nums[i]", LineStart: 5, LineEnd: 7},
+				{Title: "Find the first slot that's wrong", Explanation: "Slot i should hold i + 1. In [1,-1,3,4], slot 1 holds -1, so 2 is missing.", CodeSnippet: "for i in range(n):\n    if nums[i] != i + 1:\n        return i + 1", LineStart: 8, LineEnd: 10},
+				{Title: "Return the answer", Explanation: "Every slot was right, so 1..n are all present and the first missing positive is n + 1.", CodeSnippet: "return n + 1", LineStart: 11, LineEnd: 11},
+			},
+			Alternatives: []AltSolution{
+				{
+					Name: "Brute force: try each candidate",
+					Code: `def firstMissingPositive(nums):
+    candidate = 1
+    while candidate in nums:
+        candidate += 1
+    return candidate`,
+					TimeComplexity:  "O(n^2)",
+					SpaceComplexity: "O(1)",
+					Explanation:     "Scans the whole list for 1, then for 2, and so on. Correct and memory-free, but quadratic.",
+				},
+				{
+					Name: "Set of values",
+					Code: `def firstMissingPositive(nums):
+    present = set(nums)
+    candidate = 1
+    while candidate in present:
+        candidate += 1
+    return candidate`,
+					TimeComplexity:  "O(n)",
+					SpaceComplexity: "O(n)",
+					Explanation:     "Contains Duplicate's set turns each check into O(1), and at most n + 1 candidates are tried. Optimal time, but it breaks the O(1) memory requirement; this is the answer to give first in an interview before optimizing.",
+				},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "The first loop has a while loop inside a for loop. Why is it O(n) and not O(n^2)?", Answer: "Every swap that happens puts some value v into slot v - 1, and the loop condition never moves a value that is already home. Each of the n slots can be filled with its own value at most once, so there are at most n swaps over the whole run, plus one failed check per index."},
+			{Prompt: "Why can every value greater than n be ignored?", Answer: "The answer is at most n + 1, since n numbers can't cover all of 1..n + 1. A value above n can't be the answer and can't be needed to rule out a smaller candidate, so it doesn't matter where it ends up."},
+			{Prompt: "What if you were not allowed to modify nums?", Answer: "Then the array can't be your presence table. Use a set (O(n) memory) or a boolean list of size n + 1 marking which of 1..n appear, then scan it for the first unmarked value. Both are O(n) time and O(n) memory; the O(1) memory bound relies on reusing the input."},
 		},
 	},
 }

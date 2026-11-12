@@ -235,7 +235,7 @@ def twoSum(numbers, target):
 		Slug:            "3sum",
 		Difficulty:      "Medium",
 		Category:        "two-pointers",
-		Tags:            []string{"Array", "Two Pointers", "Sorting"},
+		Tags:            []string{"Array", "Two Pointers", "Sorting", "Google", "Google L4", "Google Onsite"},
 		RelatedChapters: []int{3, 2},
 		Description: `You are given a list of integers nums. Find every triplet of values [a, b, c] taken from three different positions such that a + b + c == 0.
 
@@ -377,7 +377,7 @@ Return each distinct triplet once. Two triplets count as the same if they contai
 		Slug:            "container-with-most-water",
 		Difficulty:      "Medium",
 		Category:        "two-pointers",
-		Tags:            []string{"Array", "Two Pointers", "Greedy"},
+		Tags:            []string{"Array", "Two Pointers", "Greedy", "Google", "Google L4", "Google Onsite"},
 		RelatedChapters: []int{3},
 		Description: `You are given a list height of n non-negative integers. Picture n vertical lines on the x-axis: line i stands at x = i and is height[i] tall.
 
@@ -479,7 +479,7 @@ Return the largest amount of water any container can hold. The container can't b
 		Slug:            "trapping-rain-water",
 		Difficulty:      "Hard",
 		Category:        "two-pointers",
-		Tags:            []string{"Array", "Two Pointers", "Dynamic Programming", "Stack"},
+		Tags:            []string{"Array", "Two Pointers", "Dynamic Programming", "Stack", "Google", "Google L5", "Google Onsite"},
 		RelatedChapters: []int{3, 2, 5},
 		Description: `You are given a list height of n non-negative integers describing a landscape of bars, each 1 unit wide: bar i is height[i] units tall. Rain falls and fills every dip it can without spilling over the edges.
 

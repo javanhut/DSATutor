@@ -12,6 +12,12 @@ package practice
 //  5. Locate the answer
 //  6. Optimise space
 //
+// Ladder: Climbing Stairs, then the House Robber family on a line, a circle
+// and a tree, Decode Ways, Coin Change, New 21 Game (a probability state with
+// a sliding-window sum), Word Break, Maximum Product Subarray, Longest
+// Increasing Subsequence, Partition Equal Subset Sum, and the two palindrome
+// problems.
+//
 // The main solution always keeps the full table (so the learner can see the
 // state); the brute-force recursion and the space-optimised version are
 // Alternatives.
@@ -363,14 +369,115 @@ Return the largest total you can collect. With a single house there are no neigh
 		},
 	},
 	{
+		ID:              "house-robber-iii",
+		Number:          337,
+		Order:           4,
+		Title:           "House Robber III",
+		Slug:            "house-robber-iii",
+		Difficulty:      "Medium",
+		Category:        "1d-dp",
+		Tags:            []string{"Tree", "DFS", "Dynamic Programming", "Binary Tree", "Google", "Google L4", "Google Phone Screen"},
+		RelatedChapters: []int{15, 9},
+		Description: `This is House Robber again, but the houses now form a **binary tree**. Every node is a house, node.val is the money in it, and each house is connected to its parent and to its children. You may never take from two houses that are directly connected, that is, from a node and its own parent or child. Houses that are further apart (for example a node and its grandchild, or two siblings) can both be taken.
+
+Return the largest total you can collect.
+
+The tree is given as root, a TreeNode with fields val, left and right. In the examples and tests it is written in level order, with null marking a missing child.`,
+		Constraints: []string{
+			"The number of nodes is between 1 and 10^4",
+			"0 <= node.val <= 10^4",
+		},
+		Examples: []Example{
+			{Input: "root = [3,2,3,null,3,null,1]", Output: "7", Explanation: "The root 3 has children 2 and 3, and the grandchildren are 3 (under the 2) and 1 (under the right 3). Take the root and both grandchildren: 3 + 3 + 1 = 7. None of them are parent and child."},
+			{Input: "root = [3,4,5,1,3,null,1]", Output: "9", Explanation: "Skip the root and take its children 4 and 5. Taking the root instead allows only the grandchildren 1, 3 and 1, for 3 + 5 = 8."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"root": []interface{}{3, 2, 3, nil, 3, nil, 1}}, Expected: 7, Note: "example 1: root plus grandchildren"},
+			{Input: map[string]interface{}{"root": []interface{}{3, 4, 5, 1, 3, nil, 1}}, Expected: 9, Note: "example 2: skip the root, take its children"},
+			{Input: map[string]interface{}{"root": []interface{}{5}}, Expected: 5, Hidden: true, Note: "single house"},
+			{Input: map[string]interface{}{"root": []interface{}{1, 2, 3}}, Expected: 5, Hidden: true, Note: "two siblings are not connected, so both can be taken"},
+			{Input: map[string]interface{}{"root": []interface{}{2, 1, 3, nil, 4}}, Expected: 7, Hidden: true, Note: "best plan mixes levels (4 and 3); summing alternate levels gives only 6"},
+			{Input: map[string]interface{}{"root": []interface{}{4, 1, nil, 2, nil, 3}}, Expected: 7, Hidden: true, Note: "chain 4-1-2-3: skipping two houses in a row (take 4 and 3) beats strict alternation"},
+			{Input: map[string]interface{}{"root": []interface{}{0, 0, 0}}, Expected: 0, Hidden: true, Note: "all houses empty"},
+			{Input: map[string]interface{}{"root": []interface{}{1, 10, 10, 100, 1, 1, 100}}, Expected: 203, Hidden: true, Note: "full tree: the root plus all four grandchildren"},
+			{Input: map[string]interface{}{"root": []interface{}{10, 1, 1, nil, nil, 20, 30, 5, nil, nil, nil, 7}}, Expected: 67, Hidden: true, Note: "uneven branches of different depths"},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(h), where h is the height of the tree",
+		StarterCode:     "# TreeNode(val, left, right) is provided\ndef rob(root):\n    # Write your solution here\n    pass",
+		Harness: Harness{
+			ParamTypes: map[string]string{"root": "TreeNode"},
+		},
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "On a line, the last house was either taken or skipped. On a tree, think about one node: if you decide to take it, what does that forbid in its subtrees, and what do you need to know about each child to finish the calculation?"},
+			{Level: 2, Type: "insight", Content: "Give every node two numbers instead of one: the most money from its subtree if the node is taken, and the most if it is skipped. Taking a node forces both children to be skipped; skipping it leaves each child free, so use the better of that child's two numbers. A post-order traversal (Chapter 9) computes children before parents, which is exactly the DP evaluation order (Chapter 15).", ChapterRef: 15},
+			{Level: 3, Type: "plan", Content: "1. Define the state: for each node, the pair (take, skip) = best total in its subtree when the node is taken / skipped.\n2. Set the base cases: an empty subtree gives (0, 0).\n3. Choose the evaluation order: post-order, so both children's pairs are ready before the parent's.\n4. Write the recurrence: take = node.val + left skip + right skip; skip = best of left pair + best of right pair.\n5. Locate the answer: the larger of the root's two numbers."},
+			{Level: 4, Type: "skeleton", Content: "def rob(root):\n    def best(node):\n        if node is None:\n            return ____\n        left_take, left_skip = best(node.left)\n        right_take, right_skip = best(node.right)\n        take = ____\n        skip = ____\n        return take, skip\n\n    return ____"},
+		},
+		Solution: Solution{
+			Code: `def rob(root):
+    def best(node):
+        # (most money if node is taken, most money if node is skipped)
+        if node is None:
+            return 0, 0
+        left_take, left_skip = best(node.left)
+        right_take, right_skip = best(node.right)
+        take = node.val + left_skip + right_skip
+        skip = max(left_take, left_skip) + max(right_take, right_skip)
+        return take, skip
+
+    return max(best(root))`,
+			Explanation: "This builds on House Robber II (problem 3), which took the line of House Robber (problem 2) and bent it into a circle; now the houses form a tree. The recurrence still asks 'take this house or skip it?', but a tree node has two children instead of one predecessor, so the state becomes a pair (take, skip) per node and the evaluation order becomes a post-order traversal from Chapter 9. This is DP on trees: the table lives on the nodes instead of in an array.",
+			BruteForce:  "Recurse with 'best(node) = max(node.val + best of the four grandchildren, best(left) + best(right))'. It is correct, but each node is recomputed from its parent and again from its grandparent, so the work grows exponentially with the depth. Enumerating every set of houses is worse still: 2^n subsets for n nodes. The waste is solving the same subtree many times.",
+			KeyInsight:  "The parent only needs to know two facts about each child's subtree: the best total if the child is taken and the best if it is skipped. Returning both numbers from one post-order visit means every subtree is solved exactly once.",
+			WhyItWorks:  "Subproblem: for each node v, take(v) is the most money from v's subtree when v is robbed, and skip(v) is the most when it is not. Recurrence: if v is robbed, neither child may be, and the two child subtrees are otherwise independent (no edge joins them), so take(v) = v.val + skip(left) + skip(right). If v is not robbed, each child is free, so skip(v) = max(take(left), skip(left)) + max(take(right), skip(right)). This is complete because every valid plan either robs v or not, and in each case it restricts the children exactly as described and nothing else; an empty subtree contributes (0, 0). Post-order guarantees both children's pairs are final before the parent reads them, and the answer is the better of the root's two values.",
+			CommonMistakes: []string{
+				"Summing alternate levels (all even depths versus all odd depths). On [2,1,3,null,4] that gives 6, but taking 4 and 3, which sit on different levels and aren't connected, gives 7. Fix: decide per node, not per level.",
+				"Assuming a skipped node's children must be taken. On the chain 4-1-2-3 the best plan skips both 1 and 2 to take 4 and 3 for 7. Fix: when a node is skipped, use max(take, skip) for each child.",
+				"Computing only one number per node and recomputing grandchildren from scratch, which is exponential on deep trees. Fix: return the (take, skip) pair so each subtree is visited once.",
+			},
+			TimeComplexity:  "O(n)",
+			SpaceComplexity: "O(h), where h is the height of the tree",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Define the state", Explanation: "best(node) returns a pair: the most money from this subtree if node is robbed, and the most if it is not. One pair per node replaces the single table cell of House Robber.", CodeSnippet: "def best(node):\n    # (most money if node is taken, most money if node is skipped)", LineStart: 2, LineEnd: 3},
+				{Title: "Set the base cases", Explanation: "A missing child has no houses, so both numbers are 0. Leaves then get (val, 0).", CodeSnippet: "if node is None:\n    return 0, 0", LineStart: 4, LineEnd: 5},
+				{Title: "Choose the evaluation order", Explanation: "Ask both children first (post-order), so their pairs are ready before the parent combines them.", CodeSnippet: "left_take, left_skip = best(node.left)\nright_take, right_skip = best(node.right)", LineStart: 6, LineEnd: 7},
+				{Title: "Write the recurrence", Explanation: "Taking the node forces both children to be skipped; skipping it lets each child choose its better option. In example 2 the root's children give (4, 4) and (5, 1), so take = 3 + 4 + 1 = 8 and skip = 4 + 5 = 9.", CodeSnippet: "take = node.val + left_skip + right_skip\nskip = max(left_take, left_skip) + max(right_take, right_skip)\nreturn take, skip", LineStart: 8, LineEnd: 10},
+				{Title: "Locate the answer", Explanation: "The root is either robbed or not, so the answer is the larger of its two numbers: max(8, 9) = 9 in example 2.", CodeSnippet: "return max(best(root))", LineStart: 12, LineEnd: 12},
+			},
+			Alternatives: []AltSolution{
+				{
+					Name: "Plain recursion over grandchildren (brute force)",
+					Code: `def rob(root):
+    if root is None:
+        return 0
+    take = root.val
+    if root.left:
+        take += rob(root.left.left) + rob(root.left.right)
+    if root.right:
+        take += rob(root.right.left) + rob(root.right.right)
+    skip = rob(root.left) + rob(root.right)
+    return max(take, skip)`,
+					TimeComplexity:  "Exponential in the height of the tree",
+					SpaceComplexity: "O(h)",
+					Explanation:     "Rob the node and jump to its grandchildren, or skip it and recurse on its children. It is correct, but every subtree is solved again from its parent and from its grandparent. Memoizing on the node (a dict from node to answer) brings it down to O(n); returning the pair does the same without a dict.",
+				},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "Why does each node need two numbers instead of one, as in House Robber?", Answer: "The parent's choice depends on whether the child was robbed: a robbed parent needs the best total with the child skipped, while a skipped parent wants the best total either way. A single 'best overall' number can't answer the first question, so each node reports both, and the parent picks what it needs."},
+			{Prompt: "How would you solve House Robber II (the circle) with this pair idea instead of splitting into two lines?", Answer: "Walk the line with a pair per house, (best with this house taken, best with it skipped), and add one more fact to the state: whether house 0 was taken. Run it twice, once forcing house 0 skipped and once allowing it, and in the second run forbid taking the last house. It is the same 'carry the extra fact in the state' trick; on a tree the extra fact is the take/skip status of each child."},
+		},
+	},
+	{
 		ID:              "decode-ways",
 		Number:          91,
-		Order:           4,
+		Order:           5,
 		Title:           "Decode Ways",
 		Slug:            "decode-ways",
 		Difficulty:      "Medium",
 		Category:        "1d-dp",
-		Tags:            []string{"String", "Dynamic Programming"},
+		Tags:            []string{"String", "Dynamic Programming", "Google", "Google L4", "Google Onsite"},
 		RelatedChapters: []int{15},
 		Description: `A message of capital letters was encoded with A -> "1", B -> "2", ..., Z -> "26", and the codes were written one after another with no separators. Given the digit string **s**, return how many different letter messages could have produced it.
 
@@ -488,7 +595,7 @@ A code is valid only if it is "1" to "9" or "10" to "26". In particular a code m
 	{
 		ID:              "coin-change",
 		Number:          322,
-		Order:           5,
+		Order:           6,
 		Title:           "Coin Change",
 		Slug:            "coin-change",
 		Difficulty:      "Medium",
@@ -631,14 +738,119 @@ def coinChange(coins, amount):
 		},
 	},
 	{
+		ID:              "new-21-game",
+		Number:          837,
+		Order:           7,
+		Title:           "New 21 Game",
+		Slug:            "new-21-game",
+		Difficulty:      "Medium",
+		Category:        "1d-dp",
+		Tags:            []string{"Math", "Dynamic Programming", "Sliding Window", "Probability", "Google", "Google L5", "Google Phone Screen"},
+		RelatedChapters: []int{15, 4},
+		Description: `A player starts with 0 points and plays a simple card game. As long as her total is **less than k**, she draws again: each draw adds a whole number of points chosen uniformly at random from 1 to maxPts (every value has probability 1 / maxPts), independently of earlier draws. As soon as her total reaches k or more, she stops drawing.
+
+Return the probability that her final total is **at most n**.
+
+The answer is a decimal number; any answer within 10^-5 of the exact probability is accepted. If k is 0 she never draws, so her total stays 0.`,
+		Constraints: []string{
+			"0 <= k <= n <= 10^4",
+			"1 <= maxPts <= 10^4",
+		},
+		Examples: []Example{
+			{Input: "n = 10, k = 1, maxPts = 10", Output: "1.00000", Explanation: "She draws once (her total 0 is below k = 1) and stops with 1 to 10 points, which is always at most 10."},
+			{Input: "n = 6, k = 1, maxPts = 10", Output: "0.60000", Explanation: "She draws once and stops. The final total is at most 6 for 6 of the 10 equally likely draws."},
+			{Input: "n = 21, k = 17, maxPts = 10", Output: "0.73278", Explanation: "She keeps drawing until she has at least 17, so she finishes somewhere from 17 to 26. About 73.3% of the time she finishes at 21 or below."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"n": 10, "k": 1, "maxPts": 10}, Expected: 1.0, Note: "example 1: one draw, every outcome is low enough"},
+			{Input: map[string]interface{}{"n": 6, "k": 1, "maxPts": 10}, Expected: 0.6, Note: "example 2: one draw, 6 of 10 outcomes win (catches counting scores below k as final)"},
+			{Input: map[string]interface{}{"n": 21, "k": 17, "maxPts": 10}, Expected: 0.7327777870686081, Note: "example 3: many draws (catches scores of k or more feeding later scores)"},
+			{Input: map[string]interface{}{"n": 0, "k": 0, "maxPts": 1}, Expected: 1.0, Hidden: true, Note: "k = 0: she never draws and stays at 0"},
+			{Input: map[string]interface{}{"n": 2, "k": 2, "maxPts": 2}, Expected: 0.75, Hidden: true, Note: "small by hand: draw 2 (1/2) or 1 then 1 (1/4)"},
+			{Input: map[string]interface{}{"n": 11, "k": 3, "maxPts": 10}, Expected: 0.989, Hidden: true, Note: "only finishing at 12 loses: reach 2, then draw 10"},
+			{Input: map[string]interface{}{"n": 12, "k": 3, "maxPts": 10}, Expected: 1.0, Hidden: true, Note: "n equals the largest possible final total, k - 1 + maxPts"},
+			{Input: map[string]interface{}{"n": 1, "k": 1, "maxPts": 10000}, Expected: 0.0001, Hidden: true, Note: "a tiny probability that must not round to 0; largest maxPts"},
+			{Input: map[string]interface{}{"n": 5, "k": 4, "maxPts": 3}, Expected: 0.8024691358024691, Hidden: true, Note: "several paths of different lengths"},
+			{Input: map[string]interface{}{"n": 100, "k": 90, "maxPts": 30}, Expected: 0.5911554252618633, Hidden: true, Note: "longer game: the window slides many times (catches not removing old scores)"},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def new21Game(n, k, maxPts):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "Instead of following whole sequences of draws, ask about one score x: from which earlier scores could the player have jumped straight to x with a single draw, and which of those scores would she actually have drawn from?"},
+			{Level: 2, Type: "insight", Content: "Let prob[x] be the chance that her total is exactly x at some moment. She reaches x by drawing from a score y with x - maxPts <= y <= x - 1, but only if y < k (otherwise she had stopped), each with chance 1 / maxPts. So prob[x] is the sum of prob[y] over that range divided by maxPts: Climbing Stairs with maxPts possible steps (Chapter 15). The range moves right by one each time, so keep its sum in a running window (the sliding window from Chapter 4) instead of re-adding maxPts terms.", ChapterRef: 15},
+			{Level: 3, Type: "plan", Content: "1. Define the state: prob[x] = probability that the total is exactly x at some point.\n2. Set the base cases: prob[0] = 1; if k is 0 she never draws, so return 1.\n3. Write the recurrence: prob[x] = (sum of prob[y] for x - maxPts <= y <= x - 1 and y < k) / maxPts.\n4. Choose the evaluation order: x from 1 to n, keeping that sum in a window: add prob[x] after computing it if x < k, and remove prob[x - maxPts] if it was in the window.\n5. Locate the answer: add up prob[x] for k <= x <= n, the final totals that win."},
+			{Level: 4, Type: "skeleton", Content: "def new21Game(n, k, maxPts):\n    if k == 0:\n        return 1.0\n    prob = [0.0] * (n + 1)\n    prob[0] = 1.0\n    window = 1.0\n    answer = 0.0\n    for x in range(1, n + 1):\n        prob[x] = ____\n        if x < k:\n            ____\n        else:\n            ____\n        if 0 <= x - maxPts < k:\n            window -= ____\n    return answer"},
+		},
+		Solution: Solution{
+			Code: `def new21Game(n, k, maxPts):
+    if k == 0:
+        return 1.0  # no draws: the total stays 0
+    # State: prob[x] = chance the total is exactly x at some point
+    prob = [0.0] * (n + 1)
+    prob[0] = 1.0
+    window = 1.0  # sum of prob[y] for scores y < k that reach x in one draw
+    answer = 0.0
+    for x in range(1, n + 1):
+        prob[x] = window / maxPts
+        if x < k:
+            window += prob[x]  # x still draws, so it feeds later totals
+        else:
+            answer += prob[x]  # x >= k: she stops here, a winning total
+        if 0 <= x - maxPts < k:
+            window -= prob[x - maxPts]  # too far back to reach x + 1
+    return answer`,
+			Explanation: "This builds on Climbing Stairs (problem 1), where the count at step i was the sum of the counts one and two steps back, and on Coin Change (problem 6), where a state looked back over many possible step sizes. Here a total x is reached from any of the previous maxPts totals, each with probability 1 / maxPts, so the state is a probability instead of a count. Two new ideas: totals of k or more are final and must not feed later totals, and summing maxPts terms for every x is too slow, so the sum is kept in a sliding window (Chapter 4) that gains one term and loses one term per step.",
+			BruteForce:  "Simulate every sequence of draws: from each total below k branch into maxPts outcomes. The number of sequences grows like maxPts^k, hopeless even for k = 20. Memoizing on the current total fixes that, giving the O(k * maxPts) DP in the alternative, but with k and maxPts both up to 10^4 that is still 10^8 additions. The waste: each window sum overlaps the previous one in all but two terms.",
+			KeyInsight:  "The set of totals that can jump to x is a contiguous range [x - maxPts, x - 1] cut off at k, and it moves right by exactly one when x does. So its sum can be updated in O(1) per total: add the newest total if it still draws, drop the one that has fallen out of reach.",
+			WhyItWorks:  "Subproblem: prob[x] is the probability that the running total equals x at some moment. Recurrence: the total can only equal x if, just before the last draw, it was some y with 1 <= x - y <= maxPts, the player was still drawing (y < k), and the draw was exactly x - y, which has probability 1 / maxPts. These events are disjoint because the total only increases, so it passes through at most one such y as the step before x. Hence prob[x] = (sum of prob[y] for max(0, x - maxPts) <= y <= min(k - 1, x - 1)) / maxPts, with prob[0] = 1. It is complete because every way of reaching x has a last draw. Evaluation in increasing x makes every prob[y] final before it is used, and the window holds exactly that sum: after step x it has gained prob[x] if x < k and lost prob[x - maxPts], which is the range for x + 1. The final total is the first total >= k, and each x >= k is reached at most once, so the answer is the sum of prob[x] for k <= x <= n.",
+			CommonMistakes: []string{
+				"Letting totals of k or more keep feeding later totals, as if she kept drawing. On n = 21, k = 17, maxPts = 10 that overcounts high totals and gives the wrong probability. Fix: add prob[x] to the window only when x < k.",
+				"Adding every prob[x] with x <= n to the answer, including totals below k that she passes through. On n = 6, k = 1, maxPts = 10 that adds prob[0] = 1 and returns 1.6. Fix: only totals from k to n are final.",
+				"Missing k = 0. The loop never adds anything to the answer and returns 0, but she never draws, so her total 0 is at most n and the answer is 1. Fix: return 1.0 first.",
+			},
+			TimeComplexity:  "O(n)",
+			SpaceComplexity: "O(n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Set the base cases", Explanation: "With k = 0 the game ends before any draw at total 0, which is always at most n. Otherwise she starts at 0 for certain, so prob[0] = 1 and the window starts as {0}.", CodeSnippet: "if k == 0:\n    return 1.0  # no draws: the total stays 0\nprob[0] = 1.0\nwindow = 1.0  # sum of prob[y] for scores y < k that reach x in one draw", LineStart: 2, LineEnd: 7},
+				{Title: "Define the state", Explanation: "One probability per total from 0 to n. Totals above n can never win, so they are not stored.", CodeSnippet: "prob = [0.0] * (n + 1)", LineStart: 4, LineEnd: 5},
+				{Title: "Write the recurrence", Explanation: "Every total in the window jumps to x with probability 1 / maxPts. For n = 6, k = 1, maxPts = 10 the window is just prob[0] = 1, so each of prob[1..6] is 0.1.", CodeSnippet: "prob[x] = window / maxPts", LineStart: 10, LineEnd: 10},
+				{Title: "Locate the answer", Explanation: "A total below k draws again, so it joins the window. A total of k or more is final, so it counts towards the answer instead. In the n = 6 example every x from 1 to 6 is final, giving 0.6.", CodeSnippet: "if x < k:\n    window += prob[x]  # x still draws, so it feeds later totals\nelse:\n    answer += prob[x]  # x >= k: she stops here, a winning total", LineStart: 11, LineEnd: 14},
+				{Title: "Choose the evaluation order", Explanation: "Moving from x to x + 1, the total x - maxPts is now more than maxPts away. Remove it, but only if it was ever added (it is at least 0 and below k).", CodeSnippet: "if 0 <= x - maxPts < k:\n    window -= prob[x - maxPts]  # too far back to reach x + 1", LineStart: 15, LineEnd: 16},
+			},
+			Alternatives: []AltSolution{
+				{
+					Name: "Backward DP summing every draw (brute force)",
+					Code: `def new21Game(n, k, maxPts):
+    # win[x] = chance of finishing at most n when the total is now x
+    top = k + maxPts  # totals k - 1 + maxPts and below are possible
+    win = [0.0] * top
+    for x in range(top - 1, -1, -1):
+        if x >= k:
+            win[x] = 1.0 if x <= n else 0.0
+        else:
+            win[x] = sum(win[x + d] for d in range(1, maxPts + 1)) / maxPts
+    return win[0]`,
+					TimeComplexity:  "O(k * maxPts)",
+					SpaceComplexity: "O(k + maxPts)",
+					Explanation:     "Asks the question from the other end: from total x, what is the chance of winning? A final total wins exactly when it is at most n; a total below k averages the next maxPts totals. It is the memoized brute force written as a table, easy to trust, but each cell re-adds maxPts values. Keeping that sum in a sliding window makes it O(k + maxPts) as well.",
+				},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "Why can prob[x] for different x be added together to get the answer, when they are probabilities of 'the total is x at some moment' rather than of 'the game ends at x'?", Answer: "For x >= k the two events are the same: she stops the moment her total reaches k or more, so a total x >= k can only occur as the final total. And the game ends at exactly one final total, so the events 'ends at x' for different x are disjoint, and their probabilities add. For x < k they are not final, which is why those are excluded."},
+			{Prompt: "What changes if each draw adds 1 to maxPts points with unequal probabilities p[1], ..., p[maxPts]?", Answer: "The recurrence becomes prob[x] = sum of prob[x - d] * p[d] over d, restricted to x - d < k. The weights now depend on the distance d, so the window sum trick no longer works: sliding the window changes every term's weight. The direct O(n * maxPts) DP still works, and for large inputs the sum is a convolution that could be sped up with an FFT."},
+		},
+	},
+	{
 		ID:              "word-break",
 		Number:          139,
-		Order:           6,
+		Order:           8,
 		Title:           "Word Break",
 		Slug:            "word-break",
 		Difficulty:      "Medium",
 		Category:        "1d-dp",
-		Tags:            []string{"String", "Dynamic Programming", "Hash Table", "Trie", "Memoization"},
+		Tags:            []string{"String", "Dynamic Programming", "Hash Table", "Trie", "Memoization", "Google", "Google L4", "Google Onsite"},
 		RelatedChapters: []int{15, 10},
 		Description: `Given a string **s** and a list of distinct words **wordDict**, return true if s can be cut into a sequence of one or more pieces where every piece is a word from wordDict, and false otherwise.
 
@@ -694,7 +906,7 @@ The same dictionary word may be used any number of times, and not every word has
                 break
     # Answer: the whole string
     return can[n]`,
-			Explanation: "Decode Ways (problem 4) let the last piece be 1 or 2 characters long, subject to a validity check. Here the last piece can be any length, and the check is 'is it a dictionary word?'. The state also changes type: a yes/no (boolean) instead of a count, combined with 'or' instead of '+'.",
+			Explanation: "Decode Ways (problem 5) let the last piece be 1 or 2 characters long, subject to a validity check. Here the last piece can be any length, and the check is 'is it a dictionary word?'. The state also changes type: a yes/no (boolean) instead of a count, combined with 'or' instead of '+'.",
 			BruteForce:  "Recursively try every dictionary word that matches the front of s and recurse on the rest. When a cut fails, the same suffix is retried from many different earlier cuts: for 'aaaa...ab' with words a, aa, aaa, aaaa, the number of attempts grows roughly like 1.9^n, which is far too slow for n = 300.",
 			KeyInsight:  "Whether the rest of the string can be broken depends only on where it starts, not on how the front was cut. So there are only n + 1 subproblems (one per prefix length), each answered once.",
 			WhyItWorks:  "Subproblem: can[i] says whether s[:i] can be cut into dictionary words. Recurrence: if s[:i] can be cut, its last piece is s[j:i] for some j < i, that piece is a word, and s[:j] is cut into words, so can[j] is true. Conversely, if can[j] is true and s[j:i] is a word, appending that word gives a cut of s[:i]. Trying every j therefore decides can[i] exactly. Base case can[0] = True lets a first word s[0:i] count. The loop fills i in increasing order and only reads can[j] for j < i, which is already final.",
@@ -758,7 +970,7 @@ The same dictionary word may be used any number of times, and not every word has
 	{
 		ID:              "maximum-product-subarray",
 		Number:          152,
-		Order:           7,
+		Order:           9,
 		Title:           "Maximum Product Subarray",
 		Slug:            "maximum-product-subarray",
 		Difficulty:      "Medium",
@@ -874,12 +1086,12 @@ The numbers can be negative or zero. The answer is guaranteed to fit in a 32-bit
 	{
 		ID:              "longest-increasing-subsequence",
 		Number:          300,
-		Order:           8,
+		Order:           10,
 		Title:           "Longest Increasing Subsequence",
 		Slug:            "longest-increasing-subsequence",
 		Difficulty:      "Medium",
 		Category:        "1d-dp",
-		Tags:            []string{"Array", "Dynamic Programming", "Binary Search"},
+		Tags:            []string{"Array", "Dynamic Programming", "Binary Search", "Google", "Google L4", "Google Onsite"},
 		RelatedChapters: []int{15, 6},
 		Description: `Given an integer array **nums**, return the length of its longest **strictly increasing subsequence**.
 
@@ -930,7 +1142,7 @@ A subsequence keeps some of the elements (at least one) in their original order,
                 ends_at[i] = max(ends_at[i], ends_at[j] + 1)
     # Answer: the LIS can end anywhere, so take the maximum
     return max(ends_at)`,
-			Explanation: "This builds on Maximum Product Subarray (problem 7), which introduced states that 'end exactly at i' with the answer taken as a max over all i. The new idea is that the previous element is not necessarily the neighbour: a subsequence can jump, so the recurrence looks back at every earlier index j, which makes this the first O(n^2) DP of the ladder.",
+			Explanation: "This builds on Maximum Product Subarray (problem 9), which introduced states that 'end exactly at i' with the answer taken as a max over all i. The new idea is that the previous element is not necessarily the neighbour: a subsequence can jump, so the recurrence looks back at every earlier index j, which makes this the first O(n^2) DP of the ladder.",
 			BruteForce:  "Try every subsequence (keep or skip each element) and keep the longest increasing one: 2^n subsets, about 10^752 for n = 2500. Recursively, 'longest from i given the previous kept value' recomputes the same suffix for the same previous value many times.",
 			KeyInsight:  "Fixing the last element makes the subproblem well defined: the best subsequence ending with nums[i] only depends on the best ones ending at earlier, smaller elements. There are n such subproblems, each combining at most n earlier answers.",
 			WhyItWorks:  "Subproblem: ends_at[i] is the length of the longest strictly increasing subsequence whose last element is nums[i]. Recurrence: such a subsequence is either nums[i] alone (length 1) or a strictly increasing subsequence ending at some j < i with nums[j] < nums[i], followed by nums[i]. The prefix ending at j must itself be as long as possible, or we could lengthen the whole thing, so ends_at[i] = 1 + max ends_at[j] over valid j. Every j is tried, so the max is complete. Evaluation in increasing i means each ends_at[j] is final when read. Every subsequence ends at some index, so the answer is max(ends_at).",
@@ -994,7 +1206,7 @@ def lengthOfLIS(nums):
 	{
 		ID:              "partition-equal-subset-sum",
 		Number:          416,
-		Order:           9,
+		Order:           11,
 		Title:           "Partition Equal Subset Sum",
 		Slug:            "partition-equal-subset-sum",
 		Difficulty:      "Medium",
@@ -1053,7 +1265,7 @@ Return true if such a split exists, and false otherwise.`,
         can = new_can
     # Answer: can we hit exactly half?
     return can[target]`,
-			Explanation: "So far the state was indexed by a position in the input. The new idea here is a state indexed by a value (a sum), with the input processed one item at a time and each item used at most once: the 0/1 knapsack pattern. It builds on Coin Change (problem 5), which also had amounts as states, but there coins could be reused; here each number can be taken only once, which is why each number builds a fresh row from the previous one.",
+			Explanation: "So far the state was indexed by a position in the input. The new idea here is a state indexed by a value (a sum), with the input processed one item at a time and each item used at most once: the 0/1 knapsack pattern. It builds on Coin Change (problem 6), which also had amounts as states, but there coins could be reused; here each number can be taken only once, which is why each number builds a fresh row from the previous one.",
 			BruteForce:  "Try all 2^n ways to choose a subset (take or skip each number) and check whether any sums to total / 2. For n = 200 that is 2^200, about 1.6 x 10^60 subsets. Many different subsets reach the same partial sum after the same numbers, and the brute force explores what follows each of them separately.",
 			KeyInsight:  "After processing some numbers, all that matters for the future is which sums are reachable, not which subsets reach them. Sums are at most target = total / 2 <= 10,000, so there are only target + 1 facts to keep per step.",
 			WhyItWorks:  "Subproblem: after processing the first i numbers, can[s] says whether some subset of them sums to s (think of a 2-D table with one row per i; we keep only the current row). Recurrence: a subset of the first i numbers either skips num = nums[i-1] (then s was reachable in the previous row) or takes it (then s - num was reachable in the previous row). Both cases are covered: new_can starts as a copy of the old row, and the loop adds the 'take' case reading only the old row, so num is used at most once. Base case: before any numbers, only sum 0 is reachable. After all n numbers, can[target] says whether a subset sums to half the total; the remaining numbers then sum to the other half.",
@@ -1121,7 +1333,7 @@ Return true if such a split exists, and false otherwise.`,
 	{
 		ID:              "palindromic-substrings",
 		Number:          647,
-		Order:           10,
+		Order:           12,
 		Title:           "Palindromic Substrings",
 		Slug:            "palindromic-substrings",
 		Difficulty:      "Medium",
@@ -1242,7 +1454,7 @@ Substrings at different positions count separately even if they contain the same
 	{
 		ID:              "longest-palindromic-substring",
 		Number:          5,
-		Order:           11,
+		Order:           13,
 		Title:           "Longest Palindromic Substring",
 		Slug:            "longest-palindromic-substring",
 		Difficulty:      "Medium",
@@ -1288,7 +1500,7 @@ If several palindromic substrings share the maximum length, return any one of th
     return True, ""`,
 		},
 		Hints: []Hint{
-			{Level: 1, Type: "nudge", Content: "You already know how to decide, for every substring, whether it is a palindrome (problem 10). What extra information would you need to keep while doing that, to return the longest one?"},
+			{Level: 1, Type: "nudge", Content: "You already know how to decide, for every substring, whether it is a palindrome (problem 12). What extra information would you need to keep while doing that, to return the longest one?"},
 			{Level: 2, Type: "insight", Content: "Fill the same table is_pal[i][j] = s[i] == s[j] and is_pal[i+1][j-1], by increasing length. Whenever a cell is True and longer than the best so far, remember its start and length. Only the answer step of the recipe changes (Chapter 15).", ChapterRef: 15},
 			{Level: 3, Type: "plan", Content: "1. Define the state: is_pal[i][j] = True if s[i..j] is a palindrome.\n2. Write the recurrence: s[i] == s[j] and (length <= 2 or is_pal[i+1][j-1]).\n3. Set the base cases: length 1 always, length 2 when both letters match (folded into the recurrence by the length <= 2 test).\n4. Choose the evaluation order: by increasing length.\n5. Locate the answer: track the start and length of the longest True cell; return that slice of s.\n6. Optimise space: expanding around the 2n - 1 centres finds the same palindromes with O(1) extra space."},
 			{Level: 4, Type: "skeleton", Content: "def longestPalindrome(s):\n    n = len(s)\n    is_pal = [[False] * n for _ in range(n)]\n    best_start, best_len = 0, 1\n    for length in range(1, n + 1):\n        for i in range(n - length + 1):\n            j = i + length - 1\n            if s[i] == s[j] and (____):\n                is_pal[i][j] = True\n                if ____:\n                    best_start, best_len = i, length\n    return ____"},
@@ -1310,7 +1522,7 @@ If several palindromic substrings share the maximum length, return any one of th
                 if length > best_len:
                     best_start, best_len = i, length
     return s[best_start:best_start + best_len]`,
-			Explanation: "This is the same table as Palindromic Substrings (problem 10); only step 5 of the recipe changes: instead of counting True cells we keep the longest one and return the substring itself. Being explicit, as in problem 10: the best-known solution, expand around centres, is not DP; it is this table with the space optimised away, and it is shown as an alternative.",
+			Explanation: "This is the same table as Palindromic Substrings (problem 12); only step 5 of the recipe changes: instead of counting True cells we keep the longest one and return the substring itself. Being explicit, as in problem 12: the best-known solution, expand around centres, is not DP; it is this table with the space optimised away, and it is shown as an alternative.",
 			BruteForce:  "Check all n(n+1)/2 substrings against their reverse and keep the longest palindrome: O(n^3), about 1.7 x 10^8 character comparisons for n = 1000. Each check repeats the checks of the substrings nested inside it.",
 			KeyInsight:  "Whether s[i..j] is a palindrome is decided in O(1) from s[i], s[j] and the answer for s[i+1..j-1]. With every answer stored, all n^2 substrings are classified in O(n^2), and the longest True one is the answer.",
 			WhyItWorks:  "Subproblem: is_pal[i][j] says whether s[i..j] is a palindrome. Recurrence: for length >= 3, s[i..j] is a palindrome iff s[i] == s[j] and s[i+1..j-1] is one; for length 1 or 2 the matching end letters are enough, which the condition 'length <= 2 or is_pal[i+1][j-1]' covers in one line. Filling by increasing length makes the inside final before it is read. Every substring is classified, so the longest True cell is a longest palindromic substring. Because cells are visited by increasing length and we only replace the best on a strictly longer length, the first longest palindrome (leftmost) is returned; the judge accepts any palindrome of the maximum length.",

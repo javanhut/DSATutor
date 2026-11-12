@@ -2,7 +2,11 @@ package practice
 
 // TreesProblems contains all trees category problems, ordered as a ladder
 // (see docs/pedagogy.md). Chapter 9 teaches the DFS template, BFS by levels
-// and the BST ordering that these problems practise.
+// and the BST ordering that these problems practise. The ladder goes from
+// returning one value per subtree (depth, invert, compare, prune leaves) to
+// BST search, then BFS by levels (level order, right side view, zigzag), BST
+// ordering with bounds, construction, global answers (max path sum),
+// serialization, and finally rerooting DP on an edge-list tree.
 var TreesProblems = []*Problem{
 	{
 		ID:              "maximum-depth-of-binary-tree",
@@ -385,9 +389,112 @@ A subtree of a tree is one of its nodes together with **all** of that node's des
 		},
 	},
 	{
+		ID:              "delete-leaves-with-a-given-value",
+		Number:          1325,
+		Order:           5,
+		Title:           "Delete Leaves With a Given Value",
+		Slug:            "delete-leaves-with-a-given-value",
+		Difficulty:      "Medium",
+		Category:        "trees",
+		Tags:            []string{"Tree", "DFS", "Binary Tree", "Recursion", "Google", "Google L4", "Google Phone Screen"},
+		RelatedChapters: []int{9, 8},
+		Description: `You are given the root of a binary tree and an integer target. Remove every **leaf** (a node with no children) whose value equals target.
+
+Removing a leaf can turn its parent into a leaf. If that parent's value is also target, it must be removed too, and so on: keep removing until no leaf with value target remains. Return the root of the resulting tree, which is None (an empty tree) if every node gets removed.
+
+A node whose value is target but that still has at least one child is **not** removed.`,
+		Constraints: []string{
+			"The tree has between 1 and 3000 nodes",
+			"1 <= Node.val, target <= 1000",
+		},
+		Examples: []Example{
+			{Input: "root = [1,2,3,2,null,2,4], target = 2", Output: "[1,null,3,null,4]", Explanation: "The two leaves holding 2 (under the left 2 and under 3) are removed first. That leaves the root's left child 2 with no children, so it is now a target leaf and is removed as well. Node 3 keeps its child 4, and nothing else matches."},
+			{Input: "root = [1,3,3,3,2], target = 3", Output: "[1,3,null,null,2]", Explanation: "The leaf 3 on the root's right and the leaf 3 under the left 3 are removed. The left 3 still has its child 2, so it stays."},
+			{Input: "root = [1,2,null,2,null,2], target = 2", Output: "[1]", Explanation: "A chain of three 2s hangs off the root. Removing the bottom one exposes the next, and so on, until only 1 is left."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"root": []interface{}{1, 2, 3, 2, nil, 2, 4}, "target": 2}, Expected: []interface{}{1, nil, 3, nil, 4}, Note: "example 1: a parent becomes a target leaf after its child is removed"},
+			{Input: map[string]interface{}{"root": []interface{}{1, 3, 3, 3, 2}, "target": 3}, Expected: []interface{}{1, 3, nil, nil, 2}, Note: "example 2: a target node with a non-target child stays"},
+			{Input: map[string]interface{}{"root": []interface{}{1, 2, nil, 2, nil, 2}, "target": 2}, Expected: []interface{}{1}, Hidden: true, Note: "cascade down a chain (deciding before visiting the children removes only the bottom node)"},
+			{Input: map[string]interface{}{"root": []interface{}{1, 1, 1}, "target": 1}, Expected: []interface{}{}, Hidden: true, Note: "every node is removed, including the root: return None (ignoring the returned root keeps it)"},
+			{Input: map[string]interface{}{"root": []interface{}{1, 2, 3}, "target": 1}, Expected: []interface{}{1, 2, 3}, Hidden: true, Note: "the root matches target but is not a leaf, so nothing changes"},
+			{Input: map[string]interface{}{"root": []interface{}{5, 2, 2, nil, 3}, "target": 2}, Expected: []interface{}{5, 2, nil, nil, 3}, Hidden: true, Note: "only the target leaf goes; the target node with child 3 stays"},
+			{Input: map[string]interface{}{"root": []interface{}{1, 2, 3, 2, 2}, "target": 2}, Expected: []interface{}{1, nil, 3}, Hidden: true, Note: "both children must be gone before the parent counts as a leaf"},
+			{Input: map[string]interface{}{"root": []interface{}{7}, "target": 4}, Expected: []interface{}{7}, Hidden: true, Note: "single node that does not match"},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(h)",
+		StarterCode:     "# TreeNode(val, left, right) is provided\ndef removeLeafNodes(root, target):\n    # Write your solution here\n    pass",
+		Harness: Harness{
+			ParamTypes: map[string]string{"root": "TreeNode"},
+			ReturnType: "TreeNode",
+		},
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "Whether a node ends up as a leaf depends on what happens to its children. So at which moment, before or after dealing with the children, can a node safely decide whether it should disappear?"},
+			{Level: 2, Type: "insight", Content: "Use a postorder DFS (Chapter 9) that returns the cleaned-up subtree, just as Invert Binary Tree returned the inverted one. Clean the left and right subtrees first and reattach whatever they return; only then look at the node: if both children are now None and its value is target, return None so the parent drops it. Doing the children first is what makes the cascade happen in a single pass.", ChapterRef: 9},
+			{Level: 3, Type: "plan", Content: "1. Handle the empty tree: an empty subtree stays empty, so return None.\n2. Clean the children first: replace node.left and node.right with the results of recursive calls.\n3. Decide about this node: if it now has no children and its value equals target, return None.\n4. Return to the parent: otherwise return the node itself, so the parent keeps it."},
+			{Level: 4, Type: "skeleton", Content: "def removeLeafNodes(root, target):\n    if root is None:\n        return None\n    root.left = ____\n    root.right = ____\n    if ____:\n        return None\n    return root"},
+		},
+		Solution: Solution{
+			Code: `def removeLeafNodes(root, target):
+    if root is None:
+        return None
+    root.left = removeLeafNodes(root.left, target)
+    root.right = removeLeafNodes(root.right, target)
+    if root.left is None and root.right is None and root.val == target:
+        return None
+    return root`,
+			Explanation: "Builds on Invert Binary Tree (Order 2), where each call returned a rebuilt subtree for its parent to reattach. The new twist is that a call may return None to delete its own node, and the order matters: the children are cleaned before the node looks at itself, so a parent that has just lost its last child is judged as the leaf it has become.",
+			BruteForce:  "Repeat passes over the tree: each pass removes the leaves that are target right now, and you stop when a pass removes nothing. A chain of k target nodes needs k passes, each walking the whole tree, so the worst case is O(n * h), which is O(n^2) on a chain. Each pass re-walks every node that the previous pass already confirmed, only to peel one more layer off the bottom.",
+			KeyInsight:  "A node can only become a leaf because of what happens below it, so process the tree bottom-up (postorder). By the time a node is examined, its subtrees are already in their final state, so one check per node settles it, and a single pass does every round of the cascade.",
+			WhyItWorks:  "Claim: removeLeafNodes(node) returns the subtree rooted at node after every possible removal. For an empty subtree this is trivially true. Otherwise, by induction the two recursive calls return fully cleaned children, and nothing that happens above node can change its descendants. If both cleaned children are None, node is a leaf in the final tree, so it must be removed exactly when its value is target; if any child remains, node is not a leaf and can never become one, so it stays. Each node is visited once: O(n) time and O(h) stack.",
+			CommonMistakes: []string{
+				"Checking whether the node is a target leaf before recursing into its children (preorder). A node that only becomes a leaf after its children are removed is then missed, so [1,2,null,2,null,2] keeps two 2s. Recurse into the children first and decide afterwards.",
+				"Calling the recursion without assigning the result back (removeLeafNodes(root.left, target) instead of root.left = ...). The child returns None but the parent still points at it. Always reattach the returned subtree.",
+				"Returning the original root at the top level even when it was removed, so [1,1,1] with target 1 still shows the root. Return whatever the call for the root returns, which may be None.",
+			},
+			TimeComplexity:  "O(n): each node is visited once",
+			SpaceComplexity: "O(h) for the call stack",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Handle the empty tree", Explanation: "A missing child has nothing to remove, so it stays None.", CodeSnippet: "if root is None:\n    return None", LineStart: 2, LineEnd: 3},
+				{Title: "Clean the children first", Explanation: "Each call returns the cleaned subtree, possibly None, and it is attached back in place. On [1,2,null,2,null,2] the bottom 2 returns None, so its parent 2 is now childless before it is checked.", CodeSnippet: "root.left = removeLeafNodes(root.left, target)\nroot.right = removeLeafNodes(root.right, target)", LineStart: 4, LineEnd: 5},
+				{Title: "Decide about this node", Explanation: "The children are final, so being childless now means being a leaf in the answer. A target leaf removes itself by returning None to its parent.", CodeSnippet: "if root.left is None and root.right is None and root.val == target:\n    return None", LineStart: 6, LineEnd: 7},
+				{Title: "Return to the parent", Explanation: "Any other node stays, so the parent reattaches it unchanged.", CodeSnippet: "return root", LineStart: 8, LineEnd: 8},
+			},
+			Alternatives: []AltSolution{
+				{
+					Name: "Brute force: remove one layer per pass",
+					Code: `def removeLeafNodes(root, target):
+    def one_pass(node):
+        if node is None:
+            return None, False
+        if node.left is None and node.right is None:
+            if node.val == target:
+                return None, True
+            return node, False
+        node.left, removed_left = one_pass(node.left)
+        node.right, removed_right = one_pass(node.right)
+        return node, removed_left or removed_right
+
+    changed = True
+    while changed:
+        root, changed = one_pass(root)
+    return root`,
+					TimeComplexity:  "O(n * h)",
+					SpaceComplexity: "O(h)",
+					Explanation:     "Each pass removes only the nodes that are target leaves at the start of the pass (the leaf test happens before recursing), and passes repeat until nothing changes. It is the literal reading of the statement, and shows how many times the postorder version saves you from re-walking the tree.",
+				},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "Why does postorder handle the whole cascade in one pass, while preorder would need repeated passes?", Answer: "In postorder a node is examined only after both of its subtrees are finished, so it sees its final set of children. If removals below it left it childless, it already knows. In preorder the node is examined first, while its children are still present, so it looks like an internal node and is kept even if those children are removed a moment later."},
+			{Prompt: "What changes if you must remove target leaves only once, without the cascade?", Answer: "Then a node must be judged by its original children. Check for a target leaf before recursing (as one pass of the brute force does) and recurse only into nodes that are not leaves. A parent that becomes a leaf because of this round of removals is kept."},
+		},
+	},
+	{
 		ID:              "lowest-common-ancestor-bst",
 		Number:          235,
-		Order:           5,
+		Order:           6,
 		Title:           "Lowest Common Ancestor of a Binary Search Tree",
 		Slug:            "lowest-common-ancestor-of-a-binary-search-tree",
 		Difficulty:      "Medium",
@@ -442,7 +549,7 @@ In the tests, p and q are given by their values; the judge passes you the actual
         else:
             return node
     return None`,
-			Explanation: "The first BST problem in the ladder. Problems 1 to 4 had to visit every node; here the BST ordering from Chapter 9 lets us use the ordering to pick a side at each node, just like binary search in Chapter 6, so we walk a single path from the root and stop where p and q go different ways.",
+			Explanation: "The first BST problem in the ladder. Problems 1 to 5 had to visit every node; here the BST ordering from Chapter 9 lets us use the ordering to pick a side at each node, just like binary search in Chapter 6, so we walk a single path from the root and stop where p and q go different ways.",
 			BruteForce:  "Ignore the ordering and use the general-tree method: recursively search both subtrees for p and q and return the node where they are found on different sides. That visits up to all n nodes, O(n), even though a single comparison at each node already tells you which side both targets are on.",
 			KeyInsight:  "In a BST, comparing p and q with a node tells you which subtree each is in without searching. While both are on the same side, every common ancestor deeper down is on that side; the first node where they separate is the lowest one.",
 			WhyItWorks:  "Invariant: the current node is always a common ancestor of p and q (true at the root). If both values are smaller, both nodes are in the left subtree, so the left child is also a common ancestor and is deeper; similarly on the right. When neither move applies, either p and q are on different sides or one of them is the current node. Any deeper node lies in only one subtree and so cannot contain both, which makes the current node the lowest common ancestor. Each step goes one level down: O(h) time, O(1) space.",
@@ -483,7 +590,7 @@ In the tests, p and q are given by their values; the judge passes you the actual
 	{
 		ID:              "binary-tree-level-order-traversal",
 		Number:          102,
-		Order:           6,
+		Order:           7,
 		Title:           "Binary Tree Level Order Traversal",
 		Slug:            "binary-tree-level-order-traversal",
 		Difficulty:      "Medium",
@@ -540,7 +647,7 @@ def levelOrder(root):
                 queue.append(node.right)
         levels.append(level)
     return levels`,
-			Explanation: "The first BFS problem of the ladder. Problems 1 to 5 went deep along one path at a time; this one goes wide, using the level-by-level BFS from Chapter 9. The key detail is the level-size snapshot, which splits one continuous queue into separate levels.",
+			Explanation: "The first BFS problem of the ladder. Problems 1 to 6 went deep along one path at a time; this one goes wide, using the level-by-level BFS from Chapter 9. The key detail is the level-size snapshot, which splits one continuous queue into separate levels.",
 			BruteForce:  "Compute the tree's height, then for each depth d run a fresh DFS from the root that collects the nodes at exactly depth d. Each pass walks down to depth d again, so a chain of n nodes costs 1 + 2 + ... + n = O(n^2) steps, re-visiting the top of the tree once per level.",
 			KeyInsight:  "A FIFO queue naturally outputs nodes in order of depth, because a node's children are added after every node already waiting. Counting the queue at the start of a round tells you exactly how many of the waiting nodes belong to the current level.",
 			WhyItWorks:  "Invariant: at the top of the while loop, the queue holds exactly the nodes of one depth d, in left-to-right order. It holds for d = 0 (just the root). The inner loop pops exactly those len(queue) nodes and appends their children, left before right, so afterwards the queue holds exactly depth d + 1 in left-to-right order. Each node is enqueued and dequeued once: O(n) time; the queue holds at most one level plus part of the next, O(n) in the worst case.",
@@ -584,9 +691,274 @@ def levelOrder(root):
 		},
 	},
 	{
+		ID:              "binary-tree-right-side-view",
+		Number:          199,
+		Order:           8,
+		Title:           "Binary Tree Right Side View",
+		Slug:            "binary-tree-right-side-view",
+		Difficulty:      "Medium",
+		Category:        "trees",
+		Tags:            []string{"Tree", "BFS", "DFS", "Binary Tree", "Google", "Google L3", "Google Phone Screen"},
+		RelatedChapters: []int{9},
+		Description: `You are given the root of a binary tree. Picture yourself standing to the right of the tree and looking at it: at each depth you can see only the **rightmost** node, because it hides the others on that level.
+
+Return the values you can see, from the top level (the root) down to the deepest level. Return an empty list for an empty tree.
+
+Note that the visible node at a depth is not always a right child: if a level has only one node and it hangs on the left, that node is the one you see.`,
+		Constraints: []string{
+			"The tree has between 0 and 100 nodes",
+			"-100 <= Node.val <= 100",
+		},
+		Examples: []Example{
+			{Input: "root = [1,2,3,null,5,null,4]", Output: "[1,3,4]", Explanation: "Depth 0 is just 1. Depth 1 holds 2 and 3, and 3 is further right. Depth 2 holds 5 (under 2) and 4 (under 3), and 4 is further right."},
+			{Input: "root = [1,null,3]", Output: "[1,3]"},
+			{Input: "root = [1,2,3,4]", Output: "[1,3,4]", Explanation: "Depth 2 has a single node, 4, the left child of 2. Nothing is to its right, so it is visible even though it sits on the left side."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"root": []interface{}{1, 2, 3, nil, 5, nil, 4}}, Expected: []int{1, 3, 4}, Note: "example 1: one visible node per level"},
+			{Input: map[string]interface{}{"root": []interface{}{1, nil, 3}}, Expected: []int{1, 3}, Note: "example 2: only right children"},
+			{Input: map[string]interface{}{"root": []interface{}{1, 2, 3, 4}}, Expected: []int{1, 3, 4}, Hidden: true, Note: "deepest node is on the left (following only right pointers stops at 3)"},
+			{Input: map[string]interface{}{"root": []interface{}{}}, Expected: []int{}, Hidden: true, Note: "empty tree gives []"},
+			{Input: map[string]interface{}{"root": []interface{}{1, 2}}, Expected: []int{1, 2}, Hidden: true, Note: "a lone left child is visible"},
+			{Input: map[string]interface{}{"root": []interface{}{1, 2, 3, 4, 5, 6, 7}}, Expected: []int{1, 3, 7}, Hidden: true, Note: "full tree: taking the first node of each level gives the left view [1,2,4]"},
+			{Input: map[string]interface{}{"root": []interface{}{-5}}, Expected: []int{-5}, Hidden: true, Note: "single node with a negative value"},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "# TreeNode(val, left, right) is provided\ndef rightSideView(root):\n    # Write your solution here\n    pass",
+		Harness: Harness{
+			ParamTypes: map[string]string{"root": "TreeNode"},
+		},
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "If you already had the tree split into levels, each listed from left to right, which value of each level would you keep?"},
+			{Level: 2, Type: "insight", Content: "Run the level-by-level BFS from Binary Tree Level Order Traversal (Chapter 9). Snapshot the level size, pop that many nodes, and record only the node popped last in each round, because children are enqueued left before right.", ChapterRef: 9},
+			{Level: 3, Type: "plan", Content: "1. Seed the queue: return [] for an empty tree, otherwise start the queue with the root.\n2. Process one level: read the level size once and pop exactly that many nodes.\n3. Keep the last node: when the index reaches level size - 1, record that node's value.\n4. Enqueue the children: append the left child, then the right child, if they exist, and repeat while the queue is non-empty."},
+			{Level: 4, Type: "skeleton", Content: "from collections import deque\n\ndef rightSideView(root):\n    if root is None:\n        return []\n    view = []\n    queue = deque([root])\n    while queue:\n        level_size = ____\n        for i in range(level_size):\n            node = queue.popleft()\n            if ____:\n                view.append(node.val)\n            if node.left:\n                queue.append(node.left)\n            if node.right:\n                queue.append(node.right)\n    return view"},
+		},
+		Solution: Solution{
+			Code: `from collections import deque
+
+def rightSideView(root):
+    if root is None:
+        return []
+    view = []
+    queue = deque([root])
+    while queue:
+        level_size = len(queue)
+        for i in range(level_size):
+            node = queue.popleft()
+            if i == level_size - 1:
+                view.append(node.val)
+            if node.left:
+                queue.append(node.left)
+            if node.right:
+                queue.append(node.right)
+    return view`,
+			Explanation: "Builds on Binary Tree Level Order Traversal (the previous problem): the same BFS with a level-size snapshot, but instead of storing every value of a level we keep only the last one popped. The twist is noticing that the visible node is a property of the level, not of the right pointers.",
+			BruteForce:  "Build the full level-order list of lists and then take the last value of each level. That is still O(n) time, but it stores every value of every level, O(n) extra memory for the output of a problem that only needs one value per level. A tempting shortcut, walking root.right repeatedly, is fast but wrong: on [1,2,3,4] it stops at 3 and misses 4.",
+			KeyInsight:  "Within one BFS round the nodes come out left to right, so the visible node of a level is simply the one popped last in that round. The level-size snapshot tells you which pop is the last.",
+			WhyItWorks:  "Invariant (from level order traversal): at the top of the while loop the queue holds exactly the nodes of one depth d, in left-to-right order, because each node's children are appended left before right behind all nodes already waiting. The inner loop pops exactly level_size nodes, so the pop with i == level_size - 1 is the rightmost node at depth d, and no node at depth d lies to its right, so it is the visible one. Every depth from 0 to the height gets exactly one value, in top-down order. Each node is enqueued and dequeued once: O(n) time, and the queue holds at most about one level, O(n) in the worst case.",
+			CommonMistakes: []string{
+				"Following only right children from the root. When a deeper level exists only on the left, as in [1,2,3,4], its node is visible but never reached. Look at every node of each level, not just the right spine.",
+				"Recording the first node popped in each round instead of the last, which produces the left side view ([1,2,4] instead of [1,3,7] on a full tree). Compare the index with level_size - 1.",
+				"Calling len(queue) inside the loop condition while children are being added, so levels run together. Read the level size once at the start of each round.",
+			},
+			TimeComplexity:  "O(n): each node is enqueued and dequeued once",
+			SpaceComplexity: "O(n): the queue can hold a whole level",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Seed the queue", Explanation: "An empty tree shows nothing. Otherwise level 0 is just the root.", CodeSnippet: "if root is None:\n    return []\nqueue = deque([root])", LineStart: 4, LineEnd: 7},
+				{Title: "Process one level", Explanation: "level_size is read once, so it counts only the nodes of the current depth even though children are appended during the loop.", CodeSnippet: "level_size = len(queue)\nfor i in range(level_size):\n    node = queue.popleft()", LineStart: 9, LineEnd: 11},
+				{Title: "Keep the last node", Explanation: "Nodes of a level come out left to right, so the last one popped is the rightmost and is the one you see. On [1,2,3,4] the last level has one node, 4, and it is recorded.", CodeSnippet: "if i == level_size - 1:\n    view.append(node.val)", LineStart: 12, LineEnd: 13},
+				{Title: "Enqueue the children", Explanation: "Left before right keeps the next level in left-to-right order, which is what makes the last pop the rightmost.", CodeSnippet: "if node.left:\n    queue.append(node.left)\nif node.right:\n    queue.append(node.right)", LineStart: 14, LineEnd: 17},
+			},
+			Alternatives: []AltSolution{
+				{
+					Name: "DFS visiting the right child first",
+					Code: `def rightSideView(root):
+    view = []
+    def visit(node, depth):
+        if node is None:
+            return
+        if depth == len(view):
+            view.append(node.val)
+        visit(node.right, depth + 1)
+        visit(node.left, depth + 1)
+    visit(root, 0)
+    return view`,
+					TimeComplexity:  "O(n)",
+					SpaceComplexity: "O(h)",
+					Explanation:     "A preorder DFS that goes right before left reaches each depth for the first time at its rightmost node. When depth == len(view) this is the first node seen at that depth, so record it. Uses O(h) stack instead of a queue.",
+				},
+				{
+					Name: "Brute force: full level order, then take the last of each level",
+					Code: `from collections import deque
+
+def rightSideView(root):
+    levels = []
+    queue = deque([root] if root else [])
+    while queue:
+        level = []
+        for _ in range(len(queue)):
+            node = queue.popleft()
+            level.append(node.val)
+            if node.left:
+                queue.append(node.left)
+            if node.right:
+                queue.append(node.right)
+        levels.append(level)
+    return [level[-1] for level in levels]`,
+					TimeComplexity:  "O(n)",
+					SpaceComplexity: "O(n)",
+					Explanation:     "Reuses the previous problem unchanged and post-processes it. Correct and the same time, but it stores every value of the tree just to throw most of them away.",
+				},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "Why does the right-first DFS record the correct node when it checks depth == len(view)?", Answer: "len(view) is the number of depths already seen. Visiting right before left means that, among all nodes at a given depth, the rightmost one is reached first: any node to its right would be in a subtree that was explored earlier. So the first node to arrive at a new depth is exactly the visible one, and later nodes at that depth find depth < len(view) and are skipped."},
+			{Prompt: "How would you return the left side view instead, and what about the bottom view?", Answer: "Left side view: record the node with i == 0 in each BFS round (or visit left before right in the DFS). The bottom view is a different question about horizontal position, not depth: give the root column 0, a left child column - 1 and a right child column + 1, and keep the value of the deepest (last in BFS order) node seen for each column."},
+		},
+	},
+	{
+		ID:              "binary-tree-zigzag-level-order-traversal",
+		Number:          103,
+		Order:           9,
+		Title:           "Binary Tree Zigzag Level Order Traversal",
+		Slug:            "binary-tree-zigzag-level-order-traversal",
+		Difficulty:      "Medium",
+		Category:        "trees",
+		Tags:            []string{"Tree", "BFS", "Binary Tree", "Google", "Google L4", "Google Phone Screen"},
+		RelatedChapters: []int{9},
+		Description: `You are given the root of a binary tree. Return its node values level by level as a list of lists, but alternate the direction within each level: the root's level (depth 0) is read left to right, depth 1 right to left, depth 2 left to right again, and so on.
+
+Return an empty list for an empty tree.`,
+		Constraints: []string{
+			"The tree has between 0 and 2000 nodes",
+			"-100 <= Node.val <= 100",
+		},
+		Examples: []Example{
+			{Input: "root = [3,9,20,null,null,15,7]", Output: "[[3],[20,9],[15,7]]", Explanation: "Depth 0 is [3]. Depth 1 holds 9 and 20 from left to right, so it is read backwards as [20,9]. Depth 2 holds 15 and 7 and is read forwards again."},
+			{Input: "root = [1]", Output: "[[1]]"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"root": []interface{}{3, 9, 20, nil, nil, 15, 7}}, Expected: [][]int{{3}, {20, 9}, {15, 7}}, Note: "example 1: second level reversed"},
+			{Input: map[string]interface{}{"root": []interface{}{1}}, Expected: [][]int{{1}}, Note: "example 2: single node"},
+			{Input: map[string]interface{}{"root": []interface{}{}}, Expected: [][]int{}, Hidden: true, Note: "empty tree gives []"},
+			{Input: map[string]interface{}{"root": []interface{}{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}}, Expected: [][]int{{1}, {3, 2}, {4, 5, 6, 7}, {15, 14, 13, 12, 11, 10, 9, 8}}, Hidden: true, Note: "four full levels (swapping the child order in one queue scrambles levels 2 and 3)"},
+			{Input: map[string]interface{}{"root": []interface{}{1, 2, 3, 4, nil, nil, 5}}, Expected: [][]int{{1}, {3, 2}, {4, 5}}, Hidden: true, Note: "third level is read forwards again (catches reversing every level after the first)"},
+			{Input: map[string]interface{}{"root": []interface{}{1, 2, nil, 3, nil, 4}}, Expected: [][]int{{1}, {2}, {3}, {4}}, Hidden: true, Note: "chain: one node per level, so reversing changes nothing"},
+			{Input: map[string]interface{}{"root": []interface{}{0, -1, 1, nil, -2, 2}}, Expected: [][]int{{0}, {1, -1}, {-2, 2}}, Hidden: true, Note: "children of different parents on the forward level"},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "# TreeNode(val, left, right) is provided\ndef zigzagLevelOrder(root):\n    # Write your solution here\n    pass",
+		Harness: Harness{
+			ParamTypes: map[string]string{"root": "TreeNode"},
+		},
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "Does the zigzag change which nodes belong to each level, or only the order in which a finished level is written down?"},
+			{Level: 2, Type: "insight", Content: "Keep the BFS from Binary Tree Level Order Traversal (Chapter 9) exactly as it is, so the queue always produces each level left to right. Only the recording changes: keep a direction flag, reverse the collected level when the flag says right to left, and flip the flag after every level.", ChapterRef: 9},
+			{Level: 3, Type: "plan", Content: "1. Seed the queue: return [] for an empty tree, otherwise start the queue with the root and set the direction to left to right.\n2. Process one level: snapshot the level size and pop that many nodes, collecting their values and enqueueing children left then right.\n3. Apply the direction: if this level is read right to left, reverse the collected values.\n4. Record the level and flip: append the level to the answer and flip the direction for the next level."},
+			{Level: 4, Type: "skeleton", Content: "from collections import deque\n\ndef zigzagLevelOrder(root):\n    if root is None:\n        return []\n    levels = []\n    queue = deque([root])\n    left_to_right = True\n    while queue:\n        level = []\n        for _ in range(len(queue)):\n            node = queue.popleft()\n            level.append(node.val)\n            if node.left:\n                queue.append(node.left)\n            if node.right:\n                queue.append(node.right)\n        if ____:\n            level.reverse()\n        levels.append(level)\n        left_to_right = ____\n    return levels"},
+		},
+		Solution: Solution{
+			Code: `from collections import deque
+
+def zigzagLevelOrder(root):
+    if root is None:
+        return []
+    levels = []
+    queue = deque([root])
+    left_to_right = True
+    while queue:
+        level = []
+        for _ in range(len(queue)):
+            node = queue.popleft()
+            level.append(node.val)
+            if node.left:
+                queue.append(node.left)
+            if node.right:
+                queue.append(node.right)
+        if not left_to_right:
+            level.reverse()
+        levels.append(level)
+        left_to_right = not left_to_right
+    return levels`,
+			Explanation: "Builds on Binary Tree Level Order Traversal (two problems back) and on Right Side View, which showed that the BFS rounds give you each level as a unit you can post-process. Here the post-processing is to reverse every other level, controlled by a flag. The traversal itself does not change at all, which is the main lesson: separate how you visit from how you record.",
+			BruteForce:  "Compute the height, then for each depth d run a fresh DFS from the root that collects the nodes at depth d, and reverse the list for odd d. Each pass walks the top of the tree again, so a chain of n nodes costs 1 + 2 + ... + n = O(n^2). Another tempting route, swapping the order children are enqueued on alternate levels in a single queue, is fast but wrong from depth 2 on.",
+			KeyInsight:  "The zigzag is only about presentation. A normal BFS already gives each level's nodes in left-to-right order, and reversing a list of k values costs O(k), so reversing every odd level adds O(n) in total and keeps the traversal simple and correct.",
+			WhyItWorks:  "Invariant (from level order traversal): at the top of the while loop the queue holds exactly the nodes of depth d in left-to-right order, so after the inner loop level lists depth d left to right. left_to_right is True exactly when d is even: it starts True for d = 0 and is flipped once per level. Reversing on odd d therefore writes every level in the required direction. Each node is enqueued and dequeued once and each value is reversed at most once: O(n) time, O(n) space for the queue and the output.",
+			CommonMistakes: []string{
+				"Changing the order children are enqueued (right before left) on alternate levels in a single FIFO queue. That reverses each pair of siblings but not the order of their parents, so on the four-level full tree depth 2 comes out [6,7,4,5]. Keep the BFS unchanged and reverse the finished level (or use two stacks).",
+				"Forgetting to flip the flag back, or flipping it only once, so every level after the first is reversed: [1,2,3,4,null,null,5] gives [5,4] instead of [4,5] on the third level. Toggle the flag after every level.",
+				"Reversing the queue instead of the collected values, which changes the order nodes are processed in and breaks the next level. Reverse only the level list.",
+			},
+			TimeComplexity:  "O(n): each node is processed once, and each level is reversed at most once",
+			SpaceComplexity: "O(n): the queue and the output",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Seed the queue", Explanation: "An empty tree has no levels. The root's level is read left to right, so the flag starts True.", CodeSnippet: "if root is None:\n    return []\nqueue = deque([root])\nleft_to_right = True", LineStart: 4, LineEnd: 8},
+				{Title: "Process one level", Explanation: "Exactly the level order BFS: range(len(queue)) is fixed before children are added, and children go in left then right, so level is always left to right here.", CodeSnippet: "for _ in range(len(queue)):\n    node = queue.popleft()\n    level.append(node.val)", LineStart: 11, LineEnd: 17},
+				{Title: "Apply the direction", Explanation: "Only odd depths are read right to left. On example 1, depth 1 collects [9,20] and is reversed to [20,9].", CodeSnippet: "if not left_to_right:\n    level.reverse()", LineStart: 18, LineEnd: 19},
+				{Title: "Record the level and flip", Explanation: "Store the level in its final order and flip the direction so the next depth alternates.", CodeSnippet: "levels.append(level)\nleft_to_right = not left_to_right", LineStart: 20, LineEnd: 21},
+			},
+			Alternatives: []AltSolution{
+				{
+					Name: "DFS with a depth index, then reverse odd levels",
+					Code: `def zigzagLevelOrder(root):
+    levels = []
+    def visit(node, depth):
+        if node is None:
+            return
+        if depth == len(levels):
+            levels.append([])
+        levels[depth].append(node.val)
+        visit(node.left, depth + 1)
+        visit(node.right, depth + 1)
+    visit(root, 0)
+    for depth in range(1, len(levels), 2):
+        levels[depth].reverse()
+    return levels`,
+					TimeComplexity:  "O(n)",
+					SpaceComplexity: "O(h) stack plus the output",
+					Explanation:     "Preorder DFS fills each depth's list left to right (left child before right), then every odd depth is reversed in a final pass. Shows that the zigzag is purely a recording step that works with any traversal that groups nodes by depth.",
+				},
+				{
+					Name: "Two stacks",
+					Code: `def zigzagLevelOrder(root):
+    if root is None:
+        return []
+    levels = []
+    current = [root]
+    left_to_right = True
+    while current:
+        level = []
+        upcoming = []
+        while current:
+            node = current.pop()
+            level.append(node.val)
+            first, second = (node.left, node.right) if left_to_right else (node.right, node.left)
+            if first:
+                upcoming.append(first)
+            if second:
+                upcoming.append(second)
+        levels.append(level)
+        current = upcoming
+        left_to_right = not left_to_right
+    return levels`,
+					TimeComplexity:  "O(n)",
+					SpaceComplexity: "O(n)",
+					Explanation:     "Pops each level from a stack, which reverses it, and pushes the children in the order that makes the next level come out in the opposite direction. It never calls reverse, but the push order has to be right for both directions, which is why the flag-and-reverse version is easier to get right in an interview.",
+				},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "Why does swapping the order of enqueueing children on alternate levels, with a single queue, fail on a four-level full tree?", Answer: "A FIFO queue keeps the parents in the order they were dequeued. Say the root enqueues right before left: depth 1 then comes out [3,2], which looks right. But now 3 is processed before 2, so all of 3's children are queued before 2's, and depth 2 comes out [6,7,4,5] instead of [4,5,6,7]: each sibling pair is in the right order, but the parents are in the wrong order. Depth 3 is scrambled the same way. Reversing a whole level needs the parents reversed too, which is what reversing the finished list (or popping from a stack) does."},
+			{Prompt: "What is the extra cost of the reversals, and could you avoid them?", Answer: "Reversing a level of k values is O(k), so over all levels it is O(n) in total, the same order as the BFS itself. You could avoid it by writing values into a pre-sized list from the back (index level_size - 1 - i) on odd levels, or by appending to the left of a deque, but this saves only a constant factor."},
+		},
+	},
+	{
 		ID:              "validate-binary-search-tree",
 		Number:          98,
-		Order:           7,
+		Order:           10,
 		Title:           "Validate Binary Search Tree",
 		Slug:            "validate-binary-search-tree",
 		Difficulty:      "Medium",
@@ -642,7 +1014,7 @@ Duplicates are therefore not allowed.`,
         return valid(node.left, low, node.val) and valid(node.right, node.val, high)
 
     return valid(root, float("-inf"), float("inf"))`,
-			Explanation: "Builds on the BST ordering from LCA of a BST and on the DFS template from problems 1 to 4, with one new twist: information flows down as well as up. Each call receives the range of values its subtree is allowed to hold, so the rule from every ancestor is enforced, not just the parent's.",
+			Explanation: "Builds on the BST ordering from LCA of a BST and on the DFS template from problems 1 to 5, with one new twist: information flows down as well as up. Each call receives the range of values its subtree is allowed to hold, so the rule from every ancestor is enforced, not just the parent's.",
 			BruteForce:  "For every node, scan its entire left subtree to check all values are smaller and its entire right subtree to check all are larger. Correct, but each node is re-scanned once per ancestor, O(n * h), which is O(n^2) on a chain. The common shortcut of comparing a node only with its children is fast but wrong: [5,4,6,null,null,3,7] passes it.",
 			KeyInsight:  "Everything an ancestor demands of a node can be summarized as one open interval (low, high). Going left from node v tightens high to v; going right tightens low to v. Checking each node once against its interval enforces all ancestor constraints at once.",
 			WhyItWorks:  "Invariant: valid(node, low, high) is called exactly with low = the largest ancestor value that node lies to the right of, and high = the smallest ancestor value it lies to the left of. The BST definition says node's value must be greater than every ancestor it is right of and smaller than every ancestor it is left of, which is the same as low < val < high. So the check passes at every node exactly when the tree is a BST. On [5,4,6,null,null,3,7], node 3 is called with (5, 6) and 3 < 5 fails, while the parent-only check compared 3 only with 6. Each node is checked once: O(n) time, O(h) stack.",
@@ -686,7 +1058,7 @@ Duplicates are therefore not allowed.`,
 	{
 		ID:              "kth-smallest-element-in-bst",
 		Number:          230,
-		Order:           8,
+		Order:           11,
 		Title:           "Kth Smallest Element in a BST",
 		Slug:            "kth-smallest-element-in-a-bst",
 		Difficulty:      "Medium",
@@ -782,7 +1154,7 @@ k is always between 1 and the number of nodes.`,
 	{
 		ID:              "construct-binary-tree-from-preorder-inorder",
 		Number:          105,
-		Order:           9,
+		Order:           12,
 		Title:           "Construct Binary Tree from Preorder and Inorder Traversal",
 		Slug:            "construct-binary-tree-from-preorder-and-inorder-traversal",
 		Difficulty:      "Medium",
@@ -883,12 +1255,12 @@ Rebuild that tree and return its root. Create nodes with the provided TreeNode(v
 	{
 		ID:              "binary-tree-max-path-sum",
 		Number:          124,
-		Order:           10,
+		Order:           13,
 		Title:           "Binary Tree Maximum Path Sum",
 		Slug:            "binary-tree-maximum-path-sum",
 		Difficulty:      "Hard",
 		Category:        "trees",
-		Tags:            []string{"Dynamic Programming", "Tree", "DFS", "Binary Tree"},
+		Tags:            []string{"Dynamic Programming", "Tree", "DFS", "Binary Tree", "Google", "Google L5", "Google Onsite"},
 		RelatedChapters: []int{9, 8},
 		Description: `You are given the root of a non-empty binary tree whose node values may be negative. A **path** is a sequence of nodes where each consecutive pair is joined by an edge (parent to child or child to parent), and no node appears more than once. A path has at least one node and does not have to pass through the root.
 
@@ -993,12 +1365,12 @@ The **path sum** is the sum of the values on the path. Return the largest path s
 	{
 		ID:              "serialize-and-deserialize-binary-tree",
 		Number:          297,
-		Order:           11,
+		Order:           14,
 		Title:           "Serialize and Deserialize Binary Tree",
 		Slug:            "serialize-and-deserialize-binary-tree",
 		Difficulty:      "Hard",
 		Category:        "trees",
-		Tags:            []string{"String", "Tree", "DFS", "BFS", "Design", "Binary Tree"},
+		Tags:            []string{"String", "Tree", "DFS", "BFS", "Design", "Binary Tree", "Google", "Google L5", "Google Onsite"},
 		RelatedChapters: []int{9, 8},
 		Description: `Design a class Codec with two methods:
 - serialize(root) turns a binary tree into a string,
@@ -1139,6 +1511,127 @@ class Codec:
 		SelfCheck: []SelfCheck{
 			{Prompt: "Why is preorder with null markers enough to rebuild the tree, when plain preorder needed inorder as well?", Answer: "Plain preorder does not say where the left subtree ends and the right begins, so [1,2] could be 2 on the left or on the right. With markers, every subtree's encoding ends exactly when its last empty child's # is read, so the reader always knows when a subtree is complete and the split is unambiguous."},
 			{Prompt: "How many tokens does serialize produce for a tree of n nodes, and why?", Answer: "2n + 1: one per node, plus one # for each empty child. A binary tree with n nodes has n + 1 empty child slots (each node has 2 child slots, 2n in total, and n - 1 of them are filled by the non-root nodes)."},
+		},
+	},
+	{
+		ID:              "sum-of-distances-in-tree",
+		Number:          834,
+		Order:           15,
+		Title:           "Sum of Distances in Tree",
+		Slug:            "sum-of-distances-in-tree",
+		Difficulty:      "Hard",
+		Category:        "trees",
+		Tags:            []string{"Tree", "DFS", "Graph", "Dynamic Programming", "Google", "Google L5", "Google Phone Screen"},
+		RelatedChapters: []int{9, 13, 15},
+		Description: `You are given an integer n and a list edges of n - 1 pairs [a, b]. The nodes are labelled 0 to n - 1, and each pair is an **undirected** edge between a and b. Together the edges form a tree: the graph is connected and has no cycles. There is no designated root and no TreeNode objects; the tree is given only by its edges, in any order and in either direction.
+
+The **distance** between two nodes is the number of edges on the unique path between them. Return a list answer of length n where answer[i] is the sum of the distances from node i to every other node.`,
+		Constraints: []string{
+			"1 <= n <= 3 * 10^4",
+			"edges.length == n - 1",
+			"0 <= a, b < n and a != b",
+			"The edges form a tree (connected, no cycles)",
+		},
+		Examples: []Example{
+			{Input: "n = 6, edges = [[0,1],[0,2],[2,3],[2,4],[2,5]]", Output: "[8,12,6,10,10,10]", Explanation: "Node 0 is 1 step from nodes 1 and 2 and 2 steps from nodes 3, 4 and 5: 1 + 1 + 2 + 2 + 2 = 8. Node 2 is 1 step from 0, 3, 4 and 5 and 2 steps from 1: 1 + 1 + 1 + 1 + 2 = 6."},
+			{Input: "n = 1, edges = []", Output: "[0]", Explanation: "A single node has no other nodes to reach."},
+			{Input: "n = 2, edges = [[1,0]]", Output: "[1,1]"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"n": 6, "edges": [][]int{{0, 1}, {0, 2}, {2, 3}, {2, 4}, {2, 5}}}, Expected: []int{8, 12, 6, 10, 10, 10}, Note: "example 1: node 2 is the centre with the smallest sum"},
+			{Input: map[string]interface{}{"n": 1, "edges": [][]int{}}, Expected: []int{0}, Note: "example 2: single node, no edges"},
+			{Input: map[string]interface{}{"n": 2, "edges": [][]int{{1, 0}}}, Expected: []int{1, 1}, Hidden: true, Note: "edge listed from the larger label (storing edges in one direction only loses it)"},
+			{Input: map[string]interface{}{"n": 4, "edges": [][]int{{0, 1}, {1, 2}, {2, 3}}}, Expected: []int{6, 4, 4, 6}, Hidden: true, Note: "path: a wrong rerooting sign gives different values at the inner nodes"},
+			{Input: map[string]interface{}{"n": 5, "edges": [][]int{{3, 0}, {3, 1}, {3, 2}, {3, 4}}}, Expected: []int{7, 7, 7, 4, 7}, Hidden: true, Note: "star whose centre is not node 0"},
+			{Input: map[string]interface{}{"n": 5, "edges": [][]int{{2, 4}, {0, 3}, {4, 0}, {1, 2}}}, Expected: []int{7, 10, 7, 10, 6}, Hidden: true, Note: "path 1-2-4-0-3 with shuffled labels and edges in random order and direction"},
+			{Input: map[string]interface{}{"n": 7, "edges": [][]int{{0, 1}, {0, 2}, {1, 3}, {1, 4}, {2, 5}, {2, 6}}}, Expected: []int{10, 11, 11, 16, 16, 16, 16}, Hidden: true, Note: "balanced tree: subtrees of equal size on both sides"},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def sumOfDistancesInTree(n, edges):\n    # edges[i] = [a, b] is an undirected edge\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "Suppose you already know the answer for node 0, and node 1 is its neighbour. When you step from 0 to 1, which nodes get one edge closer, which get one edge farther, and how many of each are there?"},
+			{Level: 2, Type: "insight", Content: "Root the tree at node 0 and use a postorder DFS (Chapter 9) to compute two things per node: size[v], the number of nodes in v's subtree, and the sum of distances from v down into its subtree. That gives the full answer for the root. Then reroot: moving from a parent p to its child c brings the size[c] nodes of c's subtree one step closer and the other n - size[c] nodes one step farther, so answer[c] = answer[p] - size[c] + (n - size[c]). A second, top-down pass fills in every node.", ChapterRef: 9},
+			{Level: 3, Type: "plan", Content: "1. Build the graph: an adjacency list with every edge stored in both directions.\n2. Root the tree: walk from node 0 and record each node's parent and a visiting order in which every parent comes before its children.\n3. Gather from the children: in reverse order, add each node's subtree size and subtree distance sum into its parent (each node of the child's subtree is one step farther from the parent).\n4. Reroot down the tree: in forward order, compute every non-root node's answer from its parent's answer with the size formula.\n5. Return the answers."},
+			{Level: 4, Type: "skeleton", Content: "def sumOfDistancesInTree(n, edges):\n    graph = [[] for _ in range(n)]\n    for a, b in edges:\n        graph[a].append(b)\n        graph[b].append(a)\n    parent = [-1] * n\n    seen = [False] * n\n    seen[0] = True\n    order = [0]\n    for node in order:\n        for nxt in graph[node]:\n            if not seen[nxt]:\n                seen[nxt] = True\n                parent[nxt] = node\n                order.append(nxt)\n    size = [1] * n\n    answer = [0] * n\n    for node in reversed(order):\n        if parent[node] != -1:\n            size[parent[node]] += ____\n            answer[parent[node]] += ____\n    for node in order:\n        if parent[node] != -1:\n            answer[node] = ____\n    return answer"},
+		},
+		Solution: Solution{
+			Code: `def sumOfDistancesInTree(n, edges):
+    graph = [[] for _ in range(n)]
+    for a, b in edges:
+        graph[a].append(b)
+        graph[b].append(a)
+    parent = [-1] * n
+    seen = [False] * n
+    seen[0] = True
+    order = [0]
+    for node in order:
+        for nxt in graph[node]:
+            if not seen[nxt]:
+                seen[nxt] = True
+                parent[nxt] = node
+                order.append(nxt)
+    size = [1] * n
+    answer = [0] * n
+    for node in reversed(order):
+        if parent[node] != -1:
+            size[parent[node]] += size[node]
+            answer[parent[node]] += answer[node] + size[node]
+    for node in order:
+        if parent[node] != -1:
+            answer[node] = answer[parent[node]] - size[node] + (n - size[node])
+    return answer`,
+			Explanation: "Builds on Binary Tree Maximum Path Sum, where each node returned a summary of its subtree to its parent in one postorder pass. That pass alone answers the question for the root. The new twist is rerooting: a second, top-down pass that turns the parent's answer into the child's answer in O(1), so every node gets its answer without repeating the whole computation n times. The tree also arrives as an undirected edge list, so you first root it yourself.",
+			BruteForce:  "Run a BFS from every node and add up the distances it finds. Each BFS is O(n), so the total is O(n^2), about 9 * 10^8 steps at n = 3 * 10^4. The waste is that neighbouring nodes have almost the same distances: BFS from a child recomputes every distance its parent already knew, when only the side of each node relative to the edge between them matters.",
+			KeyInsight:  "Moving the starting point across one edge, from p to its child c, changes every distance by exactly 1: the size[c] nodes in c's subtree get one closer and the other n - size[c] nodes get one farther. So answer[c] = answer[p] - size[c] + (n - size[c]), and only subtree sizes are needed to move the answer from the root to every node.",
+			WhyItWorks:  "First pass (postorder, DP on the rooted tree): size[v] is 1 plus the sizes of v's children, and down[v], the sum of distances from v to the nodes of its subtree, is the sum over children c of down[c] + size[c], because each of the size[c] nodes under c is one edge farther from v than from c. Processing nodes in reverse BFS order guarantees every child is finished before its parent, so down[0] is the full answer for the root. Second pass (preorder): for an edge p-c, every node is on exactly one side; the size[c] nodes on c's side are one edge closer to c than to p, and the n - size[c] nodes on p's side are one edge farther. Hence answer[c] = answer[p] - size[c] + (n - size[c]) is exact, and processing in BFS order means answer[p] is final before c uses it. Both passes touch each node and edge a constant number of times: O(n) time and O(n) space.",
+			CommonMistakes: []string{
+				"Adding each edge in one direction only, as if [a, b] meant a is the parent of b. Edges come in any direction, so [[1,0]] then leaves node 0 with no neighbours and the answer comes out [0,0] or crashes. Store both directions and discover parents with a traversal from the root.",
+				"Getting the rerooting step backwards: answer[c] = answer[p] + size[c] - (n - size[c]) treats c's own subtree as moving farther away. On the path 0-1-2-3 it gives 8 for node 1 instead of 4. Remember the nodes under c get closer when you move to c.",
+				"Using size[p] instead of n - size[c] for the nodes that get farther. size[p] counts only p's subtree, not the whole rest of the tree, which is wrong as soon as p is not the root (the balanced seven-node tree catches it). The other side of the edge always has n - size[c] nodes.",
+			},
+			TimeComplexity:  "O(n): two passes over the nodes plus building the graph",
+			SpaceComplexity: "O(n): the graph, the order and the per-node arrays",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Build the graph", Explanation: "The edges are undirected and unordered, so each one is stored in both adjacency lists.", CodeSnippet: "for a, b in edges:\n    graph[a].append(b)\n    graph[b].append(a)", LineStart: 2, LineEnd: 5},
+				{Title: "Root the tree", Explanation: "A BFS from node 0 records each node's parent. Iterating over order while appending to it visits nodes level by level, so every parent appears before its children; no recursion means no stack-depth problem on a 30,000-node path.", CodeSnippet: "for node in order:\n    for nxt in graph[node]:\n        if not seen[nxt]:\n            parent[nxt] = node\n            order.append(nxt)", LineStart: 6, LineEnd: 15},
+				{Title: "Gather from the children", Explanation: "Reverse order is a postorder: children are done before their parent. On example 1, node 2 collects size 4 and a downward sum of 3; node 0 then gets (0 + 1) from node 1 and (3 + 4) from node 2, so answer[0] = 8.", CodeSnippet: "for node in reversed(order):\n    size[parent[node]] += size[node]\n    answer[parent[node]] += answer[node] + size[node]", LineStart: 18, LineEnd: 21},
+				{Title: "Reroot down the tree", Explanation: "Forward order fixes each parent before its children. Moving from 0 to 2 in example 1: 4 nodes get closer and 2 get farther, so answer[2] = 8 - 4 + 2 = 6.", CodeSnippet: "for node in order:\n    if parent[node] != -1:\n        answer[node] = answer[parent[node]] - size[node] + (n - size[node])", LineStart: 22, LineEnd: 24},
+				{Title: "Return the answers", Explanation: "Every entry now holds the full sum of distances from that node, not just into its subtree.", CodeSnippet: "return answer", LineStart: 25, LineEnd: 25},
+			},
+			Alternatives: []AltSolution{
+				{
+					Name: "Brute force: BFS from every node",
+					Code: `from collections import deque
+
+def sumOfDistancesInTree(n, edges):
+    graph = [[] for _ in range(n)]
+    for a, b in edges:
+        graph[a].append(b)
+        graph[b].append(a)
+    answer = []
+    for start in range(n):
+        dist = [-1] * n
+        dist[start] = 0
+        queue = deque([start])
+        while queue:
+            node = queue.popleft()
+            for nxt in graph[node]:
+                if dist[nxt] == -1:
+                    dist[nxt] = dist[node] + 1
+                    queue.append(nxt)
+        answer.append(sum(dist))
+    return answer`,
+					TimeComplexity:  "O(n^2)",
+					SpaceComplexity: "O(n)",
+					Explanation:     "Computes every distance directly with one BFS per start node. It is easy to trust and makes a good check, but at the upper limit of n it does hundreds of millions of steps, which is what the rerooting pass avoids.",
+				},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "Why is answer[c] = answer[p] - size[c] + (n - size[c]) exact, and not just an estimate?", Answer: "Removing the edge p-c splits the tree into two parts: c's subtree with size[c] nodes and the rest with n - size[c] nodes. Every path from c to a node in its own part does not use the edge, and is exactly one edge shorter than the path from p (which goes through c). Every path from c to a node in the other part goes through p, so it is exactly one edge longer than from p. Summing these exact changes gives the formula."},
+			{Prompt: "Why is it fine to root the tree at node 0, and what would change if you rooted it elsewhere?", Answer: "The first pass needs some root so that subtree sizes and parent links are defined; any node works because the second pass derives every other node's answer from its parent's anyway. Rooting at r instead would change the sizes and the BFS order but produce the same final answers, since each answer is a property of the tree, not of the chosen root."},
+			{Prompt: "This is called the rerooting technique. What does a problem need for it to apply?", Answer: "You need a per-node quantity that, for a fixed root, can be computed bottom-up from the children, and a way to update it in O(1) when the root moves across one edge using only precomputed subtree information (here, sizes). Then one postorder pass and one preorder pass give the answer for every possible root in O(n)."},
 		},
 	},
 }

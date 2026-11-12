@@ -3,6 +3,13 @@ package practice
 // GraphsProblems is the graphs ladder (Chapter 13): grid and graph traversal
 // with DFS and BFS, multi-source BFS, topological sort and union-find.
 // Weighted shortest paths and spanning trees live in problems_advanced_graphs.go.
+//
+// Ladder: 1 Number of Islands, 2 Clone Graph, 3 Walls and Gates, 4 Rotting
+// Oranges, 5 Pacific Atlantic Water Flow, 6 Surrounded Regions, 7 Number of
+// Closed Islands, 8 Course Schedule, 9 Course Schedule II, 10 Number of
+// Connected Components, 11 Satisfiability of Equality Equations, 12 Redundant
+// Connection, 13 Graph Valid Tree, 14 Validate Binary Tree Nodes, 15 Number of
+// Islands II, 16 Word Ladder.
 var GraphsProblems = []*Problem{
 	{
 		ID:              "number-of-islands",
@@ -12,7 +19,7 @@ var GraphsProblems = []*Problem{
 		Slug:            "number-of-islands",
 		Difficulty:      "Medium",
 		Category:        "graphs",
-		Tags:            []string{"Graph", "DFS", "BFS", "Matrix", "Connected Components"},
+		Tags:            []string{"Graph", "DFS", "BFS", "Matrix", "Connected Components", "Google", "Google L4", "Google Phone Screen"},
 		RelatedChapters: []int{13, 8},
 		Description: `You are given a map as a grid of strings: "1" is land and "0" is water.
 
@@ -143,7 +150,7 @@ def numIslands(grid):
 		Slug:            "clone-graph",
 		Difficulty:      "Medium",
 		Category:        "graphs",
-		Tags:            []string{"Graph", "DFS", "BFS", "Hash Table"},
+		Tags:            []string{"Graph", "DFS", "BFS", "Hash Table", "Google", "Google L4", "Google Onsite"},
 		RelatedChapters: []int{13, 2},
 		Description: `You are handed one node of a connected **undirected** graph. Each node has an integer **val** and a list **neighbors** of the nodes it is joined to. Because the graph is undirected, if A is in B's neighbours then B is in A's neighbours.
 
@@ -552,7 +559,7 @@ def orangesRotting(grid):
 		Slug:            "pacific-atlantic-water-flow",
 		Difficulty:      "Medium",
 		Category:        "graphs",
-		Tags:            []string{"Graph", "DFS", "BFS", "Matrix", "Multi-source BFS"},
+		Tags:            []string{"Graph", "DFS", "BFS", "Matrix", "Multi-source BFS", "Google", "Google L4", "Google Onsite"},
 		RelatedChapters: []int{13},
 		Description: `An island is drawn as a grid **heights**, where heights[r][c] is the height of cell (r, c). The **Pacific** ocean touches the whole top row and the whole left column; the **Atlantic** ocean touches the whole bottom row and the whole right column.
 
@@ -813,14 +820,157 @@ The function returns nothing; the judge reads the modified board.`,
 		},
 	},
 	{
+		ID:              "number-of-closed-islands",
+		Number:          1254,
+		Order:           7,
+		Title:           "Number of Closed Islands",
+		Slug:            "number-of-closed-islands",
+		Difficulty:      "Medium",
+		Category:        "graphs",
+		Tags:            []string{"Graph", "DFS", "BFS", "Matrix", "Connected Components", "Google", "Google L4", "Google Phone Screen"},
+		RelatedChapters: []int{13},
+		Description: `You are given a grid of integers where **0 is land** and **1 is water** (note: the opposite of the usual convention). An **island** is a group of land cells joined by up, down, left or right steps; diagonal contact does not join cells.
+
+An island is **closed** when none of its cells lies on the outer border of the grid (the first or last row, or the first or last column). A closed island is therefore surrounded by water on all four sides. An island with even one border cell is not closed, because land is assumed to continue off the edge of the map.
+
+Return the number of closed islands. If there are none, return 0. You may modify the grid.`,
+		Constraints: []string{
+			"1 <= grid.length, grid[0].length <= 100",
+			"grid[i][j] is 0 (land) or 1 (water)",
+		},
+		Examples: []Example{
+			{Input: "grid = [[1,1,1,1,1,1],[1,0,0,1,0,1],[1,0,0,1,1,1],[1,1,1,1,0,0]]", Output: "2", Explanation: "The 2 x 2 block of land at the top left is closed, and so is the single land cell at row 1, column 4. The two land cells at the bottom right lie on the border, so that island is not closed."},
+			{Input: "grid = [[1,1,1,1,1],[1,0,0,0,1],[1,0,1,0,1],[1,0,0,0,0]]", Output: "0", Explanation: "The ring of land reaches the bottom row (and the right edge), so it is not closed."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"grid": [][]int{{1, 1, 1, 1, 1, 1}, {1, 0, 0, 1, 0, 1}, {1, 0, 0, 1, 1, 1}, {1, 1, 1, 1, 0, 0}}}, Expected: 2, Hidden: false, Note: "Example 1: two closed islands and one on the border, which must not be counted"},
+			{Input: map[string]interface{}{"grid": [][]int{{1, 1, 1, 1, 1}, {1, 0, 0, 0, 1}, {1, 0, 1, 0, 1}, {1, 0, 0, 0, 0}}}, Expected: 0, Hidden: false, Note: "Example 2: the only island touches the border"},
+			{Input: map[string]interface{}{"grid": [][]int{{0}}}, Expected: 0, Hidden: true, Note: "a single land cell is on the border"},
+			{Input: map[string]interface{}{"grid": [][]int{{1, 1, 1}, {1, 0, 1}, {1, 1, 1}}}, Expected: 1, Hidden: true, Note: "the smallest closed island"},
+			{Input: map[string]interface{}{"grid": [][]int{{1, 1, 1, 1}, {1, 0, 1, 1}, {1, 1, 0, 1}, {1, 1, 1, 0}}}, Expected: 2, Hidden: true, Note: "cells touching only at corners are separate islands: diagonals do not connect"},
+			{Input: map[string]interface{}{"grid": [][]int{{1, 1, 1, 1, 1, 1, 1}, {1, 0, 0, 0, 0, 0, 1}, {1, 0, 1, 1, 1, 0, 1}, {1, 0, 1, 0, 1, 0, 1}, {1, 0, 1, 1, 1, 0, 1}, {1, 0, 0, 0, 0, 0, 1}, {1, 1, 1, 1, 1, 1, 1}}}, Expected: 2, Hidden: true, Note: "a closed ring with another closed island inside its lake"},
+			{Input: map[string]interface{}{"grid": [][]int{{1, 1, 1, 1, 1}, {0, 0, 0, 0, 1}, {1, 0, 1, 0, 1}, {1, 0, 0, 0, 1}, {1, 1, 1, 1, 1}}}, Expected: 0, Hidden: true, Note: "the island touches the border at one cell; a search that stops at the border leaves the rest to be miscounted"},
+			{Input: map[string]interface{}{"grid": [][]int{{1, 0, 1}}}, Expected: 0, Hidden: true, Note: "one row: every cell is on the border"},
+		},
+		TimeComplexity:  "O(m * n)",
+		SpaceComplexity: "O(m * n)",
+		StarterCode:     "def closedIsland(grid):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "Number of Islands counts every island. Which islands must you leave out here, and is there a part of the grid where every one of them has at least one cell?"},
+			{Level: 2, Type: "insight", Content: "An island is disqualified exactly when it has a border cell. So first flood (sink) every island that touches the border, starting from each border land cell, as in Surrounded Regions. Every island still on the grid is closed, and you count them exactly like Number of Islands.", ChapterRef: 13},
+			{Level: 3, Type: "plan", Content: "1. Flood the component: write a sink(r, c) that turns a whole island into water.\n2. Seed the frontier: call sink on every cell of the first and last row and the first and last column.\n3. Count what is left: scan the grid; each remaining land cell starts a closed island, so count it and sink it.\n4. Read off the answer: the count."},
+			{Level: 4, Type: "skeleton", Content: `def closedIsland(grid):
+    rows, cols = len(grid), len(grid[0])
+
+    def sink(start_r, start_c):
+        stack = [(start_r, start_c)]
+        while stack:
+            r, c = stack.pop()
+            if 0 <= r < rows and 0 <= c < cols and grid[r][c] == 0:
+                ____
+                stack.extend(((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)))
+
+    # sink every island that touches the border
+    ____
+
+    closed = 0
+    for r in range(rows):
+        for c in range(cols):
+            if ____:
+                ____
+    return closed`},
+		},
+		Solution: Solution{
+			Code: `def closedIsland(grid):
+    rows, cols = len(grid), len(grid[0])
+
+    def sink(start_r, start_c):
+        stack = [(start_r, start_c)]
+        while stack:
+            r, c = stack.pop()
+            if 0 <= r < rows and 0 <= c < cols and grid[r][c] == 0:
+                grid[r][c] = 1  # turn land into water so it is never visited again
+                stack.extend(((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)))
+
+    for r in range(rows):
+        sink(r, 0)
+        sink(r, cols - 1)
+    for c in range(cols):
+        sink(0, c)
+        sink(rows - 1, c)
+
+    closed = 0
+    for r in range(rows):
+        for c in range(cols):
+            if grid[r][c] == 0:
+                closed += 1  # never reached from the border: a closed island
+                sink(r, c)  # flood it so its other cells are not counted again
+    return closed`,
+			Explanation: "This builds on Surrounded Regions: flood from the border first, so the islands that can never be closed disappear. What remains is exactly the closed islands, and they are counted with the scan-and-flood loop from Number of Islands. The one twist is that this time the answer is a count of components rather than a modified board, so the two phases reuse one sink function.",
+			BruteForce:  "For every land cell, run a fresh search to see whether its island reaches the border, and somehow avoid counting the same island twice: O((m * n)^2) when one big island is searched once per cell. A tidier first attempt floods each island once and records whether any cell was on the border (the alternative below); that is linear, but it explores the doomed border islands in full and needs a visited set and per-island bookkeeping.",
+			KeyInsight:  "Being on the border is the only thing that disqualifies an island, and all disqualified islands can be found from the border itself. Sink them first; then the problem is plain Number of Islands on what is left.",
+			WhyItWorks:  "After the border loops, a land cell remains exactly when its island has no border cell: every border land cell starts a flood, the flood turns its whole island (and nothing else, since it only steps onto land) into water, and an island with no border cell is never entered from outside, because entering would need a land neighbour from another island, which would make them one island. So the land left on the grid is the union of the closed islands. The final scan then counts each of those once, because the first cell of an island it meets is counted and the sink removes the rest of the island before the scan reaches them. Each cell is turned to water at most once, so the total work is O(m * n).",
+			CommonMistakes: []string{
+				"Counting every island, including the ones on the border. Sink the border islands first (or track a touches-border flag per island) and count only what is left.",
+				"Writing the recursive check as 'return dfs(up) and dfs(down) and dfs(left) and dfs(right)'. The and stops at the first False, so when one direction hits the border the rest of the island is never visited and is later counted as a separate closed island. Visit all four directions first, then combine the results.",
+				"Treating diagonal neighbours as connected. Only up, down, left and right join land cells, so a cell that touches the border land only at a corner can still be part of a closed island.",
+				"Mixing up the values: here 0 is land and 1 is water, the reverse of Number of Islands.",
+			},
+			TimeComplexity:  "O(m * n): every cell is sunk at most once and scanned once.",
+			SpaceComplexity: "O(m * n) for the stack in the worst case; the grid itself is the visited mark.",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Flood the component", Explanation: "An explicit stack does the DFS. Each land cell popped is turned into water, which both removes it from later counting and marks it as visited.", CodeSnippet: "if 0 <= r < rows and 0 <= c < cols and grid[r][c] == 0:\n    grid[r][c] = 1\n    stack.extend(((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)))", LineStart: 8, LineEnd: 10},
+				{Title: "Seed the frontier", Explanation: "Start a sink from every cell of the left and right columns and the top and bottom rows. Afterwards no island that touches the border is left.", CodeSnippet: "sink(r, 0)\nsink(r, cols - 1)\nfor c in range(cols):\n    sink(0, c)\n    sink(rows - 1, c)", LineStart: 13, LineEnd: 17},
+				{Title: "Count what is left", Explanation: "Every land cell still present belongs to a closed island. Count it once, then sink the whole island so the scan does not count its other cells.", CodeSnippet: "if grid[r][c] == 0:\n    closed += 1\n    sink(r, c)", LineStart: 22, LineEnd: 24},
+				{Title: "Read off the answer", Explanation: "Each closed island added exactly one to the count.", CodeSnippet: "return closed", LineStart: 25, LineEnd: 25},
+			},
+			Alternatives: []AltSolution{
+				{
+					Name: "Explore each island and test it",
+					Code: `def closedIsland(grid):
+    rows, cols = len(grid), len(grid[0])
+    seen = set()
+    closed = 0
+    for sr in range(rows):
+        for sc in range(cols):
+            if grid[sr][sc] != 0 or (sr, sc) in seen:
+                continue
+            island = [(sr, sc)]
+            seen.add((sr, sc))
+            touches_border = False
+            i = 0
+            while i < len(island):
+                r, c = island[i]
+                i += 1
+                if r in (0, rows - 1) or c in (0, cols - 1):
+                    touches_border = True
+                for nr, nc in ((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)):
+                    if 0 <= nr < rows and 0 <= nc < cols and grid[nr][nc] == 0 and (nr, nc) not in seen:
+                        seen.add((nr, nc))
+                        island.append((nr, nc))
+            if not touches_border:
+                closed += 1
+    return closed`,
+					TimeComplexity:  "O(m * n)",
+					SpaceComplexity: "O(m * n)",
+					Explanation:     "Flood every island once with a BFS over a growing list, note whether any of its cells is on the border, and count it only if none is. The whole island is always explored before the verdict, which is exactly what the short-circuit DFS mistake fails to do. It leaves the grid unchanged but keeps a visited set.",
+				},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "Why is it safe to throw away the border islands before counting, instead of testing each island as you find it?", Answer: "Whether an island is closed depends only on whether it contains a border cell. Starting a flood from every border land cell reaches every island that has one, and nothing else. So after those floods the remaining land is exactly the closed islands, and counting components of it needs no further test."},
+			{Prompt: "How would you return the total area of land in closed islands instead of their number?", Answer: "Keep the same border sink, then in the final scan add up the cells instead of counting floods: either count every remaining 0 directly, or have sink return how many cells it turned into water and add that. (This is LeetCode's Number of Enclaves.)"},
+		},
+	},
+	{
 		ID:              "course-schedule",
 		Number:          207,
-		Order:           7,
+		Order:           8,
 		Title:           "Course Schedule",
 		Slug:            "course-schedule",
 		Difficulty:      "Medium",
 		Category:        "graphs",
-		Tags:            []string{"Graph", "Topological Sort", "BFS", "DFS", "Cycle Detection"},
+		Tags:            []string{"Graph", "Topological Sort", "BFS", "DFS", "Cycle Detection", "Google", "Google L4", "Google Phone Screen"},
 		RelatedChapters: []int{13},
 		Description: `There are **numCourses** courses, labelled 0 to numCourses - 1. Each pair [a, b] in **prerequisites** means you must finish course b before you can take course a. Prerequisites are one-way (the graph is **directed**).
 
@@ -948,12 +1098,12 @@ def canFinish(numCourses, prerequisites):
 	{
 		ID:              "course-schedule-ii",
 		Number:          210,
-		Order:           8,
+		Order:           9,
 		Title:           "Course Schedule II",
 		Slug:            "course-schedule-ii",
 		Difficulty:      "Medium",
 		Category:        "graphs",
-		Tags:            []string{"Graph", "Topological Sort", "BFS", "DFS"},
+		Tags:            []string{"Graph", "Topological Sort", "BFS", "DFS", "Google", "Google L4", "Google Onsite"},
 		RelatedChapters: []int{13},
 		Description: `There are **numCourses** courses, labelled 0 to numCourses - 1. Each pair [a, b] in **prerequisites** means course b must be taken before course a (a **directed** dependency).
 
@@ -1095,7 +1245,7 @@ def findOrder(numCourses, prerequisites):
 	{
 		ID:              "number-of-connected-components",
 		Number:          323,
-		Order:           9,
+		Order:           10,
 		Title:           "Number of Connected Components in an Undirected Graph",
 		Slug:            "number-of-connected-components",
 		Difficulty:      "Medium",
@@ -1218,7 +1368,7 @@ Return the number of connected components.`,
     return components`,
 					TimeComplexity:  "O(n + E)",
 					SpaceComplexity: "O(n + E)",
-					Explanation:     "Exactly the Number of Islands plan on an explicit graph: build adjacency lists, scan for an unvisited start, flood its component with an iterative DFS, and count the floods. Union-find wins when edges arrive one at a time (you can answer after each edge without re-flooding) and when you need to detect the edge that creates a cycle, as in the next two problems.",
+					Explanation:     "Exactly the Number of Islands plan on an explicit graph: build adjacency lists, scan for an unvisited start, flood its component with an iterative DFS, and count the floods. Union-find wins when edges arrive one at a time (you can answer after each edge without re-flooding) and when you need to detect the edge that creates a cycle, as in Redundant Connection and Graph Valid Tree.",
 				},
 			},
 		},
@@ -1228,9 +1378,139 @@ Return the number of connected components.`,
 		},
 	},
 	{
+		ID:              "satisfiability-of-equality-equations",
+		Number:          990,
+		Order:           11,
+		Title:           "Satisfiability of Equality Equations",
+		Slug:            "satisfiability-of-equality-equations",
+		Difficulty:      "Medium",
+		Category:        "graphs",
+		Tags:            []string{"Graph", "Union-Find", "Array", "String", "Google", "Google L4", "Google Onsite"},
+		RelatedChapters: []int{13},
+		Description: `You are given a list **equations**. Each one is a string of exactly four characters describing a relation between two variables, and has one of two forms:
+
+- "x==y": variable x must equal variable y
+- "x!=y": variable x must not equal variable y
+
+Variables are single lowercase letters, and the same letter always means the same variable. The two letters in one equation may be the same (as in "a==a" or "a!=a").
+
+Return true if you can give every variable an integer value so that **all** the equations hold at the same time, and false otherwise.`,
+		Constraints: []string{
+			"1 <= equations.length <= 500",
+			"equations[i].length == 4",
+			"equations[i][0] and equations[i][3] are lowercase letters",
+			`equations[i][1:3] is "==" or "!="`,
+		},
+		Examples: []Example{
+			{Input: `equations = ["a==b","b==c","a!=c"]`, Output: "false", Explanation: "a equals b and b equals c, so a must equal c, which contradicts a != c."},
+			{Input: `equations = ["x==y","y!=z"]`, Output: "true", Explanation: "For example x = y = 1 and z = 2."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"equations": []string{"a==b", "b==c", "a!=c"}}, Expected: false, Hidden: false, Note: "Example 1: equality is transitive, so a != c is a contradiction"},
+			{Input: map[string]interface{}{"equations": []string{"x==y", "y!=z"}}, Expected: true, Hidden: false, Note: "Example 2: satisfiable"},
+			{Input: map[string]interface{}{"equations": []string{"a!=a"}}, Expected: false, Hidden: true, Note: "a variable can never differ from itself"},
+			{Input: map[string]interface{}{"equations": []string{"b!=a", "a==b"}}, Expected: false, Hidden: true, Note: "the inequality comes first: checking it before reading every equality misses the conflict"},
+			{Input: map[string]interface{}{"equations": []string{"a==b", "c==d", "b!=d"}}, Expected: true, Hidden: true, Note: "two separate groups may differ"},
+			{Input: map[string]interface{}{"equations": []string{"a==b", "c==d", "a!=d", "b==c"}}, Expected: false, Hidden: true, Note: "a later equality joins the groups after the inequality was read"},
+			{Input: map[string]interface{}{"equations": []string{"a!=b", "b!=c", "c!=a"}}, Expected: true, Hidden: true, Note: "inequality is not transitive: three different values work"},
+			{Input: map[string]interface{}{"equations": []string{"q==q"}}, Expected: true, Hidden: true, Note: "a variable always equals itself"},
+		},
+		TimeComplexity:  "O(n * α(n))",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def equationsPossible(equations):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "Picture each letter as a node and each \"==\" as an undirected edge. What can you say about two letters in the same connected group? And can a \"!=\" ever force two letters together?"},
+			{Level: 2, Type: "insight", Content: "Equalities chain together, so letters in the same connected component must all share one value, and letters in different components can always be given different values. So the equations are satisfiable exactly when no \"!=\" joins two letters of the same component. Build the components with union-find from Number of Connected Components using all the equalities first, then check every inequality.", ChapterRef: 13},
+			{Level: 3, Type: "plan", Content: "1. Start with singletons: one set for each of the 26 letters.\n2. Union or skip: for every \"==\" equation, merge the sets of its two letters.\n3. Find the roots: for every \"!=\" equation, find the root of each letter.\n4. Read off the answer: if any inequality has equal roots, return false; otherwise return true."},
+			{Level: 4, Type: "skeleton", Content: `def equationsPossible(equations):
+    parent = list(range(26))
+
+    def find(x):
+        if parent[x] != x:
+            parent[x] = find(parent[x])
+        return parent[x]
+
+    for eq in equations:
+        if eq[1] == "=":
+            a, b = ord(eq[0]) - ord("a"), ord(eq[3]) - ord("a")
+            ____
+
+    for eq in equations:
+        if ____:
+            a, b = ord(eq[0]) - ord("a"), ord(eq[3]) - ord("a")
+            if ____:
+                return False
+    return True`},
+		},
+		Solution: Solution{
+			Code: `def equationsPossible(equations):
+    parent = list(range(26))  # one set per letter a..z
+
+    def find(x):
+        if parent[x] != x:
+            parent[x] = find(parent[x])
+        return parent[x]
+
+    for eq in equations:  # pass 1: merge every pair declared equal
+        if eq[1] == "=":
+            a, b = ord(eq[0]) - ord("a"), ord(eq[3]) - ord("a")
+            parent[find(a)] = find(b)
+
+    for eq in equations:  # pass 2: no unequal pair may share a set
+        if eq[1] == "!":
+            a, b = ord(eq[0]) - ord("a"), ord(eq[3]) - ord("a")
+            if find(a) == find(b):
+                return False
+    return True`,
+			Explanation: "This builds on Number of Connected Components: the nodes are now the 26 letters and the edges are the \"==\" equations, so the same union-find groups letters that must be equal. The new twist is a second kind of constraint. Inequalities never merge anything; they are checks that must be run against the finished components, which is why the solution makes two passes: all unions first, then all tests.",
+			BruteForce:  "Try assigning values: each variable that appears could take one of up to 26 distinct values, so testing every assignment costs exponential time in the number of distinct letters. A gentler brute force propagates labels: give each letter its own label and repeatedly copy the smaller label across every equality until nothing changes (the alternative below). It is correct but rescans all n equations once per round, for up to 26 rounds.",
+			KeyInsight:  "Only the equalities shape the solution: they split the letters into components that must each be one value. Any inequality is then either inside a component (impossible) or between two components (always satisfiable, because components can take distinct values).",
+			WhyItWorks:  "After pass 1, find(a) == find(b) exactly when a chain of equalities connects a and b, which forces them to be equal in any valid assignment. If some \"x!=y\" has x and y in one set, no assignment works, so returning false is right. If none does, give each set a different integer (its root's index, say): every equality has both letters in one set, so it holds, and every inequality has its letters in different sets, so it holds too. Inequalities must be checked only after all unions, because a later equality can merge two sets that an earlier inequality relied on being separate. There are only 26 letters, so the arrays are constant size.",
+			CommonMistakes: []string{
+				"Processing the equations in one pass, testing each \"!=\" as you meet it. A later \"==\" can still merge the two letters (\"b!=a\" then \"a==b\"). Do every union first, then every test.",
+				"Treating \"!=\" as transitive, or trying to 2-colour the inequalities. From a != b and b != c nothing follows about a and c; inequalities never combine, they are only checked.",
+				"Comparing parent[a] with parent[b] instead of find(a) with find(b). Parents are only one step up the tree, not the group's identity.",
+				"Special-casing \"a!=a\" incorrectly, for example skipping equations whose letters are equal. find(a) == find(a) already reports it as impossible.",
+			},
+			TimeComplexity:  "O(n * α(n)) for n equations: two passes, each with near-constant finds.",
+			SpaceComplexity: "O(1): the parent array always has 26 entries.",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Start with singletons", Explanation: "Each letter is the root of its own set before any equation is read.", CodeSnippet: "parent = list(range(26))", LineStart: 2, LineEnd: 2},
+				{Title: "Union or skip", Explanation: "Every equality merges the sets of its two letters. Linking root to root keeps the rest of each tree attached.", CodeSnippet: "if eq[1] == \"=\":\n    a, b = ord(eq[0]) - ord(\"a\"), ord(eq[3]) - ord(\"a\")\n    parent[find(a)] = find(b)", LineStart: 10, LineEnd: 12},
+				{Title: "Find the roots", Explanation: "Only now, with every component complete, look at the inequalities and find each letter's root.", CodeSnippet: "if eq[1] == \"!\":\n    a, b = ord(eq[0]) - ord(\"a\"), ord(eq[3]) - ord(\"a\")", LineStart: 15, LineEnd: 16},
+				{Title: "Read off the answer", Explanation: "Equal roots mean the two letters are forced equal, so the inequality cannot hold. If no inequality fails, giving each component its own value satisfies everything.", CodeSnippet: "if find(a) == find(b):\n    return False\nreturn True", LineStart: 17, LineEnd: 19},
+			},
+			Alternatives: []AltSolution{
+				{
+					Name: "Propagate labels until stable",
+					Code: `def equationsPossible(equations):
+    label = {ch: ch for ch in "abcdefghijklmnopqrstuvwxyz"}
+    changed = True
+    while changed:
+        changed = False
+        for eq in equations:
+            if eq[1] == "=":
+                a, b = eq[0], eq[3]
+                low = min(label[a], label[b])
+                if label[a] != low or label[b] != low:
+                    label[a] = label[b] = low
+                    changed = True
+    return all(label[eq[0]] != label[eq[3]] for eq in equations if eq[1] == "!")`,
+					TimeComplexity:  "O(n)",
+					SpaceComplexity: "O(1)",
+					Explanation:     "Every letter starts with its own label, and each round copies the smaller label across every equality. Labels only ever decrease, so the loop stops, at the latest after 26 rounds; then every component carries one shared label (its smallest letter) and different components keep different labels. It needs no tree structure, but rescans every equation in each round, a constant factor up to 26 times more work than union-find.",
+				},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "Why must every equality be processed before any inequality is checked?", Answer: "A component is only final once all equalities have been merged. If you test \"b!=a\" when a and b are still in different sets, it looks fine, but a later \"a==b\" puts them together and makes the system impossible. Checking afterwards tests each inequality against the finished components."},
+			{Prompt: "Why is it always possible to satisfy inequalities between letters in different components?", Answer: "Nothing links different components, so each component can be given its own integer, for example its root's index. Then any two letters in different components get different values, which satisfies every inequality between them, while all letters inside a component share a value, which satisfies every equality."},
+		},
+	},
+	{
 		ID:              "redundant-connection",
 		Number:          684,
-		Order:           10,
+		Order:           12,
 		Title:           "Redundant Connection",
 		Slug:            "redundant-connection",
 		Difficulty:      "Medium",
@@ -1300,7 +1580,7 @@ Return an edge you can remove so that the remaining n - 1 edges form a tree agai
         parent[root_b] = root_a
         size[root_a] += size[root_b]
     return []`,
-			Explanation: "This reuses the union-find from Number of Connected Components; the skipped case there (both endpoints already in one group) is now the answer. Adding the edges in order, every edge merges two groups until one edge finds its endpoints already connected. That edge closes the cycle, and it is the latest cycle edge in the input.",
+			Explanation: "This reuses the union-find from Number of Connected Components and Satisfiability of Equality Equations; the skipped case there (both endpoints already in one group) is now the answer. Adding the edges in order, every edge merges two groups until one edge finds its endpoints already connected. That edge closes the cycle, and it is the latest cycle edge in the input.",
 			BruteForce:  "Try removing each edge, starting from the last, and check with a DFS whether the remaining n - 1 edges are connected (n - 1 connected edges on n nodes form a tree). That is the alternative below: O(n) checks of O(n) each, O(n^2) in total, rebuilding the graph every time.",
 			KeyInsight:  "Adding edges in input order, the first one whose endpoints are already connected must be on the cycle, and every other cycle edge came before it. So it is the last cycle edge, which is exactly the tie-break the problem asks for.",
 			WhyItWorks:  "The graph is a tree plus one edge, so it has exactly one cycle, and the removable edges are exactly the cycle edges (removing any of them leaves n - 1 edges that still connect everything; removing a non-cycle edge disconnects the graph). Union-find invariant: two nodes share a root exactly when the edges processed so far connect them. Before the last cycle edge is processed, the cycle edges seen so far form a path, not a loop, so no earlier edge finds equal roots (no edge outside the cycle can close a loop either). When the last cycle edge [a, b] arrives, the rest of the cycle already connects a and b, so their roots are equal and we return it. Each edge costs two near-constant finds: O(n * α(n)).",
@@ -1356,7 +1636,7 @@ Return an edge you can remove so that the remaining n - 1 edges form a tree agai
 	{
 		ID:              "graph-valid-tree",
 		Number:          261,
-		Order:           11,
+		Order:           13,
 		Title:           "Graph Valid Tree",
 		Slug:            "graph-valid-tree",
 		Difficulty:      "Medium",
@@ -1475,14 +1755,307 @@ Return true if these edges form a valid **tree**: every node can reach every oth
 		},
 	},
 	{
+		ID:              "validate-binary-tree-nodes",
+		Number:          1361,
+		Order:           14,
+		Title:           "Validate Binary Tree Nodes",
+		Slug:            "validate-binary-tree-nodes",
+		Difficulty:      "Medium",
+		Category:        "graphs",
+		Tags:            []string{"Graph", "Tree", "Binary Tree", "DFS", "BFS", "Union-Find", "Google", "Google L4", "Google Phone Screen"},
+		RelatedChapters: []int{13, 9},
+		Description: `There are **n** nodes labelled 0 to n - 1. You are given two arrays of length n: **leftChild[i]** is the label of node i's left child and **rightChild[i]** is the label of node i's right child, with -1 meaning that child is missing. These links are **directed**, from parent to child.
+
+Return true if all n nodes together form **exactly one valid binary tree**, and false otherwise. That means:
+
+- exactly one node (the **root**, which can be any label, not necessarily 0) has no parent;
+- every other node is the child of exactly one node (as a left or a right child, not both);
+- every node can be reached from the root by following child links, so there are no cycles and no separate pieces.
+
+The nodes carry no values; only the shape matters. A single node with no children is a valid tree.`,
+		Constraints: []string{
+			"n == leftChild.length == rightChild.length",
+			"1 <= n <= 10^4",
+			"-1 <= leftChild[i], rightChild[i] <= n - 1",
+		},
+		Examples: []Example{
+			{Input: "n = 4, leftChild = [1,-1,3,-1], rightChild = [2,-1,-1,-1]", Output: "true", Explanation: "Node 0 is the root with children 1 and 2, and node 3 is the left child of 2. Every node except 0 has one parent and all are reachable from 0."},
+			{Input: "n = 4, leftChild = [1,-1,3,-1], rightChild = [2,3,-1,-1]", Output: "false", Explanation: "Node 3 is a child of both node 1 and node 2, so it has two parents."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"n": 4, "leftChild": []int{1, -1, 3, -1}, "rightChild": []int{2, -1, -1, -1}}, Expected: true, Hidden: false, Note: "Example 1: a valid tree rooted at 0"},
+			{Input: map[string]interface{}{"n": 4, "leftChild": []int{1, -1, 3, -1}, "rightChild": []int{2, 3, -1, -1}}, Expected: false, Hidden: false, Note: "Example 2: node 3 has two parents"},
+			{Input: map[string]interface{}{"n": 1, "leftChild": []int{-1}, "rightChild": []int{-1}}, Expected: true, Hidden: true, Note: "a single node is a tree"},
+			{Input: map[string]interface{}{"n": 2, "leftChild": []int{1, 0}, "rightChild": []int{-1, -1}}, Expected: false, Hidden: true, Note: "0 and 1 point at each other: a cycle and no root"},
+			{Input: map[string]interface{}{"n": 4, "leftChild": []int{1, 0, 3, -1}, "rightChild": []int{-1, -1, -1, -1}}, Expected: false, Hidden: true, Note: "one root and every other node has one parent, but the cycle 0-1 is unreachable: in-degrees alone are not enough"},
+			{Input: map[string]interface{}{"n": 2, "leftChild": []int{-1, -1}, "rightChild": []int{-1, -1}}, Expected: false, Hidden: true, Note: "two separate nodes: two roots"},
+			{Input: map[string]interface{}{"n": 2, "leftChild": []int{1, -1}, "rightChild": []int{1, -1}}, Expected: false, Hidden: true, Note: "node 1 is both the left and the right child of node 0"},
+			{Input: map[string]interface{}{"n": 4, "leftChild": []int{3, -1, 1, -1}, "rightChild": []int{-1, -1, 0, -1}}, Expected: true, Hidden: true, Note: "the root is node 2, not node 0"},
+			{Input: map[string]interface{}{"n": 6, "leftChild": []int{1, 3, 5, -1, -1, -1}, "rightChild": []int{2, 4, -1, -1, -1, -1}}, Expected: true, Hidden: true, Note: "a larger valid tree"},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def validateBinaryTreeNodes(n, leftChild, rightChild):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "In Graph Valid Tree the edges had no direction. Here every link points from a parent to a child. How many parents may each node have in a tree, and how do you find the root when nobody tells you which node it is?"},
+			{Level: 2, Type: "insight", Content: "A directed graph is a rooted tree exactly when one node has in-degree 0 (the root), every other node has in-degree 1, and a traversal from the root reaches all n nodes. Count in-degrees in one pass over both arrays, then run a DFS or BFS from the unique root as in the chapter's traversal plan. The reachability test is what rules out a cycle hiding in a separate piece.", ChapterRef: 13},
+			{Level: 3, Type: "plan", Content: "1. Count the parents: for every child label that is not -1, add one to its parent count; a count above 1 means false.\n2. Find the root: collect the nodes with no parent; anything other than exactly one means false.\n3. Flood the component: walk child links from the root, marking nodes as seen.\n4. Read off the answer: true exactly when all n nodes were seen."},
+			{Level: 4, Type: "skeleton", Content: `def validateBinaryTreeNodes(n, leftChild, rightChild):
+    parents = [0] * n
+    for child in leftChild + rightChild:
+        if child != -1:
+            parents[child] += 1
+            if ____:
+                return False
+    roots = ____
+    if len(roots) != 1:
+        return False
+    root = roots[0]
+    seen = {root}
+    stack = [root]
+    while stack:
+        node = stack.pop()
+        for child in (leftChild[node], rightChild[node]):
+            if ____:
+                seen.add(child)
+                stack.append(child)
+    return ____`},
+		},
+		Solution: Solution{
+			Code: `def validateBinaryTreeNodes(n, leftChild, rightChild):
+    parents = [0] * n  # how many nodes point at each node
+    for child in leftChild + rightChild:
+        if child != -1:
+            parents[child] += 1
+            if parents[child] > 1:
+                return False  # two parents: not a tree
+    roots = [node for node in range(n) if parents[node] == 0]
+    if len(roots) != 1:
+        return False  # a tree has exactly one node with no parent
+    root = roots[0]
+    seen = {root}
+    stack = [root]
+    while stack:
+        node = stack.pop()
+        for child in (leftChild[node], rightChild[node]):
+            if child != -1 and child not in seen:
+                seen.add(child)
+                stack.append(child)
+    return len(seen) == n  # nodes stuck on a cycle are never reached`,
+			Explanation: "This builds on Graph Valid Tree, which checked an undirected graph for 'connected and no cycle'. The twist is direction: a rooted tree also needs every node except the root to have exactly one parent, and the root is not given. Counting in-degrees settles the parent rule and identifies the root; one DFS from that root, as in Number of Islands, then checks that nothing is left over.",
+			BruteForce:  "Try every node as the root and run a DFS from it that fails as soon as any node is reached twice; accept if some root reaches all n nodes this way (the alternative below). That is O(n) per candidate, O(n^2) in total, and it repeats the whole traversal for roots that could have been ruled out at a glance, since a node that is somebody's child can never be the root.",
+			KeyInsight:  "The root must be the only node with no incoming link, so in-degrees tell you which node to start from and catch every two-parent node in O(n). After that, a single traversal from the root is enough to detect cycles and separate pieces.",
+			WhyItWorks:  "If the arrays form a valid tree, the root has no parent, every other node has exactly one, and the DFS from the root reaches everything, so the function returns true. Conversely, suppose it returns true: every node has at most one parent, exactly one node r has none, and the DFS from r reached all n nodes. Then every node other than r has exactly one parent (it has at most one, and it was reached from r, so it has at least one). Following parent links upward from any node can never repeat a node, because a cycle of nodes each with one parent inside the cycle could never be entered from r, contradicting that they were reached. So the links form one tree rooted at r. Each node is counted, pushed and popped once: O(n).",
+			CommonMistakes: []string{
+				"Assuming node 0 is the root. The root is whichever node has no parent; find it from the in-degrees.",
+				"Checking only the in-degrees (one root, everyone else one parent). A separate cycle such as 0 -> 1 -> 0 gives its nodes one parent each and can sit next to a perfectly good tree. The reachability check from the root catches it.",
+				"Counting children with a set of child labels instead of a count. A node listed as both the left and the right child of the same parent appears twice and has two parent links; a set would hide that.",
+				"Running the DFS from every node that has no parent, or treating the links as undirected. Direction matters: only parent-to-child links are followed.",
+			},
+			TimeComplexity:  "O(n): one pass over both arrays, one scan for the root, and a DFS that visits each node once.",
+			SpaceComplexity: "O(n) for the parent counts, the seen set and the stack.",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Count the parents", Explanation: "Every non -1 entry is a link into that child. A second link into the same node means two parents, so stop right away.", CodeSnippet: "for child in leftChild + rightChild:\n    if child != -1:\n        parents[child] += 1\n        if parents[child] > 1:\n            return False", LineStart: 3, LineEnd: 7},
+				{Title: "Find the root", Explanation: "Exactly one node may have no parent. Zero roots means every node is on a cycle; two or more means separate pieces.", CodeSnippet: "roots = [node for node in range(n) if parents[node] == 0]\nif len(roots) != 1:\n    return False", LineStart: 8, LineEnd: 10},
+				{Title: "Flood the component", Explanation: "An iterative DFS follows child links from the root, marking each node as it is discovered.", CodeSnippet: "node = stack.pop()\nfor child in (leftChild[node], rightChild[node]):\n    if child != -1 and child not in seen:\n        seen.add(child)\n        stack.append(child)", LineStart: 15, LineEnd: 19},
+				{Title: "Read off the answer", Explanation: "With at most one parent each, any node the root cannot reach must sit on a separate cycle, so all n nodes must have been seen.", CodeSnippet: "return len(seen) == n", LineStart: 20, LineEnd: 20},
+			},
+			Alternatives: []AltSolution{
+				{
+					Name: "Try every node as the root",
+					Code: `def validateBinaryTreeNodes(n, leftChild, rightChild):
+    def spans_tree_from(root):
+        seen = set()
+        stack = [root]
+        while stack:
+            node = stack.pop()
+            if node in seen:
+                return False  # reached twice: two parents or a cycle
+            seen.add(node)
+            for child in (leftChild[node], rightChild[node]):
+                if child != -1:
+                    stack.append(child)
+        return len(seen) == n
+
+    return any(spans_tree_from(root) for root in range(n))`,
+					TimeComplexity:  "O(n^2)",
+					SpaceComplexity: "O(n)",
+					Explanation:     "Straight from the definition: a tree rooted at r is reached from r with every node met exactly once. For each candidate root, walk the child links and fail on any repeat. It needs no in-degree reasoning, which makes it a good cross-check, but it repeats a full traversal for up to n candidate roots.",
+				},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "Why can't you stop after checking that there is one root and every other node has exactly one parent?", Answer: "Those counts are local. A cycle such as 0 -> 1 -> 0 gives both nodes exactly one parent, and it can sit beside a valid tree rooted somewhere else, so the counts look perfect. Only a traversal from the root notices that the cycle's nodes are never reached."},
+			{Prompt: "How could union-find from Graph Valid Tree solve this instead?", Answer: "Process each parent -> child link: if the child already has a parent, fail; if the parent and child already share a root, the link closes a cycle, so fail; otherwise union them. At the end, the links must leave exactly one component. The parent check is the extra rule direction adds; the cycle and component checks are exactly Graph Valid Tree."},
+		},
+	},
+	{
+		ID:              "number-of-islands-ii",
+		Number:          305,
+		Order:           15,
+		Title:           "Number of Islands II",
+		Slug:            "number-of-islands-ii",
+		Difficulty:      "Hard",
+		Category:        "graphs",
+		Tags:            []string{"Graph", "Union-Find", "Matrix", "Connected Components", "Google", "Google L5", "Google Phone Screen"},
+		RelatedChapters: []int{13},
+		Description: `You have a map with **m** rows and **n** columns that starts out as all water. You are given a list **positions**; positions[i] = [r, c] means that in step i the cell at row r, column c becomes land. Rows are numbered 0 to m - 1 and columns 0 to n - 1.
+
+An **island** is a group of land cells joined by up, down, left or right steps (diagonal contact does not join cells). Everything outside the map counts as water.
+
+After each step, record the number of islands on the map. Return the list of these counts, one per position, in order. A position may repeat: turning a cell that is already land into land changes nothing, but its count is still recorded.`,
+		Constraints: []string{
+			"1 <= m, n <= 10^4 and 1 <= m * n <= 10^4",
+			"1 <= positions.length <= 10^4",
+			"positions[i] == [r, c] with 0 <= r < m and 0 <= c < n",
+		},
+		Examples: []Example{
+			{Input: "m = 3, n = 3, positions = [[0,0],[0,1],[1,2],[2,1]]", Output: "[1,1,2,3]", Explanation: "(0,0) makes the first island. (0,1) is next to it, so it joins that island. (1,2) and (2,1) have no land neighbours (they touch other land only at corners), so each starts a new island."},
+			{Input: "m = 1, n = 1, positions = [[0,0]]", Output: "[1]"},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"m": 3, "n": 3, "positions": [][]int{{0, 0}, {0, 1}, {1, 2}, {2, 1}}}, Expected: []int{1, 1, 2, 3}, Hidden: false, Note: "Example 1: one join, then two new islands"},
+			{Input: map[string]interface{}{"m": 1, "n": 1, "positions": [][]int{{0, 0}}}, Expected: []int{1}, Hidden: false, Note: "Example 2: a single cell"},
+			{Input: map[string]interface{}{"m": 3, "n": 3, "positions": [][]int{{0, 1}, {1, 0}, {1, 2}, {2, 1}, {1, 1}}}, Expected: []int{1, 2, 3, 4, 1}, Hidden: true, Note: "the centre cell merges four islands into one"},
+			{Input: map[string]interface{}{"m": 2, "n": 2, "positions": [][]int{{0, 0}, {0, 0}, {1, 1}, {1, 1}}}, Expected: []int{1, 1, 2, 2}, Hidden: true, Note: "repeated positions add nothing"},
+			{Input: map[string]interface{}{"m": 2, "n": 2, "positions": [][]int{{0, 0}, {0, 1}, {1, 0}, {1, 1}}}, Expected: []int{1, 1, 1, 1}, Hidden: true, Note: "the last cell has two neighbours already in the same island: subtract only once"},
+			{Input: map[string]interface{}{"m": 3, "n": 3, "positions": [][]int{{0, 0}, {1, 1}, {2, 2}, {0, 2}, {2, 0}}}, Expected: []int{1, 2, 3, 4, 5}, Hidden: true, Note: "diagonal cells do not join"},
+			{Input: map[string]interface{}{"m": 2, "n": 3, "positions": [][]int{{0, 2}, {1, 0}, {0, 1}, {1, 1}}}, Expected: []int{1, 2, 2, 1}, Hidden: true, Note: "not square: a cell id of r * m + c would make (0,2) and (1,0) collide"},
+			{Input: map[string]interface{}{"m": 1, "n": 5, "positions": [][]int{{0, 0}, {0, 4}, {0, 2}, {0, 1}, {0, 3}}}, Expected: []int{1, 2, 3, 2, 1}, Hidden: true, Note: "one row: islands appear, then merge from the left and the right"},
+		},
+		TimeComplexity:  "O(m * n + k * α(m * n))",
+		SpaceComplexity: "O(m * n)",
+		StarterCode:     "def numIslands2(m, n, positions):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "Re-running Number of Islands after every step redoes almost all of the work. When one cell turns into land, by how much can the island count go up, and what makes it go down?"},
+			{Level: 2, Type: "insight", Content: "A new land cell first adds one island. Then each land neighbour that belongs to a different island merges with it and lowers the count by one; a neighbour already in the same island (reached through another neighbour) changes nothing. That is exactly the union-find counting from Number of Connected Components, with edges arriving one at a time. Give each cell an id r * n + c.", ChapterRef: 13},
+			{Level: 3, Type: "plan", Content: "1. Start with singletons: when a cell becomes land, make it its own set and add one island (skip cells that are already land).\n2. Find the roots of the new cell and of each land neighbour.\n3. Union or skip: if the roots differ, merge the smaller set under the larger and subtract one island; if they are equal, do nothing.\n4. Read off the answer: append the current count after every position."},
+			{Level: 4, Type: "skeleton", Content: `def numIslands2(m, n, positions):
+    parent = {}
+    size = {}
+    islands = 0
+    answer = []
+
+    def find(x):
+        if parent[x] != x:
+            parent[x] = find(parent[x])
+        return parent[x]
+
+    for r, c in positions:
+        cell = r * n + c
+        if ____:
+            answer.append(islands)
+            continue
+        parent[cell] = cell
+        size[cell] = 1
+        ____
+        for nr, nc in ((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)):
+            if 0 <= nr < m and 0 <= nc < n and nr * n + nc in parent:
+                root_a, root_b = find(cell), find(nr * n + nc)
+                if ____:
+                    continue
+                if size[root_a] < size[root_b]:
+                    root_a, root_b = root_b, root_a
+                parent[root_b] = root_a
+                size[root_a] += size[root_b]
+                ____
+        answer.append(islands)
+    return answer`},
+		},
+		Solution: Solution{
+			Code: `def numIslands2(m, n, positions):
+    parent = {}  # land cell id -> parent id; water cells are absent
+    size = {}
+    islands = 0
+    answer = []
+
+    def find(x):
+        if parent[x] != x:
+            parent[x] = find(parent[x])
+        return parent[x]
+
+    for r, c in positions:
+        cell = r * n + c
+        if cell in parent:
+            answer.append(islands)  # already land: nothing changes
+            continue
+        parent[cell] = cell
+        size[cell] = 1
+        islands += 1  # the new cell starts as its own island
+        for nr, nc in ((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)):
+            if 0 <= nr < m and 0 <= nc < n and nr * n + nc in parent:
+                root_a, root_b = find(cell), find(nr * n + nc)
+                if root_a == root_b:
+                    continue  # already joined through another neighbour
+                if size[root_a] < size[root_b]:
+                    root_a, root_b = root_b, root_a
+                parent[root_b] = root_a
+                size[root_a] += size[root_b]
+                islands -= 1  # two islands merged into one
+        answer.append(islands)
+    return answer`,
+			Explanation: "This is Number of Islands asked after every change, and it builds on Number of Connected Components: there, union-find counted components as edges arrived one by one, and here edges arrive whenever a new land cell appears next to old land. Each step adds one island and then performs at most four unions, each of which lowers the count by one. Because the structure is kept between steps, no work is repeated, which is exactly what flooding cannot offer.",
+			BruteForce:  "After every position, run Number of Islands from scratch over the land so far (the alternative below). With k positions on an m x n map that is O(k * m * n): up to 10^8 cell visits for the largest inputs. The waste is re-flooding every island that the new cell did not even touch.",
+			KeyInsight:  "Adding one land cell only affects the islands of its four neighbours. Union-find keeps the islands between steps, so each step costs four near-constant find and union operations instead of a full rescan.",
+			WhyItWorks:  "Invariant: after each step, the land cells are exactly the keys of parent, two land cells share a root exactly when they are on the same island, and islands equals the number of distinct roots. A new cell arrives as its own root, so the count rises by one and the invariant holds. Each land neighbour is on some island; if its root differs from the new cell's current root, union merges those two islands, which the new cell now joins, and the count falls by one. If the roots are equal, those islands were already merged (for example through an earlier neighbour in this same step), so nothing changes. Islands can only merge as land is added, never split, so union-find never needs to undo anything. Repeated positions are detected by the parent lookup and change nothing. Cell ids r * n + c are distinct because 0 <= c < n.",
+			CommonMistakes: []string{
+				"Subtracting one for every land neighbour. Two neighbours may already be on the same island (the fourth cell of a 2 x 2 block); compare roots and subtract only when they differ.",
+				"Treating a repeated position as a new island. Check whether the cell is already land before adding it.",
+				"Numbering cells r * m + c instead of r * n + c. Each row holds n cells, so with m != n the wrong formula gives two cells the same id.",
+				"Re-counting islands with a flood after every step. It is correct but repeats almost all the work, which is the brute force this problem is designed to beat.",
+			},
+			TimeComplexity:  "O(m * n + k * α(m * n)) for k positions: at most four unions per step, each near-constant.",
+			SpaceComplexity: "O(m * n) for the parent and size maps in the worst case.",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Start with singletons", Explanation: "A repeated position changes nothing. A new land cell becomes the root of its own one-cell set, which adds one island.", CodeSnippet: "if cell in parent:\n    answer.append(islands)\n    continue\nparent[cell] = cell\nsize[cell] = 1\nislands += 1", LineStart: 14, LineEnd: 19},
+				{Title: "Find the roots", Explanation: "Only the four neighbours can be affected. For each one that is on the map and already land, find the root of its island and of the new cell's island.", CodeSnippet: "for nr, nc in ((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)):\n    if 0 <= nr < m and 0 <= nc < n and nr * n + nc in parent:\n        root_a, root_b = find(cell), find(nr * n + nc)", LineStart: 20, LineEnd: 22},
+				{Title: "Union or skip", Explanation: "Equal roots: this neighbour's island has already been joined. Otherwise hang the smaller set under the larger and record that two islands became one.", CodeSnippet: "if root_a == root_b:\n    continue\nif size[root_a] < size[root_b]:\n    root_a, root_b = root_b, root_a\nparent[root_b] = root_a\nsize[root_a] += size[root_b]\nislands -= 1", LineStart: 23, LineEnd: 29},
+				{Title: "Read off the answer", Explanation: "After the new cell's merges, the count is current, so it is recorded for this step.", CodeSnippet: "answer.append(islands)\nreturn answer", LineStart: 30, LineEnd: 31},
+			},
+			Alternatives: []AltSolution{
+				{
+					Name: "Recount the islands after every step",
+					Code: `def numIslands2(m, n, positions):
+    land = set()
+    answer = []
+    for r, c in positions:
+        land.add((r, c))
+        seen = set()
+        islands = 0
+        for start in land:
+            if start in seen:
+                continue
+            islands += 1
+            seen.add(start)
+            stack = [start]
+            while stack:
+                cr, cc = stack.pop()
+                for nxt in ((cr + 1, cc), (cr - 1, cc), (cr, cc + 1), (cr, cc - 1)):
+                    if nxt in land and nxt not in seen:
+                        seen.add(nxt)
+                        stack.append(nxt)
+        answer.append(islands)
+    return answer`,
+					TimeComplexity:  "O(k * min(k, m * n))",
+					SpaceComplexity: "O(min(k, m * n))",
+					Explanation:     "Keep the set of land cells and, after each position, count its components with the Number of Islands flood. Only land cells are visited, so each step costs time proportional to the land so far, but every island is re-flooded at every step even when the new cell is far away.",
+				},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "Why does union-find suit this problem better than flooding, when Number of Islands was happy with a flood?", Answer: "Number of Islands asked one question about a fixed grid, so one flood answered it. Here the grid changes k times and the question is asked after each change. A flood has no memory between runs, but union-find keeps the islands as sets, and adding land only ever merges sets, which is exactly the operation union-find does in near-constant time."},
+			{Prompt: "What would break if cells could also turn back from land into water?", Answer: "Removing a cell can split an island into several, and union-find cannot split a set. You would need a different approach, such as recomputing the affected island with a flood, or processing the operations in reverse so removals become additions (the offline trick used in Bricks Falling When Hit)."},
+		},
+	},
+	{
 		ID:              "word-ladder",
 		Number:          127,
-		Order:           12,
+		Order:           16,
 		Title:           "Word Ladder",
 		Slug:            "word-ladder",
 		Difficulty:      "Hard",
 		Category:        "graphs",
-		Tags:            []string{"Graph", "BFS", "Hash Table", "String", "Shortest Path"},
+		Tags:            []string{"Graph", "BFS", "Hash Table", "String", "Shortest Path", "Google", "Google L5", "Google Onsite"},
 		RelatedChapters: []int{13, 2},
 		Description: `A **ladder** from beginWord to endWord is a sequence of words that starts with beginWord and ends with endWord, where each consecutive pair differs in exactly one letter (same length, one position changed) and every word after beginWord is in **wordList**. beginWord itself does not need to be in wordList.
 

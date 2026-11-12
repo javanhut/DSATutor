@@ -5,8 +5,11 @@ package practice
 // Ladder (chapter 6): exact-value template on a plain array, the same template
 // on a matrix through index arithmetic, the boundary ("first true") template
 // on an answer range, the boundary template on a rotated array, a rotated
-// array with an exact target, a boundary search inside a design problem, and
-// finally a binary search over partitions of two arrays.
+// array with an exact target, a boundary search inside a design problem, a
+// boundary search over the sorted tails of a longest-increasing-subsequence
+// (Russian Doll Envelopes), a "last true" search on an answer length whose
+// test is a rolling-hash scan (Longest Duplicate Substring), and finally a
+// binary search over partitions of two arrays.
 var BinarySearchProblems = []*Problem{
 	{
 		ID:              "binary-search",
@@ -262,7 +265,7 @@ Your solution must run in O(log(m * n)) time.`,
 		Slug:            "koko-eating-bananas",
 		Difficulty:      "Medium",
 		Category:        "binary-search",
-		Tags:            []string{"Array", "Binary Search"},
+		Tags:            []string{"Array", "Binary Search", "Google", "Google L4", "Google Phone Screen"},
 		RelatedChapters: []int{6},
 		Description: `Koko has n piles of bananas; pile i holds piles[i] bananas. The guards will be back in h hours.
 
@@ -637,7 +640,7 @@ Your algorithm must run in O(log n) time.`,
 		Slug:            "time-based-key-value-store",
 		Difficulty:      "Medium",
 		Category:        "binary-search",
-		Tags:            []string{"Hash Table", "String", "Binary Search", "Design"},
+		Tags:            []string{"Hash Table", "String", "Binary Search", "Design", "Google", "Google L4", "Google Phone Screen"},
 		RelatedChapters: []int{6, 2},
 		Description: `Build a key-value store that remembers every value a key has had, each tagged with the time it was set, and can answer "what was the value of this key at time t?".
 
@@ -798,14 +801,344 @@ class TimeMap:
 		},
 	},
 	{
+		ID:              "russian-doll-envelopes",
+		Number:          354,
+		Order:           7,
+		Title:           "Russian Doll Envelopes",
+		Slug:            "russian-doll-envelopes",
+		Difficulty:      "Hard",
+		Category:        "binary-search",
+		Tags:            []string{"Array", "Binary Search", "Dynamic Programming", "Sorting", "Google", "Google L5", "Google Phone Screen"},
+		RelatedChapters: []int{6, 15},
+		Description: `You are given a list envelopes, where envelopes[i] = [w, h] is the width and height of envelope i.
+
+One envelope fits inside another only when it is strictly smaller in both dimensions: its width is less than the other's width AND its height is less than the other's height. Envelopes can't be rotated, and two envelopes with an equal width (or an equal height) never fit inside each other.
+
+Return the largest number of envelopes you can nest one inside the next, like Russian dolls. A single envelope on its own counts as 1.
+
+The list can hold up to 10^5 envelopes, so comparing every pair is too slow; aim for O(n log n).`,
+		Constraints: []string{
+			"1 <= envelopes.length <= 10^5",
+			"envelopes[i].length == 2",
+			"1 <= w, h <= 10^5",
+		},
+		Examples: []Example{
+			{Input: "envelopes = [[5,4],[6,4],[6,7],[2,3]]", Output: "3", Explanation: "[2,3] fits in [5,4], which fits in [6,7]. [6,4] can't join that chain: it has the same width as [6,7] and the same height as [5,4]."},
+			{Input: "envelopes = [[1,1],[1,1],[1,1]]", Output: "1", Explanation: "All three are the same size, and equal sizes never nest, so the best chain is one envelope."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"envelopes": [][]int{{5, 4}, {6, 4}, {6, 7}, {2, 3}}}, Expected: 3, Note: "basic case with a shared width and a shared height"},
+			{Input: map[string]interface{}{"envelopes": [][]int{{1, 1}, {1, 1}, {1, 1}}}, Expected: 1, Note: "all envelopes identical, nothing nests"},
+			{Input: map[string]interface{}{"envelopes": [][]int{{4, 5}}}, Expected: 1, Note: "single envelope"},
+			{Input: map[string]interface{}{"envelopes": [][]int{{1, 1}, {1, 2}, {1, 3}}}, Hidden: true, Expected: 1, Note: "same width, rising heights: the answer is 1 (catches sorting equal widths by height ascending, which gives 3)"},
+			{Input: map[string]interface{}{"envelopes": [][]int{{1, 2}, {2, 2}, {3, 2}}}, Hidden: true, Expected: 1, Note: "rising widths, equal heights: the height chain must be strictly increasing (catches searching for the first tail > h instead of >= h)"},
+			{Input: map[string]interface{}{"envelopes": [][]int{{5, 5}, {4, 4}, {3, 3}, {2, 2}, {1, 1}}}, Hidden: true, Expected: 5, Note: "input given largest first, every envelope nests (catches forgetting to sort)"},
+			{Input: map[string]interface{}{"envelopes": [][]int{{1, 5}, {2, 6}, {3, 1}, {4, 2}, {5, 3}, {6, 4}}}, Hidden: true, Expected: 4, Note: "an early short chain is overtaken by a longer one: replacing a tail must not shorten the answer"},
+			{Input: map[string]interface{}{"envelopes": [][]int{{2, 100}, {3, 200}, {4, 300}, {5, 500}, {5, 400}, {5, 250}, {6, 370}, {6, 360}, {7, 380}}}, Hidden: true, Expected: 5, Note: "several groups of equal widths mixed into one longer chain"},
+		},
+		TimeComplexity:  "O(n log n)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def maxEnvelopes(envelopes):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "If you line the envelopes up by width, the chain must use widths left to right. What is left of the problem once the widths are in order, and have you met that problem before in one dimension?"},
+			{Level: 2, Type: "insight", Content: "Sort by width ascending, and for equal widths by height DESCENDING. Then the answer is the longest strictly increasing subsequence of the heights (chapter 15), because the descending tie-break stops two envelopes of the same width from both entering the chain. Compute that LIS with patience sorting: keep tails[k] = the smallest height that ends an increasing chain of length k + 1. tails stays sorted, so each new height finds its place with the boundary binary search from chapter 6 (first tail >= h).", ChapterRef: 6},
+			{Level: 3, Type: "plan", Content: "1. Reduce to one dimension: sort by (width ascending, height descending) and keep only the heights in that order.\n2. Define the search space: for each height, the positions 0..len(tails) of the tails list, where len(tails) means 'past the end'.\n3. Write the yes/no test: is tails[mid] >= height? It is false then true along the sorted list.\n4. Discard half: boundary template, hi = mid on yes, lo = mid + 1 on no.\n5. Read the answer: if lo is past the end, append the height (a longer chain); otherwise overwrite tails[lo] with the smaller height. The length of tails at the end is the answer."},
+			{Level: 4, Type: "skeleton", Content: `def maxEnvelopes(envelopes):
+    envelopes.sort(key=lambda e: ____)
+    tails = []
+    for _, height in envelopes:
+        lo, hi = 0, len(tails)
+        while lo < hi:
+            mid = (lo + hi) // 2
+            if ____:
+                hi = mid
+            else:
+                lo = mid + 1
+        if lo == len(tails):
+            ____
+        else:
+            ____
+    return len(tails)`},
+		},
+		Solution: Solution{
+			Code: `def maxEnvelopes(envelopes):
+    envelopes.sort(key=lambda e: (e[0], -e[1]))
+    tails = []
+    for _, height in envelopes:
+        lo, hi = 0, len(tails)
+        while lo < hi:
+            mid = (lo + hi) // 2
+            if tails[mid] >= height:
+                hi = mid
+            else:
+                lo = mid + 1
+        if lo == len(tails):
+            tails.append(height)
+        else:
+            tails[lo] = height
+    return len(tails)`,
+			Explanation: "Builds on Time Based Key-Value Store (981), which ran the boundary template over a sorted list that grows as we go and allowed the answer 'past the end' (hi = len(list)). Here the sorted list is tails, the patience-sorting summary of Longest Increasing Subsequence (300, chapter 15), and each new height asks the same kind of question: where is the first tail >= this height? The new twist is the reduction: sorting widths ascending with heights descending on ties turns the two-dimensional nesting problem into a plain strictly increasing subsequence of heights.",
+			BruteForce:  "Sort the envelopes, then run the O(n^2) LIS dynamic program: best[i] = 1 + the largest best[j] over earlier envelopes j that are strictly smaller in both dimensions. With n = 10^5 that is about 5 * 10^9 pair checks. It wastes work because for each envelope it rescans every earlier one, when all it needs is 'what is the longest chain ending in a height below mine?', which a sorted tails list answers with one binary search.",
+			KeyInsight:  "After sorting by width ascending and height descending on ties, any strictly increasing run of heights uses strictly increasing widths too, so nesting chains are exactly strictly increasing subsequences of the heights. And the LIS only needs, for each length, the smallest possible last height; those smallest tails are sorted, so each envelope is placed with one O(log n) binary search.",
+			WhyItWorks:  "Reduction: widths are non-decreasing along the sorted order. Two envelopes with the same width have heights in descending order, so a strictly increasing height subsequence can never take two of them; therefore every increasing height subsequence also has strictly increasing widths and is a valid nesting chain, and every nesting chain appears in this order as an increasing height subsequence. Patience sorting invariant: after each step, tails[k] is the smallest height that ends some strictly increasing subsequence of length k + 1 seen so far, and tails is strictly increasing. For a new height h, let lo be the first index with tails[lo] >= h. Every chain of length lo ends below h, so h extends one to length lo + 1; if lo == len(tails) that is a new longest chain (append), otherwise h is a smaller ending for length lo + 1 than tails[lo] (overwrite). Both keep the invariant, and len(tails) is always the longest chain length. The search is the chapter 6 boundary template: 'tails[mid] >= h' is false then true along the sorted list.",
+			CommonMistakes: []string{
+				"Sorting equal widths by height ascending (or just calling envelopes.sort()): [1,1], [1,2], [1,3] then looks like an increasing chain of 3, but equal widths can't nest. Break ties by height descending: key=lambda e: (e[0], -e[1]).",
+				"Searching for the first tail > height (bisect_right) instead of >= height (bisect_left): an equal height then gets appended, so [1,2], [2,2], [3,2] counts as 3. Nesting needs strictly larger heights, so an equal height must overwrite, not extend.",
+				"Forgetting to sort, or sorting by height only: LIS over heights in input order ignores widths entirely, so [5,5], [4,4], ... in decreasing order returns 1 instead of 5.",
+				"Reading tails as the actual chain: after overwrites it is generally not a valid sequence of envelopes; only its length is meaningful. If you need the chain itself, store parent pointers alongside.",
+			},
+			TimeComplexity:  "O(n log n)",
+			SpaceComplexity: "O(n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Reduce to one dimension", Explanation: "Sort by width, breaking ties by height descending. [[5,4],[6,4],[6,7],[2,3]] becomes [2,3], [5,4], [6,7], [6,4], so the heights to process are 3, 4, 7, 4. The two width-6 envelopes have heights 7 then 4, so they can't both be in an increasing run.", CodeSnippet: "envelopes.sort(key=lambda e: (e[0], -e[1]))\ntails = []", LineStart: 2, LineEnd: 3},
+				{Title: "Define the search space", Explanation: "For each height, the candidate positions are 0..len(tails); len(tails) stands for 'every tail is smaller, so this height starts a longer chain'.", CodeSnippet: "for _, height in envelopes:\nlo, hi = 0, len(tails)", LineStart: 4, LineEnd: 5},
+				{Title: "Discard half", Explanation: "Boundary template looking for the first tail >= height. Heights 3, 4 and 7 each find lo == len(tails), giving tails = [3, 4, 7]. The last height 4: mid = 1 holds 4 >= 4 (yes) so hi = 1; mid = 0 holds 3 (no) so lo = 1.", CodeSnippet: "while lo < hi:\nmid = (lo + hi) // 2\nif tails[mid] >= height:\nhi = mid\nlo = mid + 1", LineStart: 6, LineEnd: 11},
+				{Title: "Read the answer", Explanation: "lo == len(tails) means a new longest chain, so append. Otherwise overwrite: for the final 4, tails[1] = 4 (unchanged here, because an equal height can't extend a chain ending in 4). len(tails) = 3 is the answer.", CodeSnippet: "if lo == len(tails):\ntails.append(height)\ntails[lo] = height\nreturn len(tails)", LineStart: 12, LineEnd: 16},
+			},
+			Alternatives: []AltSolution{
+				{
+					Name: "Sort and quadratic LIS (brute force)",
+					Code: `def maxEnvelopes(envelopes):
+    envelopes = sorted(envelopes)
+    best = [1] * len(envelopes)
+    for i in range(len(envelopes)):
+        for j in range(i):
+            if envelopes[j][0] < envelopes[i][0] and envelopes[j][1] < envelopes[i][1]:
+                best[i] = max(best[i], best[j] + 1)
+    return max(best)`,
+					TimeComplexity:  "O(n^2)",
+					SpaceComplexity: "O(n)",
+					Explanation:     "best[i] is the longest chain whose outermost envelope is envelope i. Sorting puts every possible inner envelope before i, and checking both dimensions explicitly means ties need no special handling. Correct and easy to trust, but quadratic: too slow for 10^5 envelopes.",
+				},
+				{
+					Name: "Patience sorting with bisect",
+					Code: `import bisect
+
+def maxEnvelopes(envelopes):
+    envelopes.sort(key=lambda e: (e[0], -e[1]))
+    tails = []
+    for _, height in envelopes:
+        position = bisect.bisect_left(tails, height)
+        if position == len(tails):
+            tails.append(height)
+        else:
+            tails[position] = height
+    return len(tails)`,
+					TimeComplexity:  "O(n log n)",
+					SpaceComplexity: "O(n)",
+					Explanation:     "The same algorithm with the library's binary search. bisect_left returns exactly the first index whose value is >= height, which is the boundary search written by hand in the main solution.",
+				},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "Why must equal widths be sorted by height descending rather than ascending?", Answer: "The LIS step only looks at heights, so it can't see that two envelopes share a width. If equal widths were sorted by ascending height, like [1,1], [1,2], [1,3], the heights 1, 2, 3 would form an increasing run and be counted as a chain of 3, even though none fits in another. Descending heights within a width group mean any strictly increasing run takes at most one envelope from each group, so every run the LIS finds is a real nesting chain."},
+			{Prompt: "Why is tails always sorted, and why does that make binary search valid?", Answer: "tails[k] is the smallest height ending an increasing chain of length k + 1. A chain of length k + 2 contains a chain of length k + 1 whose last height is strictly smaller, so tails[k] < tails[k + 1]. Each update keeps this: appending adds a value larger than every tail, and overwriting tails[lo] with h keeps tails[lo - 1] < h <= old tails[lo] < tails[lo + 1]. Because tails is sorted, 'tails[mid] >= h' is false for a prefix and true afterwards, which is exactly what the boundary template needs."},
+			{Prompt: "What changes if an envelope may also fit when one dimension is equal (non-strict nesting)?", Answer: "Then you want the longest non-decreasing subsequence: sort equal widths by height ascending so that same-width envelopes can chain, and search for the first tail > height (bisect_right) so that an equal height extends a chain instead of replacing its end."},
+		},
+	},
+	{
+		ID:              "longest-duplicate-substring",
+		Number:          1044,
+		Order:           8,
+		Title:           "Longest Duplicate Substring",
+		Slug:            "longest-duplicate-substring",
+		Difficulty:      "Hard",
+		Category:        "binary-search",
+		Tags:            []string{"String", "Binary Search", "Sliding Window", "Hash Function", "Google", "Google L5", "Google Phone Screen"},
+		RelatedChapters: []int{6, 4, 2},
+		Description: `You are given a string s of lowercase English letters.
+
+A duplicated substring is a contiguous piece of s that appears at two or more different starting positions. The occurrences are allowed to overlap: in "aaaa", the substring "aaa" appears starting at index 0 and at index 1.
+
+Return a duplicated substring of the greatest possible length. If several different duplicated substrings share that length, return any one of them. If no substring appears twice, return the empty string "".
+
+s can be up to 3 * 10^4 characters long, so checking every pair of substrings is far too slow.`,
+		Constraints: []string{
+			"2 <= s.length <= 3 * 10^4",
+			"s consists of lowercase English letters",
+		},
+		Examples: []Example{
+			{Input: `s = "banana"`, Output: `"ana"`, Explanation: `"ana" starts at index 1 and at index 3 (the two copies share the middle "a"). No substring of length 4 appears twice: "bana", "anan" and "nana" each appear once.`},
+			{Input: `s = "abcd"`, Output: `""`, Explanation: "Every letter is different, so not even a single character repeats."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"s": "banana"}, Expected: "ana", Note: "overlapping occurrences in the middle of the string"},
+			{Input: map[string]interface{}{"s": "abcd"}, Expected: "", Note: "no repeated character, so the answer is the empty string"},
+			{Input: map[string]interface{}{"s": "aa"}, Expected: "a", Note: "shortest input with a duplicate"},
+			{Input: map[string]interface{}{"s": "ab"}, Expected: "", Hidden: true, Note: "shortest input without a duplicate (catches returning s[0] or None)"},
+			{Input: map[string]interface{}{"s": "aaaa"}, Expected: "aaa", Hidden: true, Note: "all letters equal: the copies overlap almost completely (catches requiring non-overlapping copies)"},
+			{Input: map[string]interface{}{"s": "abcabcabc"}, Expected: "abcabc", Hidden: true, Note: "the answer is longer than half the string (catches setting hi = n // 2)"},
+			{Input: map[string]interface{}{"s": "mississippi"}, Expected: "issi", Hidden: true, Note: "several duplicate lengths; the search must keep going after finding 'ss' and 'iss'"},
+			{Input: map[string]interface{}{"s": "abxcdyabzcd"}, Expected: "ab", Hidden: true, Note: "tie: 'ab' and 'cd' both repeat with length 2, and either is accepted"},
+			{Input: map[string]interface{}{"s": "abacabadabacaba"}, Expected: "abacaba", Hidden: true, Note: "a duplicate at both ends of the string (catches an off-by-one that skips the last window)"},
+		},
+		TimeComplexity:  "O(n log n) expected",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def longestDupSubstring(s):\n    # Write your solution here\n    pass",
+		Harness: Harness{
+			Validator: `def check(raw, args, result, expected):
+    s = raw["s"]
+    if not isinstance(result, str):
+        return False, "return the substring itself as a string, not its length or position"
+    if len(result) != len(expected):
+        return False, repr(result) + " has length " + str(len(result)) + ", but the longest duplicated substring has length " + str(len(expected))
+    if result == "":
+        return True, ""
+    first = s.find(result)
+    if first == -1:
+        return False, repr(result) + " is not a substring of s"
+    if s.find(result, first + 1) == -1:
+        return False, repr(result) + " appears only once in s"
+    return True, ""`,
+		},
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "If some substring of length 5 appears twice, does some substring of length 4 also appear twice? What does that tell you about the yes/no question 'is there a duplicate of length L?' as L grows?"},
+			{Level: 2, Type: "insight", Content: "'A duplicate of length L exists' is true for every L up to the answer and false after it, so binary-search on the answer length, as in Koko (875), but looking for the LAST yes (chapter 6). To test one length in O(n), slide a window of length L along s (chapter 4) and keep a rolling hash of it, remembering which start positions produced each hash (chapter 2). A repeated hash is only a candidate: compare the actual substrings before believing it.", ChapterRef: 6},
+			{Level: 3, Type: "plan", Content: "1. Write the yes/no test: for a length L, roll a hash across every window of length L; for each window, look up earlier starts with the same hash and compare the real substrings. Return the duplicate if one matches.\n2. Define the search space: lengths 1..n - 1 (a duplicate can't be as long as s itself).\n3. Pick the middle: closed template, while lo <= hi, mid = (lo + hi) // 2.\n4. Discard half: if length mid has a duplicate, remember it and try longer (lo = mid + 1); otherwise only shorter lengths can work (hi = mid - 1).\n5. Read the answer: the last duplicate remembered, or \"\" if no length worked."},
+			{Level: 4, Type: "skeleton", Content: `def longestDupSubstring(s):
+    n = len(s)
+    base, mod = 256, (1 << 61) - 1
+
+    def find_duplicate(length):
+        top = pow(base, length, mod)
+        seen = {}
+        window = 0
+        for end in range(n):
+            window = (window * base + ord(s[end])) % mod
+            if end >= length:
+                window = ____
+            if end >= length - 1:
+                start = end - length + 1
+                piece = s[start:end + 1]
+                for earlier in seen.get(window, []):
+                    if ____:
+                        return piece
+                seen.setdefault(window, []).append(start)
+        return None
+
+    best = ""
+    lo, hi = 1, ____
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        found = find_duplicate(mid)
+        if found is not None:
+            ____
+        else:
+            hi = mid - 1
+    return best`},
+		},
+		Solution: Solution{
+			Code: `def longestDupSubstring(s):
+    n = len(s)
+    base, mod = 256, (1 << 61) - 1
+
+    def find_duplicate(length):
+        top = pow(base, length, mod)
+        seen = {}
+        window = 0
+        for end in range(n):
+            window = (window * base + ord(s[end])) % mod
+            if end >= length:
+                window = (window - ord(s[end - length]) * top) % mod
+            if end >= length - 1:
+                start = end - length + 1
+                piece = s[start:end + 1]
+                for earlier in seen.get(window, []):
+                    if s[earlier:earlier + length] == piece:
+                        return piece
+                seen.setdefault(window, []).append(start)
+        return None
+
+    best = ""
+    lo, hi = 1, n - 1
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        found = find_duplicate(mid)
+        if found is not None:
+            best = found
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return best`,
+			Explanation: "Builds on Koko Eating Bananas (875): again we binary-search the answer itself, here a substring length, using a monotonic yes/no test. Two twists: we want the LARGEST length that works rather than the smallest, and the test is no longer a one-line sum. It slides a fixed-length window over s (chapter 4) with a rolling hash, and uses a hash map (chapter 2) to spot two windows that look the same. Each search step remembers the duplicate it found, so the answer is ready when the range empties.",
+			BruteForce:  "Try lengths from n - 1 down to 1 and, for each length, put every substring of that length into a set, stopping at the first repeat. Each length costs O(n) substrings of up to n characters, so the worst case is O(n^3) work (about 2.7 * 10^13 character copies for n = 3 * 10^4 with no duplicate). It wastes work twice: it tries lengths one by one when a single failed length rules out every longer one, and it copies and hashes each window from scratch when the next window differs by only one character at each end.",
+			KeyInsight:  "Duplicate lengths are monotonic: a repeat of length L contains a repeat of every shorter length (its prefixes), so 'is there a duplicate of length L?' is yes, yes, ..., yes, no, no and can be binary-searched for its last yes in O(log n) tests. A rolling hash makes each test O(n): moving the window one step removes the leftmost character's contribution and appends the new one in O(1).",
+			WhyItWorks:  "Monotonic predicate: if a substring t of length L appears at two different starts i and j, then t[:L-1] appears at those same two starts, so a duplicate of length L - 1 exists too. Hence has_dup(L) is true for every L from 1 up to the answer and false for every larger L, and the closed template keeps the invariant 'every length below lo has a duplicate (best holds one of length lo - 1), every length above hi has none'. When lo > hi, best has the longest length. Rolling hash: the window s[a..a+L-1] has hash sum of ord(s[a+k]) * base^(L-1-k) mod p. Multiplying by base and adding the next character shifts every term up one power; the character that just left now carries base^L, so subtracting ord(old) * base^L leaves exactly the next window's hash. Collisions: equal hashes don't prove equal strings, so a hash match is only a candidate and the code compares the real substrings. Every start is kept in a list per hash, so a collision with an unrelated window can never hide a true duplicate, and a reported duplicate is always real. With a 61-bit prime modulus collisions are so rare that the expected time stays O(n) per test.",
+			CommonMistakes: []string{
+				"Trusting a hash match without comparing the substrings: two different windows can share a hash (much more often with a small modulus like 10^9 + 7 on long inputs), and you'd return a substring that appears only once. On a match, check s[earlier:earlier + length] == piece, and keep every start for a hash, not just the first.",
+				"Removing the outgoing character with the wrong power: after window * base + new, the leaving character has weight base^length, not base^(length - 1). With the wrong power every window after the first has a garbage hash and real duplicates like 'ana' in 'banana' are missed. Precompute top = pow(base, length, mod).",
+				"Setting the upper bound too low (n // 2, assuming the copies can't overlap) or treating overlapping copies as invalid: 'aaaa' has answer 'aaa' and 'abcabcabc' has 'abcabc'. Overlap is allowed, so search lengths up to n - 1.",
+				"Searching for the last yes with while lo < hi and mid = (lo + hi) // 2, lo = mid: when hi = lo + 1 and mid works, lo never moves and the loop runs forever. Either round mid up, (lo + hi + 1) // 2, or use the closed template with a remembered best as here.",
+			},
+			TimeComplexity:  "O(n log n) expected",
+			SpaceComplexity: "O(n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Write the yes/no test", Explanation: "find_duplicate(length) slides a window of that length along s. Each step multiplies the hash by base and adds the new character; once the window is too long, it subtracts the leaving character times base^length.", CodeSnippet: "def find_duplicate(length):\ntop = pow(base, length, mod)\nwindow = (window * base + ord(s[end])) % mod\nwindow = (window - ord(s[end - length]) * top) % mod", LineStart: 5, LineEnd: 12},
+				{Title: "Verify hash matches", Explanation: "For each full window, look at every earlier start with the same hash and compare the actual text. In 'banana' with length 3, the window 'ana' at start 3 matches the stored start 1, the texts are equal, so 'ana' is returned. A collision with a different string just fails the comparison.", CodeSnippet: "for earlier in seen.get(window, []):\nif s[earlier:earlier + length] == piece:\nreturn piece\nseen.setdefault(window, []).append(start)", LineStart: 13, LineEnd: 20},
+				{Title: "Define the search space", Explanation: "The answer length is between 1 and n - 1 (or 0, meaning best stays \"\"). For 'banana', lo = 1 and hi = 5.", CodeSnippet: "best = \"\"\nlo, hi = 1, n - 1", LineStart: 22, LineEnd: 23},
+				{Title: "Discard half", Explanation: "mid = 3 finds 'ana', so best = 'ana' and lo = 4. mid = 4 finds nothing ('bana', 'anan', 'nana' are all different), so hi = 3. Now lo > hi.", CodeSnippet: "while lo <= hi:\nmid = (lo + hi) // 2\nfound = find_duplicate(mid)\nbest = found\nlo = mid + 1\nhi = mid - 1", LineStart: 24, LineEnd: 31},
+				{Title: "Read the answer", Explanation: "best holds the duplicate found at the largest length that worked: 'ana'. If no length worked it is still \"\".", CodeSnippet: "return best", LineStart: 32, LineEnd: 32},
+			},
+			Alternatives: []AltSolution{
+				{
+					Name: "Every length, longest first, with a set (brute force)",
+					Code: `def longestDupSubstring(s):
+    for length in range(len(s) - 1, 0, -1):
+        seen = set()
+        for start in range(len(s) - length + 1):
+            piece = s[start:start + length]
+            if piece in seen:
+                return piece
+            seen.add(piece)
+    return ""`,
+					TimeComplexity:  "O(n^3) in the worst case",
+					SpaceComplexity: "O(n^2)",
+					Explanation:     "Tries lengths from longest to shortest and returns the first repeat, so it's obviously correct. It slices and hashes every window from scratch and tries every length, so it's far too slow at 3 * 10^4 characters, but it's a reliable reference.",
+				},
+				{
+					Name: "Binary search on length with a set of slices",
+					Code: `def longestDupSubstring(s):
+    def find_duplicate(length):
+        seen = set()
+        for start in range(len(s) - length + 1):
+            piece = s[start:start + length]
+            if piece in seen:
+                return piece
+            seen.add(piece)
+        return None
+
+    best = ""
+    lo, hi = 1, len(s) - 1
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        found = find_duplicate(mid)
+        if found is not None:
+            best = found
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return best`,
+					TimeComplexity:  "O(n^2 log n)",
+					SpaceComplexity: "O(n^2)",
+					Explanation:     "Keeps the binary search on the answer but tests each length with plain string slices in a set. That removes the 'try every length' waste and isolates the second improvement: the rolling hash, which avoids copying length characters per window.",
+				},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "Why is 'some substring of length L appears twice' monotonic in L, and which way does the binary search move on a yes?", Answer: "If a length-L substring appears at starts i and j, its first L - 1 characters also appear at i and j, so every shorter length has a duplicate too. The predicate is yes for small L and no for large L, and we want the last yes. On a yes at mid, mid is achievable, so remember the duplicate and look for something longer with lo = mid + 1; on a no, every length >= mid fails, so hi = mid - 1."},
+			{Prompt: "Why can't the code return a window as soon as its hash has been seen before?", Answer: "A hash maps many strings to the same number, so two different windows can collide. Returning on a hash match alone could report a substring that appears only once. The code treats a match as a candidate and compares the real substrings. It also keeps every earlier start with that hash, because the first stored start might be a collision while a later one is a true copy."},
+			{Prompt: "What changes if the two copies must not overlap?", Answer: "The predicate is still monotonic (shrinking both copies from the right keeps them disjoint), so the binary search stays. The test changes: for each distinct substring (verified against the text as before) remember its EARLIEST start, and accept a later window at start only if earliest + length <= start. The upper bound becomes n // 2, because two disjoint copies need 2 * length <= n."},
+		},
+	},
+	{
 		ID:              "median-of-two-sorted-arrays",
 		Number:          4,
-		Order:           7,
+		Order:           9,
 		Title:           "Median of Two Sorted Arrays",
 		Slug:            "median-of-two-sorted-arrays",
 		Difficulty:      "Hard",
 		Category:        "binary-search",
-		Tags:            []string{"Array", "Binary Search", "Divide and Conquer"},
+		Tags:            []string{"Array", "Binary Search", "Divide and Conquer", "Google", "Google L5", "Google Onsite"},
 		RelatedChapters: []int{6, 3},
 		Description: `You are given two arrays nums1 (length m) and nums2 (length n), each sorted in ascending order. Either one may be empty, but not both.
 

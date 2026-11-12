@@ -3,9 +3,12 @@ package practice
 // SlidingWindowProblems contains all sliding-window category problems.
 //
 // Ladder (Chapter 4): the buy/sell window (left edge = cheapest day so far),
-// then variable windows that grow right and shrink left while invalid
-// (no repeats, then a count-based validity rule), a fixed-size window with
-// counts, a "shortest valid window" with formed/required bookkeeping, and
+// a window whose left edge jumps when a neighbour rule breaks (increasing
+// runs), then variable windows that grow right and shrink left while invalid
+// (no repeats, then at most k distinct characters with a count map, then a
+// count-based cost rule), a fixed-size window with counts, a window fixed in
+// time rather than elements (Design Hit Counter, a queue that expires from
+// the front), a "shortest valid window" with formed/required bookkeeping, and
 // finally a fixed window whose state is a monotonic deque.
 var SlidingWindowProblems = []*Problem{
 	{
@@ -112,14 +115,117 @@ Think of it as a window [buy, sell] over the days: the left edge is the day you 
 		},
 	},
 	{
+		ID:              "longest-continuous-increasing-subsequence",
+		Number:          674,
+		Order:           2,
+		Title:           "Longest Continuous Increasing Subsequence",
+		Slug:            "longest-continuous-increasing-subsequence",
+		Difficulty:      "Easy",
+		Category:        "sliding-window",
+		Tags:            []string{"Array", "Sliding Window", "Google", "Google L3", "Google Phone Screen"},
+		RelatedChapters: []int{4, 3},
+		Description: `You are given a non-empty list of integers nums. Find the longest run of neighbouring elements that goes strictly upward, and return its length.
+
+Formally, a run nums[l..r] (with l <= r) counts when nums[i] < nums[i + 1] for every i from l to r - 1. Two equal neighbours break a run, because "strictly upward" means each element must be larger than the one before it. A single element is always a run of length 1, so the answer is at least 1.
+
+The run must be contiguous: picking 1, 3, 4 out of [1, 3, 2, 4] does not count, because 2 sits between 3 and 4.`,
+		Constraints: []string{
+			"1 <= nums.length <= 10^4",
+			"-10^9 <= nums[i] <= 10^9",
+		},
+		Examples: []Example{
+			{Input: "nums = [1,3,5,4,7]", Output: "3", Explanation: "[1,3,5] climbs for three elements, then 4 is lower than 5 and starts a new run [4,7] of length 2. [1,3,5,7] climbs too, but it skips over 4, so it isn't contiguous."},
+			{Input: "nums = [2,2,2,2,2]", Output: "1", Explanation: "Equal neighbours are not strictly increasing, so every run is a single element."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"nums": []int{1, 3, 5, 4, 7}}, Expected: 3, Note: "example: a drop restarts the run"},
+			{Input: map[string]interface{}{"nums": []int{2, 2, 2, 2, 2}}, Expected: 1, Note: "all equal: equal neighbours break the run (compare with <=, not <)"},
+			{Input: map[string]interface{}{"nums": []int{5}}, Expected: 1, Hidden: true, Note: "single element: the answer is 1, not 0"},
+			{Input: map[string]interface{}{"nums": []int{1, 2, 3, 4}}, Expected: 4, Hidden: true, Note: "the whole list climbs and the run never breaks: record the answer inside the loop, not only when a run ends"},
+			{Input: map[string]interface{}{"nums": []int{3, 2, 1}}, Expected: 1, Hidden: true, Note: "strictly decreasing: every element starts a new run"},
+			{Input: map[string]interface{}{"nums": []int{1, 3, 2, 4, 5, 6}}, Expected: 4, Hidden: true, Note: "the longest run is the last one"},
+			{Input: map[string]interface{}{"nums": []int{-3, -2, -1, -5}}, Expected: 3, Hidden: true, Note: "negative numbers"},
+			{Input: map[string]interface{}{"nums": []int{1, 2, 2, 3}}, Expected: 2, Note: "a tie in the middle splits [1,2,2,3] into two runs of 2"},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def findLengthOfLCIS(nums):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "Walk through the list and look at each new number next to the one before it. When can the current climb keep going, and when you have to give it up, where should the next climb start?"},
+			{Level: 2, Type: "insight", Content: "Treat the current climb as a window [start, right]. The right edge moves one step at a time. The window stays valid while nums[right] > nums[right - 1]; the moment that fails, no window that still contains both of those neighbours can be valid, so the left edge jumps straight to right. That is the same 'jump the left edge' move as Best Time to Buy and Sell Stock, from Chapter 4's sliding window.", ChapterRef: 4},
+			{Level: 3, Type: "plan", Content: "1. Set up the window state: start = 0 and best = 1.\n2. Grow the window: move right from index 1 to the end.\n3. Shrink until valid: if nums[right] is not larger than nums[right - 1], move start to right.\n4. Record the answer: best = max(best, right - start + 1) on every step.\n5. Return best."},
+			{Level: 4, Type: "skeleton", Content: "def findLengthOfLCIS(nums):\n    best = 1\n    start = 0\n    for right in range(1, len(nums)):\n        if ____:\n            start = ____\n        best = ____\n    return best"},
+		},
+		Solution: Solution{
+			Code: `def findLengthOfLCIS(nums):
+    best = 1   # a single number is an increasing run
+    start = 0  # left edge: where the current increasing run begins
+    for right in range(1, len(nums)):
+        if nums[right] <= nums[right - 1]:
+            start = right  # the run is broken: restart the window here
+        best = max(best, right - start + 1)
+    return best`,
+			Explanation: "This builds on Best Time to Buy and Sell Stock. There the left edge jumped to the right edge whenever a new low appeared; here it jumps whenever the climb breaks (nums[right] <= nums[right - 1]). The window [start, right] is always the longest strictly increasing run that ends at right, and best keeps the longest one seen. It is still a one-pass window with two forward-only indices; the only new idea is that validity is a rule about neighbours inside the window.",
+			BruteForce:  "For every start i, walk j forward while nums[j] > nums[j - 1] and keep the longest run. On an increasing list like [1, 2, ..., n] every start walks to the end, so it is about n^2/2 steps: 50 million for n = 10^4, and O(n^2) in general. The waste: start i + 1 re-checks every neighbour pair that start i already checked, although a run that is increasing from i is increasing from i + 1 too.",
+			KeyInsight:  "Once a pair of neighbours nums[right - 1] >= nums[right] breaks the climb, every window that contains both of them is invalid. So no window that starts before right can grow past right, and the next candidate run must start exactly at right. The left edge can jump there in one step and never look back.",
+			WhyItWorks:  "Invariant: after processing index right, nums[start..right] is strictly increasing and start is as small as possible, so it is the longest increasing run ending at right. It holds at right = 0 (start = 0). Moving to right + 1: if nums[right + 1] > nums[right], the run ending at right extends by one and start stays; any smaller start would already have failed. If not, the pair (right, right + 1) breaks every run that crosses it, so the longest run ending at right + 1 is just [right + 1] and start = right + 1. Every increasing run ends somewhere, and best takes the maximum over all ends, so best is the answer.",
+			CommonMistakes: []string{
+				"Breaking the run only when nums[right] < nums[right - 1]. Equal neighbours are not strictly increasing, so [2,2,2,2,2] would return 5. Restart the window when nums[right] <= nums[right - 1].",
+				"Updating best only at the moment a run breaks. The last run never breaks, so [1,2,3,4] returns 1 (or whatever came before). Record the window length on every step, as the solution does, or once more after the loop.",
+				"Starting best at 0, which gives 0 for a one-element list when the loop body never runs. A single element is a run of length 1, so start best at 1.",
+			},
+			TimeComplexity:  "O(n)",
+			SpaceComplexity: "O(1)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Set up the window state", Explanation: "The window [start, right] begins as the single element at index 0, which is an increasing run of length 1, so best starts at 1.", CodeSnippet: "best = 1   # a single number is an increasing run\nstart = 0  # left edge: where the current increasing run begins", LineStart: 2, LineEnd: 3},
+				{Title: "Grow the window", Explanation: "The right edge moves forward one element at a time and never goes back. Starting at 1 means nums[right - 1] always exists.", CodeSnippet: "for right in range(1, len(nums)):", LineStart: 4, LineEnd: 4},
+				{Title: "Shrink until valid", Explanation: "If the new element does not climb, every window holding both it and its left neighbour is invalid, so the left edge jumps to right. For [1,3,5,4,7], at right = 3 (4 <= 5) start moves from 0 to 3.", CodeSnippet: "if nums[right] <= nums[right - 1]:\n    start = right  # the run is broken: restart the window here", LineStart: 5, LineEnd: 6},
+				{Title: "Record the answer", Explanation: "The window is now the longest climb ending at right. For [1,3,5,4,7] the lengths are 2, 3, 1, 2, so best ends at 3.", CodeSnippet: "best = max(best, right - start + 1)\nreturn best", LineStart: 7, LineEnd: 8},
+			},
+			Alternatives: []AltSolution{
+				{
+					Name: "Brute force: extend from every start",
+					Code: `def findLengthOfLCIS(nums):
+    best = 1
+    for i in range(len(nums)):
+        j = i + 1
+        while j < len(nums) and nums[j] > nums[j - 1]:
+            j += 1
+        best = max(best, j - i)
+    return best`,
+					TimeComplexity:  "O(n^2)",
+					SpaceComplexity: "O(1)",
+					Explanation:     "From each start, walk forward while the climb continues. Correct and easy to trust, but it re-checks the same neighbour pairs from every start inside a long run.",
+				},
+				{
+					Name: "Running length counter",
+					Code: `def findLengthOfLCIS(nums):
+    best = 1
+    length = 1  # length of the climb ending at the current element
+    for i in range(1, len(nums)):
+        length = length + 1 if nums[i] > nums[i - 1] else 1
+        best = max(best, length)
+    return best`,
+					TimeComplexity:  "O(n)",
+					SpaceComplexity: "O(1)",
+					Explanation:     "The same window written as its length instead of its left edge: length is right - start + 1. Resetting length to 1 is the same as moving start to right.",
+				},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "Why may the left edge jump all the way to right when the climb breaks, instead of moving forward one step at a time as in Longest Substring Without Repeating Characters?", Answer: "The thing that broke the window is the neighbour pair (right - 1, right). Any window that starts at or before right - 1 and reaches right contains that pair, so it is invalid. The first start that can be valid is right itself. In the repeating-characters problem, the offending old copy could be anywhere inside the window, so the left edge has to creep forward until it passes that copy."},
+			{Prompt: "What if the question allowed the run to skip elements, so [1,3,2,4] would give 3 for 1, 3, 4 (or 1, 2, 4)? Does the window still work?", Answer: "No. Once elements may be skipped, the answer is the Longest Increasing Subsequence, and a contiguous window no longer describes the candidates. Each element must remember the best subsequence ending at it, which is dynamic programming (O(n^2), or O(n log n) with binary search over tail values). Chapter 15 covers it."},
+		},
+	},
+	{
 		ID:              "longest-substring-without-repeating",
 		Number:          3,
-		Order:           2,
+		Order:           3,
 		Title:           "Longest Substring Without Repeating Characters",
 		Slug:            "longest-substring-without-repeating-characters",
 		Difficulty:      "Medium",
 		Category:        "sliding-window",
-		Tags:            []string{"Hash Table", "String", "Sliding Window"},
+		Tags:            []string{"Hash Table", "String", "Sliding Window", "Google", "Google L4", "Google Phone Screen"},
 		RelatedChapters: []int{4, 2},
 		Description: `Given a string s, return the length of the longest substring of s in which no character appears more than once.
 
@@ -165,7 +271,7 @@ A substring is a contiguous run of characters (so "pwke" is not a substring of "
         in_window.add(s[right])
         best = max(best, right - left + 1)
     return best`,
-			Explanation: "This is the first variable-size window in the ladder. Like Best Time to Buy and Sell Stock, the right edge moves one step at a time and the left edge only moves forward. Here the left edge creeps forward one character at a time, removing characters until the window is valid again, which is the general 'shrink until valid' loop. A set holds the window's characters so the validity check (is s[right] already inside?) is O(1).",
+			Explanation: "This builds on Longest Continuous Increasing Subsequence. There the left edge could jump straight to right, because the pair that broke the window always sat at its right end. Here the old copy of s[right] can be anywhere inside the window, so the left edge creeps forward one character at a time, removing characters until the window is valid again, which is the general 'shrink until valid' loop. A set holds the window's characters so the validity check (is s[right] already inside?) is O(1).",
 			BruteForce:  "Check every start i, extend j while s[j] isn't in a set built for that start, and keep the longest run. That is O(n^2) in the worst case (about 1.25 billion steps for n = 50,000). The waste: after a repeat stops start i, start i + 1 rebuilds almost the same set from scratch, even though the window s[i+1..j-1] is already known to have no repeats.",
 			KeyInsight:  "Validity is monotonic: if s[left..right] contains a repeat, so does every longer window containing it. So when a repeat appears you never need an earlier left again; just slide left forward past the old copy and keep everything you already know about the rest of the window.",
 			WhyItWorks:  "Invariant: after the while loop, s[left..right] has no repeated character and left is the smallest start for which that is true. Before adding s[right], s[left..right-1] had no repeats; removing characters from the left until s[right] is gone makes s[left..right] repeat-free, and any smaller left would still contain the old copy of s[right]. So right - left + 1 is the longest valid substring ending at right, and best is the maximum over all right. Each index enters the set once and leaves at most once, so the total work is O(n) even though there is a loop inside a loop.",
@@ -223,9 +329,125 @@ A substring is a contiguous run of characters (so "pwke" is not a substring of "
 		},
 	},
 	{
+		ID:              "longest-substring-with-at-most-k-distinct-characters",
+		Number:          340,
+		Order:           4,
+		Title:           "Longest Substring with At Most K Distinct Characters",
+		Slug:            "longest-substring-with-at-most-k-distinct-characters",
+		Difficulty:      "Medium",
+		Category:        "sliding-window",
+		Tags:            []string{"Hash Table", "String", "Sliding Window", "Google", "Google L4", "Google Phone Screen"},
+		RelatedChapters: []int{4, 2},
+		Description: `You are given a string s and an integer k. Return the length of the longest substring of s that uses at most k different characters.
+
+A substring is a contiguous run of characters of s. "Different characters" counts each character once no matter how often it repeats: "abaab" uses 2 different characters. Upper- and lowercase letters are different characters.
+
+If k is 0, no non-empty substring qualifies, so return 0.`,
+		Constraints: []string{
+			"1 <= s.length <= 5 * 10^4",
+			"0 <= k <= 50",
+			"s consists of English letters",
+		},
+		Examples: []Example{
+			{Input: `s = "eceba", k = 2`, Output: "3", Explanation: `"ece" uses only e and c. Every substring of length 4 ("eceb" or "ceba") uses 3 different characters.`},
+			{Input: `s = "aa", k = 1`, Output: "2", Explanation: `The whole string uses just one character, a.`},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"s": "eceba", "k": 2}, Expected: 3, Note: "example: the window has to drop a character once a third one appears"},
+			{Input: map[string]interface{}{"s": "aa", "k": 1}, Expected: 2, Note: "example: a repeated character counts once"},
+			{Input: map[string]interface{}{"s": "a", "k": 0}, Expected: 0, Hidden: true, Note: "k = 0: no non-empty substring qualifies"},
+			{Input: map[string]interface{}{"s": "abc", "k": 5}, Expected: 3, Hidden: true, Note: "k is larger than the number of different characters: the whole string fits"},
+			{Input: map[string]interface{}{"s": "abaccc", "k": 2}, Expected: 4, Hidden: true, Note: "the count of a must hit 0 and be deleted from the map, or the window shrinks too far"},
+			{Input: map[string]interface{}{"s": "aabbcc", "k": 1}, Expected: 2, Hidden: true, Note: "a set of characters is not enough: removing one copy of b must not forget the other"},
+			{Input: map[string]interface{}{"s": "abcadcacacaca", "k": 3}, Expected: 11, Hidden: true, Note: "the long answer \"cadcacacaca\" sits at the end, after the window drops a and b"},
+			{Input: map[string]interface{}{"s": "aabacbebebe", "k": 3}, Expected: 7, Hidden: true, Note: "\"cbebebe\": the window keeps shrinking past several copies of the same letter"},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(k)",
+		StarterCode:     "def lengthOfLongestSubstringKDistinct(s, k):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "If s[left..right] already uses more than k different characters, can any longer substring that contains it use fewer? And when you drop characters from the left, how will you know that a character has completely left the window?"},
+			{Level: 2, Type: "insight", Content: "Too many different characters is a monotonic kind of invalid: growing the window can only add characters. So use the variable-size window from Chapter 4: grow right, and shrink left while the window has more than k different characters. A set is not enough, because a character can appear several times; keep a count per character and treat it as gone only when its count drops to 0. The number of keys in the count map is the number of different characters.", ChapterRef: 4},
+			{Level: 3, Type: "plan", Content: "1. Set up the window state: an empty count map, left = 0, best = 0.\n2. Grow the window: add s[right] to the count map.\n3. Shrink until valid: while the map has more than k keys, decrease the count of s[left], delete the key if it hits 0, and move left forward.\n4. Record the answer: best = max(best, right - left + 1).\n5. Return best."},
+			{Level: 4, Type: "skeleton", Content: "def lengthOfLongestSubstringKDistinct(s, k):\n    count = {}\n    left = 0\n    best = 0\n    for right, ch in enumerate(s):\n        count[ch] = count.get(ch, 0) + 1\n        while ____:\n            gone = s[left]\n            count[gone] -= 1\n            if ____:\n                del count[gone]\n            left += 1\n        best = ____\n    return best"},
+		},
+		Solution: Solution{
+			Code: `def lengthOfLongestSubstringKDistinct(s, k):
+    count = {}  # character -> copies inside s[left..right]
+    left = 0
+    best = 0
+    for right, ch in enumerate(s):
+        count[ch] = count.get(ch, 0) + 1
+        while len(count) > k:
+            gone = s[left]
+            count[gone] -= 1
+            if count[gone] == 0:
+                del count[gone]  # no copies left: one fewer distinct character
+            left += 1
+        best = max(best, right - left + 1)
+    return best`,
+			Explanation: "This builds on Longest Substring Without Repeating Characters: the same grow / shrink until valid / record loop, with a richer validity rule. There a window was valid with no repeats, so a set of characters was enough. Here repeats are fine and only the number of different characters matters, so the set becomes a count map (character to copies in the window). A character leaves the window only when its count reaches 0, and len(count) is the number of different characters, the quantity the rule checks.",
+			BruteForce:  "For every start i, extend j while counting characters, and stop as soon as a (k + 1)-th different character appears. That is O(n^2) windows in the worst case, about 1.25 billion for n = 50,000 when k is large. The waste: start i + 1 recounts almost exactly the same characters that start i just counted, instead of removing one character from the left.",
+			KeyInsight:  "Validity is monotonic: adding characters can never reduce the number of different characters. So when the window becomes invalid, an earlier left will never be needed again; slide left forward, decrementing counts, until some character's count hits 0 and the window is back to k different characters.",
+			WhyItWorks:  "Invariant: after the while loop, count holds exactly the characters of s[left..right] with their copies (no zero entries), len(count) <= k, and left is the smallest start for which that is true. Adding s[right] may push len(count) to k + 1; removing characters from the left only lowers counts, and a key disappears exactly when its last copy leaves, so the loop stops at the first left where the window is valid again. Any smaller left was already shown to give more than k characters for some earlier right <= current right, so it does too now. Thus right - left + 1 is the longest valid window ending at right, and best is the maximum over all right. Each index is added once and removed at most once, so the work is O(n).",
+			CommonMistakes: []string{
+				"Decrementing a count without deleting the key when it reaches 0. len(count) then still counts characters that left, so the window shrinks too far: \"abaccc\" with k = 2 gives 3 instead of 4. Delete the key when its count hits 0.",
+				"Tracking the window's characters in a set and discarding s[left] when it leaves. Another copy of that character may still be inside, so the set under-counts and the window grows too big: \"aabbcc\" with k = 1 would return 3. Keep a count per character.",
+				"Forgetting k = 0. With a 'shrink until len(count) <= k' loop the window simply becomes empty and the length is 0, which is correct; special-cased code that assumes at least one character fits returns 1 for (\"a\", 0).",
+			},
+			TimeComplexity:  "O(n)",
+			SpaceComplexity: "O(k)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Set up the window state", Explanation: "count maps each character in the window to its number of copies. It never holds more than k + 1 keys, so the extra space is O(k).", CodeSnippet: "count = {}  # character -> copies inside s[left..right]\nleft = 0\nbest = 0", LineStart: 2, LineEnd: 4},
+				{Title: "Grow the window", Explanation: "Add one copy of s[right]. If it is new, the window now has one more different character.", CodeSnippet: "for right, ch in enumerate(s):\n    count[ch] = count.get(ch, 0) + 1", LineStart: 5, LineEnd: 6},
+				{Title: "Shrink until valid", Explanation: "While there are more than k different characters, drop the leftmost one. For \"eceba\", k = 2 at right = 3 (b) the window \"eceb\" has e, c, b: dropping e leaves e:1 (another copy remains), then dropping c deletes c, and the window is \"eb\".", CodeSnippet: "while len(count) > k:\n    gone = s[left]\n    count[gone] -= 1\n    if count[gone] == 0:\n        del count[gone]  # no copies left: one fewer distinct character\n    left += 1", LineStart: 7, LineEnd: 12},
+				{Title: "Record the answer", Explanation: "The window is valid now, so compare its length with the best. For \"eceba\", k = 2 the lengths are 1, 2, 3, 2, 2, so best is 3.", CodeSnippet: "best = max(best, right - left + 1)\nreturn best", LineStart: 13, LineEnd: 14},
+			},
+			Alternatives: []AltSolution{
+				{
+					Name: "Brute force: extend from every start",
+					Code: `def lengthOfLongestSubstringKDistinct(s, k):
+    best = 0
+    for i in range(len(s)):
+        seen = set()
+        for j in range(i, len(s)):
+            seen.add(s[j])
+            if len(seen) > k:
+                break
+            best = max(best, j - i + 1)
+    return best`,
+					TimeComplexity:  "O(n^2)",
+					SpaceComplexity: "O(k)",
+					Explanation:     "From each start, add characters until a (k + 1)-th different one appears. A set is fine here because characters are only added, never removed. Correct, but it rebuilds the set from scratch for every start.",
+				},
+				{
+					Name: "Jump left using last-seen indices",
+					Code: `def lengthOfLongestSubstringKDistinct(s, k):
+    last = {}  # character in the window -> index of its last copy
+    left = 0
+    best = 0
+    for right, ch in enumerate(s):
+        last[ch] = right
+        if len(last) > k:
+            oldest = min(last, key=last.get)  # its last copy is furthest left
+            left = last.pop(oldest) + 1
+        best = max(best, right - left + 1)
+    return best`,
+					TimeComplexity:  "O(n * k)",
+					SpaceComplexity: "O(k)",
+					Explanation:     "Instead of creeping left forward, remember where each character last appears. When a (k + 1)-th character arrives, the character whose last copy is furthest left must go, and left jumps just past that copy. Finding it scans at most k + 1 keys; an ordered dictionary makes that O(1).",
+				},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "Why can the window not use a set of characters, as Longest Substring Without Repeating Characters did?", Answer: "In that problem the window never held two copies of a character, so removing s[left] really removed the character from the window. Here repeats are allowed, so when s[left] leaves there may be other copies still inside. Only a count tells you whether the last copy has gone, and only then does the number of different characters drop."},
+			{Prompt: "How would you count the number of substrings with exactly k different characters, using this solution as a building block?", Answer: "Count substrings with at most k different characters, then subtract those with at most k - 1. For the 'at most' count, use the same window and add right - left + 1 at each step: every substring ending at right that starts at or after left is valid. The difference is the number with exactly k (LeetCode 992, Subarrays with K Different Integers)."},
+		},
+	},
+	{
 		ID:              "longest-repeating-character-replacement",
 		Number:          424,
-		Order:           3,
+		Order:           5,
 		Title:           "Longest Repeating Character Replacement",
 		Slug:            "longest-repeating-character-replacement",
 		Difficulty:      "Medium",
@@ -278,7 +500,7 @@ Return the length of the longest substring (contiguous run) that can be made of 
             left += 1
         best = max(best, right - left + 1)
     return best`,
-			Explanation: "This builds on Longest Substring Without Repeating Characters: the same grow / shrink until valid / record loop, but the validity rule is now a number computed from counts instead of 'no repeats'. A window of length L whose most common letter appears f times needs L - f changes, so it is valid when L - f <= k. The twist is that max_freq is never decreased when the left edge moves, and the answer is still right.",
+			Explanation: "This builds on Longest Substring with At Most K Distinct Characters: the same count map and grow / shrink until valid / record loop, but the validity rule is now a cost computed from the counts instead of the number of keys. A window of length L whose most common letter appears f times needs L - f changes, so it is valid when L - f <= k. The twist is that max_freq is never decreased when the left edge moves, and the answer is still right.",
 			BruteForce:  "For every start i, extend j and keep letter counts; the window s[i..j] is fixable when (j - i + 1) - max(counts) <= k. That is O(n^2) windows (5 billion for n = 10^5), each checked in O(1) with at most 26 counts. The waste: start i + 1 recounts letters that start i already counted.",
 			KeyInsight:  "Fixability is monotonic in the window: shrinking a fixable window keeps it fixable, and growing an unfixable one keeps it unfixable. So the two-pointer window applies, with cost = length - max_freq as the validity test.",
 			WhyItWorks:  "Why the stale max_freq is still correct: max_freq only goes up, even when the letter that produced it leaves the window. Before the first shrink, no letter has left, so max_freq is exact. The loop shrinks only when length - max_freq > k, and it then removes exactly one letter, after which length = max_freq + k. From then on the window never gets shorter: each step adds one letter and removes at most one. It gets longer only if max_freq rises, and max_freq rises only when count[s[right]], a true count inside the current window, beats every earlier count. At that moment the window really is fixable. So every time best increases it records a genuinely valid window. When max_freq is stale, the window may be invalid, but it just slides at a length that was already achieved, so it can't inflate best. Since we only want the maximum length, a smaller window would never help, and we never need to recompute the true maximum.",
@@ -341,7 +563,7 @@ Return the length of the longest substring (contiguous run) that can be made of 
 	{
 		ID:              "permutation-in-string",
 		Number:          567,
-		Order:           4,
+		Order:           6,
 		Title:           "Permutation in String",
 		Slug:            "permutation-in-string",
 		Difficulty:      "Medium",
@@ -467,14 +689,163 @@ A permutation of s1 uses exactly the same letters as s1, each the same number of
 		},
 	},
 	{
+		ID:              "design-hit-counter",
+		Number:          362,
+		Order:           7,
+		Title:           "Design Hit Counter",
+		Slug:            "design-hit-counter",
+		Difficulty:      "Medium",
+		Category:        "sliding-window",
+		Tags:            []string{"Design", "Queue", "Sliding Window", "Google", "Google L4", "Google Phone Screen"},
+		RelatedChapters: []int{4, 5},
+		Description: `Build a class HitCounter that records "hits" (for example, page views) and reports how many hits happened during the last 5 minutes (300 seconds).
+
+- HitCounter() creates a counter with no hits.
+- hit(timestamp) records one hit at time timestamp, measured in seconds. Several hits may share the same timestamp, and each one counts.
+- getHits(timestamp) returns how many recorded hits happened in the 300 seconds ending at timestamp: the hits whose time t satisfies timestamp - 300 < t <= timestamp. So a hit at time 1 is still counted by getHits(300) but no longer by getHits(301).
+
+Calls arrive in chronological order: the timestamp passed to any call (hit or getHits) is never smaller than the timestamp of the call before it.
+
+Input format for the tests: "operations" lists the calls in order, starting with the constructor, and "values" lists the arguments for each call. The expected output has one entry per call, with null for calls that return nothing.`,
+		Constraints: []string{
+			"1 <= timestamp <= 2 * 10^9",
+			"Timestamps never decrease from one call to the next",
+			"At most 300 calls in total",
+		},
+		Examples: []Example{
+			{Input: `operations = ["HitCounter","hit","hit","hit","getHits","hit","getHits","getHits"]
+values = [[],[1],[2],[3],[4],[300],[300],[301]]`, Output: "[null,null,null,null,3,null,4,3]", Explanation: "At time 4 the hits at 1, 2 and 3 are all within the last 300 seconds. At time 300 the window (0, 300] holds the hits at 1, 2, 3 and 300. At time 301 the window is (1, 301], so the hit at 1 has expired and 3 remain."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"operations": []string{"HitCounter", "hit", "hit", "hit", "getHits", "hit", "getHits", "getHits"}, "values": [][]int{{}, {1}, {2}, {3}, {4}, {300}, {300}, {301}}}, Expected: []interface{}{nil, nil, nil, nil, 3, nil, 4, 3}, Note: "the example: the oldest hit expires exactly at 301"},
+			{Input: map[string]interface{}{"operations": []string{"HitCounter", "getHits", "hit", "getHits"}, "values": [][]int{{}, {5}, {5}, {5}}}, Expected: []interface{}{nil, 0, nil, 1}, Note: "asking before any hit returns 0; a hit counts at its own timestamp"},
+			{Input: map[string]interface{}{"operations": []string{"HitCounter", "hit", "hit", "hit", "getHits", "getHits", "getHits"}, "values": [][]int{{}, {1}, {1}, {1}, {1}, {300}, {301}}}, Expected: []interface{}{nil, nil, nil, nil, 3, 3, 0}, Hidden: true, Note: "three hits share one timestamp: a set of timestamps would count them once"},
+			{Input: map[string]interface{}{"operations": []string{"HitCounter", "hit", "getHits", "getHits"}, "values": [][]int{{}, {100}, {399}, {400}}}, Expected: []interface{}{nil, nil, 1, 0}, Hidden: true, Note: "boundary: a hit exactly 300 seconds old has expired (evict when t <= timestamp - 300)"},
+			{Input: map[string]interface{}{"operations": []string{"HitCounter", "hit", "hit", "getHits", "hit", "getHits"}, "values": [][]int{{}, {1}, {2}, {302}, {302}, {302}}}, Expected: []interface{}{nil, nil, nil, 0, nil, 1}, Hidden: true, Note: "a long quiet gap: getHits itself must expire old hits, not only hit"},
+			{Input: map[string]interface{}{"operations": []string{"HitCounter", "hit", "hit", "hit", "hit", "getHits", "hit", "getHits", "getHits", "getHits"}, "values": [][]int{{}, {1}, {150}, {299}, {300}, {300}, {450}, {450}, {600}, {2000000000}}}, Expected: []interface{}{nil, nil, nil, nil, nil, 4, nil, 3, 1, 0}, Hidden: true, Note: "the window slides forward several times, up to the largest timestamp"},
+		},
+		TimeComplexity:  "O(1) amortized per call",
+		SpaceComplexity: "O(n)",
+		StarterCode: `class HitCounter:
+    def __init__(self):
+        pass
+
+    def hit(self, timestamp: int) -> None:
+        pass
+
+    def getHits(self, timestamp: int) -> int:
+        pass`,
+		Harness: Harness{Mode: "design"},
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "Once a hit is too old to be counted by getHits(timestamp), can it ever be counted again by a later call? And because time only moves forward, where in your list of hits are the old ones?"},
+			{Level: 2, Type: "insight", Content: "The hits that count form a window over time, (timestamp - 300, timestamp]. Both edges only move forward: new hits enter at the back, and expired hits leave from the front, oldest first. Keep the timestamps in a queue (collections.deque) and, on getHits, pop from the front while the front is at least 300 seconds old. The queue's length is the answer. This is Chapter 4's sliding window with the window measured in seconds instead of elements.", ChapterRef: 4},
+			{Level: 3, Type: "plan", Content: "1. Set up the window state: a queue of hit timestamps, oldest at the front.\n2. Grow the window: hit appends its timestamp to the back (one entry per hit, even for repeated timestamps).\n3. Shrink until valid: in getHits, pop from the front while the front timestamp <= timestamp - 300.\n4. Record the answer: return the queue's length."},
+			{Level: 4, Type: "skeleton", Content: `from collections import deque
+
+class HitCounter:
+    def __init__(self):
+        self.hits = deque()
+
+    def hit(self, timestamp: int) -> None:
+        ____
+
+    def getHits(self, timestamp: int) -> int:
+        while self.hits and ____:
+            ____
+        return len(self.hits)`},
+		},
+		Solution: Solution{
+			Code: `from collections import deque
+
+class HitCounter:
+    def __init__(self):
+        self.hits = deque()  # timestamps inside the window, oldest at the front
+
+    def hit(self, timestamp: int) -> None:
+        self.hits.append(timestamp)  # time only moves forward, so the back stays newest
+
+    def getHits(self, timestamp: int) -> int:
+        # A hit at time t still counts while t > timestamp - 300
+        while self.hits and self.hits[0] <= timestamp - 300:
+            self.hits.popleft()
+        return len(self.hits)`,
+			Explanation: "This builds on Permutation in String, the first fixed-size window in the ladder: there each step added the letter entering on the right and removed the one that fell off the left. Here the window has a fixed length in time (300 seconds), not in elements, so any number of hits may enter or leave at once. Because timestamps never decrease, hits enter at the back of a queue and expire from the front in the same order, and the queue's length is always the number of hits in the window.",
+			BruteForce:  "Store every hit in a list and, on each getHits, count the entries with t > timestamp - 300. That is O(total hits) per query and the list grows forever. The waste: hits that expired are checked again on every later query, although once a hit is too old for one query it is too old for every later query too.",
+			KeyInsight:  "Expiry is permanent and happens in arrival order. Since timestamps only increase, the oldest hit is always at the front of the queue, and the hits that have expired are exactly a prefix of it. Pop that prefix once, and never look at those hits again.",
+			WhyItWorks:  "Invariant: after each getHits(timestamp), the queue holds, in increasing time order, exactly the recorded hits with t > timestamp - 300. hit appends to the back, and since its timestamp is at least every earlier one, the order is kept. getHits pops from the front while the front is <= timestamp - 300; because the queue is sorted, every expired hit is in front of every live one, so the loop removes exactly the expired hits and stops at the first live one. A popped hit is never needed again, because later calls have larger timestamps and so even stricter cutoffs. Each hit is appended once and popped at most once, so the total work is O(1) amortized per call.",
+			CommonMistakes: []string{
+				"Evicting with < instead of <=: the window is (timestamp - 300, timestamp], so a hit exactly 300 seconds old has expired. With hit(100), getHits(400) must return 0. Pop while front <= timestamp - 300.",
+				"Storing timestamps in a set (or a dict that overwrites), so three hits at time 1 count as one. Keep one queue entry per hit, or store (timestamp, count) pairs and add to the last pair's count.",
+				"Expiring old hits only inside hit(). After a long quiet period, getHits(302) with hits at 1 and 2 would still report 2. Do the expiry in getHits (it is fine to do it in both).",
+			},
+			TimeComplexity:  "O(1) amortized per call",
+			SpaceComplexity: "O(n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Set up the window state", Explanation: "A deque supports O(1) appends at the back and O(1) pops at the front, which are exactly the two ends where the time window grows and shrinks.", CodeSnippet: "def __init__(self):\n    self.hits = deque()  # timestamps inside the window, oldest at the front", LineStart: 4, LineEnd: 5},
+				{Title: "Grow the window", Explanation: "Each hit is one entry, even when several share a timestamp. Calls are chronological, so appending keeps the queue sorted.", CodeSnippet: "self.hits.append(timestamp)  # time only moves forward, so the back stays newest", LineStart: 7, LineEnd: 8},
+				{Title: "Shrink until valid", Explanation: "Drop hits from the front while they are 300 or more seconds old. In the example, getHits(301) has cutoff 1, so the hit at 1 is popped and the hit at 2 stops the loop.", CodeSnippet: "while self.hits and self.hits[0] <= timestamp - 300:\n    self.hits.popleft()", LineStart: 10, LineEnd: 13},
+				{Title: "Record the answer", Explanation: "Every hit still in the queue is inside (timestamp - 300, timestamp], so the answer is the queue's length: 3 for getHits(301) in the example.", CodeSnippet: "return len(self.hits)", LineStart: 14, LineEnd: 14},
+			},
+			Alternatives: []AltSolution{
+				{
+					Name: "Brute force: keep every hit and count on each query",
+					Code: `class HitCounter:
+    def __init__(self):
+        self.hits = []
+
+    def hit(self, timestamp: int) -> None:
+        self.hits.append(timestamp)
+
+    def getHits(self, timestamp: int) -> int:
+        count = 0
+        for t in self.hits:
+            if t > timestamp - 300:
+                count += 1
+        return count`,
+					TimeComplexity:  "O(n) per getHits",
+					SpaceComplexity: "O(n)",
+					Explanation:     "Correct and obvious, but every query rescans all hits ever recorded, including ones that expired long ago, and memory is never released.",
+				},
+				{
+					Name: "300 buckets, one per second",
+					Code: `class HitCounter:
+    def __init__(self):
+        self.times = [0] * 300   # which second each bucket currently describes
+        self.counts = [0] * 300  # hits in that second
+
+    def hit(self, timestamp: int) -> None:
+        slot = timestamp % 300
+        if self.times[slot] != timestamp:  # bucket holds an old second: reuse it
+            self.times[slot] = timestamp
+            self.counts[slot] = 0
+        self.counts[slot] += 1
+
+    def getHits(self, timestamp: int) -> int:
+        total = 0
+        for slot in range(300):
+            if timestamp - self.times[slot] < 300:
+                total += self.counts[slot]
+        return total`,
+					TimeComplexity:  "O(1) per call (a fixed 300 buckets)",
+					SpaceComplexity: "O(1)",
+					Explanation:     "Seconds that are 300 apart share a bucket, and a bucket is reset when a newer second claims it. Memory stays fixed however many hits arrive per second, which is the usual follow-up. getHits always scans all 300 buckets, a constant amount of work.",
+				},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "Why does it matter that timestamps never decrease? What would break if calls could arrive out of order?", Answer: "The queue is sorted only because each new hit is at least as late as the previous one, and that is what makes the expired hits a prefix at the front. With out-of-order calls, an old hit could sit behind a newer one and the front-popping loop would stop too early, and a getHits for an earlier time could need hits that a later call already popped. You would need a sorted structure (or keep all hits and binary search with bisect) instead."},
+			{Prompt: "Suppose millions of hits arrive within the same second. The queue then holds millions of entries. How could you keep memory small?", Answer: "Store one entry per distinct second instead of per hit: a queue of (timestamp, count) pairs, where hit adds to the last pair's count if it has the same timestamp, and a running total is adjusted on every append and pop. Or use the 300-bucket version, which uses a fixed amount of memory regardless of traffic."},
+		},
+	},
+	{
 		ID:              "minimum-window-substring",
 		Number:          76,
-		Order:           5,
+		Order:           8,
 		Title:           "Minimum Window Substring",
 		Slug:            "minimum-window-substring",
 		Difficulty:      "Hard",
 		Category:        "sliding-window",
-		Tags:            []string{"Hash Table", "String", "Sliding Window"},
+		Tags:            []string{"Hash Table", "String", "Sliding Window", "Google", "Google L5", "Google Onsite"},
 		RelatedChapters: []int{4, 2},
 		Description: `Given strings s and t, return the shortest substring of s that contains every character of t, counting duplicates (if t has two a's, the substring needs at least two a's). Characters are case-sensitive: "a" and "A" are different.
 
@@ -584,7 +955,7 @@ def minWindow(s, t):
 	{
 		ID:              "sliding-window-maximum",
 		Number:          239,
-		Order:           6,
+		Order:           9,
 		Title:           "Sliding Window Maximum",
 		Slug:            "sliding-window-maximum",
 		Difficulty:      "Hard",
@@ -638,7 +1009,7 @@ def maxSlidingWindow(nums, k):
         if right >= k - 1:
             result.append(nums[candidates[0]])
     return result`,
-			Explanation: "This is a fixed-size window like Permutation in String, but the window state is harder: a maximum can't be updated by 'add the new, subtract the old' because when the maximum leaves you don't know the next largest. The fix is a monotonic deque: a double-ended queue of indices whose values strictly decrease from front to back. New elements knock out every smaller element at the back (those can never be a maximum again), and the front falls off when it slides out of the window. The front is always the current maximum. Chapter 5 teaches the same idea for stacks (Daily Temperatures); a deque adds the ability to expire old items from the front.",
+			Explanation: "This is a fixed-size window like Permutation in String, but the window state is harder: a maximum can't be updated by 'add the new, subtract the old' because when the maximum leaves you don't know the next largest. The fix is a monotonic deque: a double-ended queue of indices whose values strictly decrease from front to back. New elements knock out every smaller element at the back (those can never be a maximum again), and the front falls off when it slides out of the window. The front is always the current maximum. Chapter 5 teaches the same idea for stacks (Daily Temperatures); a deque adds the ability to expire old items from the front, exactly as Design Hit Counter expired old hits.",
 			BruteForce:  "Compute max(nums[i:i+k]) for every window: (n - k + 1) windows of k elements, O(n*k), about 5 * 10^9 operations for n = 10^5 and k = 5 * 10^4. The waste: consecutive windows share k - 1 elements, but each max is computed from scratch.",
 			KeyInsight:  "If j < i and nums[j] <= nums[i], then j can never be the maximum of a window that contains i, and every future window that contains j also contains i (j leaves first). So j can be discarded forever. What remains is a decreasing sequence, and its first element is the maximum.",
 			WhyItWorks:  "Invariant after each step: the deque holds, in increasing index order, exactly the indices in the current window that have no element >= them to their right inside the window, and their values strictly decrease from front to back. Popping smaller-or-equal values from the back when right arrives keeps this true (those indices now have nums[right] to their right). Popping the front when its index is right - k removes the one index that just left the window; only the front can be that old, because indices are in increasing order. The window's maximum has nothing >= it to its right (taking the rightmost copy of the maximum), so it is in the deque, and since values decrease, it is at the front. Each index is appended once and popped at most once, so the total work is O(n) and the deque never holds more than k indices.",

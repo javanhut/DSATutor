@@ -12,7 +12,7 @@ var TriesProblems = []*Problem{
 		Slug:            "implement-trie-prefix-tree",
 		Difficulty:      "Medium",
 		Category:        "tries",
-		Tags:            []string{"Hash Table", "String", "Design", "Trie"},
+		Tags:            []string{"Hash Table", "String", "Design", "Trie", "Google", "Google L4", "Google Phone Screen"},
 		RelatedChapters: []int{10, 9, 2},
 		Description: `A **trie** (say "try"), or prefix tree, stores a set of words as a tree of letters: each edge is one letter, and words that start the same way share the same path from the root. It answers "is this word stored?" and "does any stored word start with this prefix?" in time proportional to the length of the query.
 
@@ -242,7 +242,7 @@ class WordDictionary:
 		Slug:            "word-search-ii",
 		Difficulty:      "Hard",
 		Category:        "tries",
-		Tags:            []string{"Array", "String", "Backtracking", "Trie", "Matrix"},
+		Tags:            []string{"Array", "String", "Backtracking", "Trie", "Matrix", "Google", "Google L5", "Google Onsite"},
 		RelatedChapters: []int{10, 12, 8},
 		Description: `You are given an ` + "`m x n`" + ` grid of lowercase letters ` + "`board`" + ` and a list of distinct ` + "`words`" + `. Return every word from the list that can be traced on the board.
 

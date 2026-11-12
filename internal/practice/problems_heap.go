@@ -3,6 +3,16 @@ package practice
 // HeapProblems contains all heap-priority-queue category problems, in ladder
 // order. The subgoal labels (build the heap, push the new item, trim to size
 // k, read the top) are the ones chapter 11 teaches.
+//
+// Ladder: 1 Last Stone Weight (max-heap by negation) -> 2 Kth Largest in a
+// Stream (size-k min-heap) -> 3 Minimum Cost to Connect Sticks (pop two, push
+// the sum: greedy min-heap) -> 4 K Closest Points (tuple keys, size-k max-heap)
+// -> 5 Top K Frequent Words (two-part key with an alphabetical tie-break) ->
+// 6 Task Scheduler (heap plus a cooling queue) -> 7 Design Twitter (k-way
+// merge of sorted lists) -> 8 Find K Pairs with Smallest Sums (k-way merge over
+// implicit rows) -> 9 Find Median from Data Stream (two balanced heaps) ->
+// 10 Meeting Rooms III (free and busy heaps, delayed starts) -> 11 The Skyline
+// Problem (sweep with a max-heap and lazy deletion).
 var HeapProblems = []*Problem{
 	{
 		ID:              "last-stone-weight",
@@ -193,9 +203,101 @@ class KthLargest:
 		},
 	},
 	{
+		ID:              "minimum-cost-to-connect-sticks",
+		Number:          1167,
+		Order:           3,
+		Title:           "Minimum Cost to Connect Sticks",
+		Slug:            "minimum-cost-to-connect-sticks",
+		Difficulty:      "Medium",
+		Category:        "heap-priority-queue",
+		Tags:            []string{"Array", "Greedy", "Heap (Priority Queue)", "Google", "Google L4", "Google Phone Screen"},
+		RelatedChapters: []int{11, 17},
+		Description: `You have some sticks with positive integer lengths; ` + "`sticks[i]`" + ` is the length of stick ` + "`i`" + `.
+
+You may join any two sticks of lengths ` + "`x`" + ` and ` + "`y`" + ` into one stick of length ` + "`x + y`" + `. Each join **costs** ` + "`x + y`" + `, the length of the new stick. The new stick can be joined again later, like any other.
+
+Keep joining until exactly one stick is left. Return the **minimum total cost** of all the joins. If you start with a single stick, no join is needed and the cost is ` + "`0`" + `.`,
+		Constraints: []string{
+			"1 <= sticks.length <= 10^4",
+			"1 <= sticks[i] <= 10^4",
+		},
+		Examples: []Example{
+			{Input: "sticks = [2,4,3]", Output: "14", Explanation: "Join 2 and 3 for a cost of 5; the sticks are now [5,4]. Join 5 and 4 for a cost of 9; one stick of length 9 is left. Total 5 + 9 = 14. Joining 4 and 3 first would cost 7 + 9 = 16."},
+			{Input: "sticks = [1,8,3,5]", Output: "30", Explanation: "Join 1 and 3 (cost 4), then 4 and 5 (cost 9), then 9 and 8 (cost 17): 4 + 9 + 17 = 30."},
+			{Input: "sticks = [5]", Output: "0", Explanation: "There is already only one stick."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"sticks": []int{2, 4, 3}}, Expected: 14, Hidden: false, Note: "the example: join 2 and 3 first"},
+			{Input: map[string]interface{}{"sticks": []int{1, 8, 3, 5}}, Expected: 30, Hidden: false, Note: "the joined stick keeps being the shortest"},
+			{Input: map[string]interface{}{"sticks": []int{5}}, Expected: 0, Hidden: false, Note: "a single stick costs nothing"},
+			{Input: map[string]interface{}{"sticks": []int{3, 3}}, Expected: 6, Hidden: true, Note: "two sticks: exactly one join"},
+			{Input: map[string]interface{}{"sticks": []int{1, 1, 1, 1}}, Expected: 8, Hidden: true, Note: "all equal: pair them up (2 + 2), then join the pairs (4)"},
+			{Input: map[string]interface{}{"sticks": []int{4, 4, 6, 6}}, Expected: 40, Hidden: true, Note: "sorting once and chaining left to right gives 42; the joined 8 must wait while 6 and 6 join"},
+			{Input: map[string]interface{}{"sticks": []int{10, 1, 2}}, Expected: 16, Hidden: true, Note: "joining the longest sticks first gives 25"},
+			{Input: map[string]interface{}{"sticks": []int{10000, 10000, 10000}}, Expected: 50000, Hidden: true, Note: "maximum lengths"},
+		},
+		TimeComplexity:  "O(n log n)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def connectSticks(sticks):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "A stick that is joined early becomes part of every later stick it ends up in, so its length is paid again and again. Which sticks would you rather pay for many times, and which only once?"},
+			{Level: 2, Type: "insight", Content: "Always join the two shortest sticks currently in the pile. A min-heap gives you them in O(log n): pop two, add their sum to the cost, push the sum back. It is Last Stone Weight with a min-heap instead of a max-heap, and the new stick is a sum instead of a difference.", ChapterRef: 11},
+			{Level: 3, Type: "plan", Content: "1. Build the heap: heapify all the stick lengths into a min-heap.\n2. Read the top: while more than one stick is left, pop the two shortest.\n3. Pay for the join: add their sum to the total.\n4. Push the new item: push the sum back into the heap.\n5. Return the total (0 if there was only one stick)."},
+			{Level: 4, Type: "skeleton", Content: "import heapq\n\ndef connectSticks(sticks):\n    heap = list(sticks)\n    heapq.heapify(heap)\n    total = 0\n    while ____:\n        first = heapq.heappop(heap)\n        second = heapq.heappop(heap)\n        joined = ____\n        total += ____\n        heapq.heappush(heap, ____)\n    return total"},
+		},
+		Solution: Solution{
+			Code: `import heapq
+
+
+def connectSticks(sticks):
+    heap = list(sticks)                    # build the heap (min-heap)
+    heapq.heapify(heap)
+    total = 0
+    while len(heap) > 1:
+        first = heapq.heappop(heap)        # read the top: the two shortest
+        second = heapq.heappop(heap)
+        joined = first + second
+        total += joined                    # pay for this join
+        heapq.heappush(heap, joined)       # push the new item
+    return total`,
+			Explanation: "Builds on Last Stone Weight (problem 1): pop the top two, combine them, push the result back, repeat until one is left. Two things change: we want the two *shortest* sticks, so Python's min-heap is used as-is with no negation, and every join adds to a running cost. The new idea is the greedy argument for why the two shortest is always the right pair.",
+			BruteForce:  "Try every possible pair to join at every step and recurse on the resulting pile, keeping the cheapest total. With n sticks there are about n^2/2 choices at the first step, (n-1)^2/2 at the next and so on, so the search grows faster than n!. The waste: most of those orders join long sticks early, which makes their length be paid again in every later join; one fixed rule picks a best pair every time.",
+			KeyInsight:  "Each stick's length is paid once for every join it takes part in, directly or inside a bigger stick. To keep the total small, the longest sticks should take part in the fewest joins, so the two shortest sticks are always the ones to join now. A min-heap hands them out in O(log n).",
+			WhyItWorks:  "Draw the joins as a tree: original sticks are leaves, and each join is a parent whose length is the sum of its children. A stick at depth d is paid d times, so the total cost is the sum of length * depth over the leaves. In some optimal tree the two shortest sticks are siblings at the deepest level: if a longer stick sat deeper than a shorter one, swapping them would not raise the cost. So joining the two shortest first is safe, and what remains is the same problem with one fewer stick (the joined stick replaces the two). Repeating this argument at every step shows the greedy total is optimal. This is the Huffman coding argument.",
+			CommonMistakes: []string{
+				"Sorting once and then joining left to right, always adding the next stick to the growing stick. On [4, 4, 6, 6] that pays 8 + 14 + 20 = 42 instead of 8 + 12 + 20 = 40: the joined stick may no longer be among the two shortest. Push it back into a heap so it competes with the rest.",
+				"Using negation out of habit from Last Stone Weight. That pops the two longest sticks, which is the worst choice ([10, 1, 2] costs 25 instead of 16). Here we want the smallest, which is Python's default.",
+				"Forgetting to push the joined stick back, or returning the length of the last stick instead of the running total. The cost is the sum of every join, not the final length.",
+			},
+			TimeComplexity:  "O(n log n): n - 1 joins, each with two pops and one push",
+			SpaceComplexity: "O(n) for the heap",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Build the heap", Explanation: "Copy the lengths (so the caller's list is untouched) and heapify in O(n). The shortest stick is now on top.", CodeSnippet: "heap = list(sticks)\nheapq.heapify(heap)", LineStart: 5, LineEnd: 6},
+				{Title: "Read the top", Explanation: "Pop twice to get the two shortest sticks in the pile, which may include sticks we made earlier.", CodeSnippet: "first = heapq.heappop(heap)\nsecond = heapq.heappop(heap)", LineStart: 9, LineEnd: 10},
+				{Title: "Pay for the join", Explanation: "The join costs the length of the new stick.", CodeSnippet: "joined = first + second\ntotal += joined", LineStart: 11, LineEnd: 12},
+				{Title: "Push the new item", Explanation: "The joined stick goes back into the pile and competes with the others for the next join.", CodeSnippet: "heapq.heappush(heap, joined)", LineStart: 13, LineEnd: 13},
+			},
+			Alternatives: []AltSolution{
+				{Name: "Re-sort every round", Code: `def connectSticks(sticks):
+    pile = list(sticks)
+    total = 0
+    while len(pile) > 1:
+        pile.sort()                        # find the two shortest by sorting again
+        joined = pile[0] + pile[1]
+        total += joined
+        pile = pile[2:] + [joined]
+    return total`, TimeComplexity: "O(n^2 log n)", SpaceComplexity: "O(n)", Explanation: "The same greedy, but it re-sorts the whole pile before every join just to find the two shortest. Each round costs O(n log n), and there are n - 1 rounds; the heap gets the same two sticks in O(log n)."},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "Why does a stick joined early cost more overall than one joined late?", Answer: "Its length becomes part of the new stick, and that stick's length is paid again at every later join it is part of. A stick at depth d in the join tree is paid d times. Long sticks should therefore be joined as late as possible, which is exactly what joining the two shortest first does."},
+			{Prompt: "If the sticks were already sorted, could you avoid the heap?", Answer: "Yes. Keep the sorted sticks in one queue and the joined sticks in a second queue. Joined sticks come out in non-decreasing order, so the second queue stays sorted too. The two shortest are always among the fronts of the two queues, giving O(n) after the sort. This is the classic two-queue Huffman construction."},
+		},
+	},
+	{
 		ID:              "k-closest-points-to-origin",
 		Number:          973,
-		Order:           3,
+		Order:           4,
 		Title:           "K Closest Points to Origin",
 		Slug:            "k-closest-points-to-origin",
 		Difficulty:      "Medium",
@@ -273,14 +375,125 @@ def kClosest(points, k):
 		},
 	},
 	{
+		ID:              "top-k-frequent-words",
+		Number:          692,
+		Order:           5,
+		Title:           "Top K Frequent Words",
+		Slug:            "top-k-frequent-words",
+		Difficulty:      "Medium",
+		Category:        "heap-priority-queue",
+		Tags:            []string{"Array", "Hash Table", "String", "Sorting", "Heap (Priority Queue)", "Counting", "Google", "Google L3", "Google Phone Screen"},
+		RelatedChapters: []int{11, 2},
+		Description: `You are given a list of lowercase ` + "`words`" + ` (the same word may appear many times) and an integer ` + "`k`" + `. Return the ` + "`k`" + ` words that appear most often.
+
+The order of the answer matters: sort it from the **most frequent** word to the least frequent. When two words appear the same number of times, the one that comes first in **alphabetical (dictionary) order** goes first, and the same rule decides which word makes the cut when several words tie for the last place.`,
+		Constraints: []string{
+			"1 <= words.length <= 500",
+			"1 <= words[i].length <= 10",
+			"words[i] consists of lowercase English letters",
+			"1 <= k <= the number of distinct words",
+		},
+		Examples: []Example{
+			{Input: `words = ["red","blue","red","green","blue","red"], k = 2`, Output: `["red","blue"]`, Explanation: "red appears 3 times, blue 2 times and green once. The two most frequent are red, then blue."},
+			{Input: `words = ["go","run","go","fly","run","go","sky","fly","run"], k = 3`, Output: `["go","run","fly"]`, Explanation: "go and run both appear 3 times, so they are ordered alphabetically: go before run. fly (2 times) is third; sky (once) doesn't make the cut."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"words": []string{"red", "blue", "red", "green", "blue", "red"}, "k": 2}, Expected: []string{"red", "blue"}, Hidden: false, Note: "the example: distinct counts"},
+			{Input: map[string]interface{}{"words": []string{"go", "run", "go", "fly", "run", "go", "sky", "fly", "run"}, "k": 3}, Expected: []string{"go", "run", "fly"}, Hidden: false, Note: "a tie in count is broken alphabetically"},
+			{Input: map[string]interface{}{"words": []string{"b", "a", "c"}, "k": 3}, Expected: []string{"a", "b", "c"}, Hidden: true, Note: "every word once: purely alphabetical"},
+			{Input: map[string]interface{}{"words": []string{"solo"}, "k": 1}, Expected: []string{"solo"}, Hidden: true, Note: "a single word"},
+			{Input: map[string]interface{}{"words": []string{"cat", "bat", "cat", "bat", "ant", "ant", "dog"}, "k": 2}, Expected: []string{"ant", "bat"}, Hidden: true, Note: "three words tie at the cut: the alphabetically first two win, not cat"},
+			{Input: map[string]interface{}{"words": []string{"app", "apple", "app", "apple", "ap"}, "k": 2}, Expected: []string{"app", "apple"}, Hidden: true, Note: "a prefix sorts before the longer word"},
+			{Input: map[string]interface{}{"words": []string{"x", "y", "y", "z", "z", "z"}, "k": 1}, Expected: []string{"z"}, Hidden: true, Note: "the alphabetically last word can still be the most frequent"},
+			{Input: map[string]interface{}{"words": []string{"m", "n", "n", "m", "o", "o", "o", "p"}, "k": 4}, Expected: []string{"o", "m", "n", "p"}, Hidden: true, Note: "k equals the number of distinct words: the whole ranking"},
+		},
+		TimeComplexity:  "O(n + k log u) for u distinct words",
+		SpaceComplexity: "O(u)",
+		StarterCode:     "def topKFrequent(words, k):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "In K Closest Points every heap entry was a tuple with one key in front. Here the ranking has two rules: count first, then alphabetical order. How could a single tuple encode both rules so that the heap's 'smallest' entry is exactly the word that should come first?"},
+			{Level: 2, Type: "insight", Content: "Count the words with a Counter, then put (-count, word) tuples in a heap. Python compares tuples left to right: the negated count makes higher counts smaller, and when counts tie the word itself breaks the tie alphabetically, which is just what we want. Popping k times reads the answer in the required order.", ChapterRef: 11},
+			{Level: 3, Type: "plan", Content: "1. Count the words: build a word -> count map.\n2. Build the heap: one (-count, word) entry per distinct word, then heapify.\n3. Read the top k times: each pop is the next word in the answer, already in the right order.\n4. Return the k words."},
+			{Level: 4, Type: "skeleton", Content: "import heapq\nfrom collections import Counter\n\ndef topKFrequent(words, k):\n    counts = Counter(words)\n    heap = [____ for word, count in counts.items()]\n    heapq.heapify(heap)\n    result = []\n    for _ in range(k):\n        _, word = ____\n        result.append(word)\n    return result"},
+		},
+		Solution: Solution{
+			Code: `import heapq
+from collections import Counter
+
+
+def topKFrequent(words, k):
+    counts = Counter(words)                       # count the words
+    heap = [(-count, word) for word, count in counts.items()]
+    heapq.heapify(heap)                           # build the heap
+    result = []
+    for _ in range(k):
+        _, word = heapq.heappop(heap)             # read the top: most frequent, then a-z
+        result.append(word)
+    return result`,
+			Explanation: "Builds on K Closest Points (problem 4), where heap entries were tuples ordered by their first element. The new twist is a two-part key: (-count, word). The negated count puts the most frequent word on top, and the word itself breaks ties alphabetically because Python compares tuples element by element. Because the tie-break is part of the answer, we heapify every distinct word and pop k times, which returns the words already in the required order.",
+			BruteForce:  "For each distinct word, count its occurrences by scanning the whole list, then sort the distinct words by (count descending, word ascending) and take the first k. Counting this way is O(u * n) for u distinct words: every scan re-reads words it has already counted. A hash map counts everything in one pass, and a heap avoids ordering all u words when only k are needed.",
+			KeyInsight:  "A tuple key can encode a whole ranking: (-count, word) is smaller exactly when the word ranks higher (more frequent, or equally frequent and alphabetically earlier). So a plain min-heap of these tuples hands out the answer in order, one pop per word.",
+			WhyItWorks:  "After heapify, the heap property holds: every entry is <= its children, so the top is the smallest tuple. Tuple order compares -count first, so a larger count always wins; only when counts are equal does it compare the words, and the alphabetically earlier word is smaller. So the smallest tuple is exactly the highest-ranked word. Popping removes it and restores the heap property, so the next pop is the highest-ranked of the rest. After k pops we have the top k in ranking order, and every word that tied at the cut was decided by the same alphabetical rule.",
+			CommonMistakes: []string{
+				"Breaking count ties the wrong way, e.g. heapq.nlargest(k, counts.items(), key=lambda p: (p[1], p[0])), which puts the alphabetically *later* word first among equal counts. Test: cat, bat and ant all appear twice and k = 2; the answer is [ant, bat]. Use (-count, word) with a min-heap or sort.",
+				"Keeping a size-k min-heap of (count, word) like Kth Largest. Its eviction rule is wrong for ties: with equal counts it evicts the alphabetically *first* word, which is the one you want to keep. A size-k heap needs 'reverse alphabetical' as the tie-break, which a plain tuple can't express (see the Entry class alternative).",
+				"Returning the heap list itself, or the k entries in heap order. A heap is only partially ordered; pop the entries one by one (or sort) to get the required order.",
+			},
+			TimeComplexity:  "O(n + k log u): O(n) to count, O(u) to heapify the u distinct words, and k pops",
+			SpaceComplexity: "O(u) for the counts and the heap",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Count the words", Explanation: "One pass over the words gives each distinct word's count.", CodeSnippet: "counts = Counter(words)", LineStart: 6, LineEnd: 6},
+				{Title: "Build the heap", Explanation: "One (-count, word) tuple per distinct word. The negated count makes the most frequent word smallest; equal counts fall back to comparing words alphabetically.", CodeSnippet: "heap = [(-count, word) for word, count in counts.items()]\nheapq.heapify(heap)", LineStart: 7, LineEnd: 8},
+				{Title: "Read the top", Explanation: "Each pop is the highest-ranked word still in the heap, so the answer is built in the required order.", CodeSnippet: "for _ in range(k):\n    _, word = heapq.heappop(heap)\n    result.append(word)", LineStart: 10, LineEnd: 12},
+			},
+			Alternatives: []AltSolution{
+				{Name: "Sort every distinct word", Code: `from collections import Counter
+
+
+def topKFrequent(words, k):
+    counts = Counter(words)
+    ranked = sorted(counts, key=lambda word: (-counts[word], word))
+    return ranked[:k]`, TimeComplexity: "O(n + u log u)", SpaceComplexity: "O(u)", Explanation: "Sort all distinct words by the same two-part key and slice. Simplest to write and fine for small inputs, but it orders all u words when only k are needed."},
+				{Name: "Size-k heap with a custom order", Code: `import heapq
+from collections import Counter
+
+
+class Entry:
+    def __init__(self, count, word):
+        self.count, self.word = count, word
+
+    def __lt__(self, other):              # 'less' means 'ranks lower'
+        if self.count != other.count:
+            return self.count < other.count
+        return self.word > other.word     # later in a-z ranks lower
+
+
+def topKFrequent(words, k):
+    heap = []
+    for word, count in Counter(words).items():
+        heapq.heappush(heap, Entry(count, word))
+        if len(heap) > k:                 # trim to size k: drop the lowest-ranked
+            heapq.heappop(heap)
+    result = []
+    while heap:
+        result.append(heapq.heappop(heap).word)
+    return result[::-1]                   # popped lowest first, so reverse`, TimeComplexity: "O(n + u log k)", SpaceComplexity: "O(u)", Explanation: "The Kth Largest pattern: keep only the k best, with the worst on top to evict. The worst word has the fewest uses or, on a tie, comes later alphabetically. Strings can't be negated, so a small class defines that order with __lt__. Popping yields the kept words from worst to best, so the list is reversed at the end."},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "Why can't you simply use (count, word) in a size-k min-heap, as in Kth Largest?", Answer: "The top of a size-k heap must be the entry to evict: the lowest-ranked one. With (count, word), equal counts compare words alphabetically, so the alphabetically *first* word sits on top and gets evicted, but that is the one that should be kept. You need the opposite order for the word part, and strings can't be negated, so you either heapify everything with (-count, word) or define a custom comparison."},
+			{Prompt: "What changes if ties should be broken by first appearance in the list instead of alphabetically?", Answer: "Replace the word in the key with the index where it first appears: (-count, first_index, word). The smaller index ranks higher, and the rest of the algorithm is unchanged. Counting the first index is one extra dictionary filled during the counting pass."},
+		},
+	},
+	{
 		ID:              "task-scheduler",
 		Number:          621,
-		Order:           4,
+		Order:           6,
 		Title:           "Task Scheduler",
 		Slug:            "task-scheduler",
 		Difficulty:      "Medium",
 		Category:        "heap-priority-queue",
-		Tags:            []string{"Array", "Hash Table", "Greedy", "Heap (Priority Queue)", "Counting"},
+		Tags:            []string{"Array", "Hash Table", "Greedy", "Heap (Priority Queue)", "Counting", "Google", "Google L4", "Google Phone Screen"},
 		RelatedChapters: []int{11, 2, 17},
 		Description: `A CPU must run a list of ` + "`tasks`" + `, each named by a capital letter A-Z; the same letter may appear many times. Time is split into equal intervals, and in each interval the CPU either runs one task or sits idle.
 
@@ -390,7 +603,7 @@ def leastInterval(tasks, n):
 	{
 		ID:              "design-twitter",
 		Number:          355,
-		Order:           5,
+		Order:           7,
 		Title:           "Design Twitter",
 		Slug:            "design-twitter",
 		Difficulty:      "Medium",
@@ -472,7 +685,7 @@ class Twitter:
 
     def unfollow(self, followerId: int, followeeId: int) -> None:
         self.following[followerId].discard(followeeId)`,
-			Explanation: "Builds on K Closest Points (problem 3), where heap entries were tuples ordered by a key. Here the key is a negated timestamp (max-heap: newest first), and each entry also remembers which user's list it came from and where, so after popping it we can push the next tweet from the same list. That is the k-way merge from chapter 7's Merge K Sorted Lists, stopped after 10 items.",
+			Explanation: "Builds on K Closest Points (problem 4), where heap entries were tuples ordered by a key. Here the key is a negated timestamp (max-heap: newest first), and each entry also remembers which user's list it came from and where, so after popping it we can push the next tweet from the same list. That is the k-way merge from chapter 7's Merge K Sorted Lists, stopped after 10 items.",
 			BruteForce:  "Keep one global list of every tweet; for a feed, scan it from newest to oldest and keep tweets whose author is visible, stopping at 10. That's O(T) per feed in the worst case (T = all tweets ever), e.g. when the user follows nobody active. Another brute force gathers all tweets of all followees and sorts them. The waste: it reads tweets that can never be in the top 10.",
 			KeyInsight:  "Each user's tweets are already sorted by time. The newest tweet overall must be the newest of some user, so a heap holding one 'frontier' tweet per user always has the next answer on top; after popping it, only that user's frontier moves.",
 			WhyItWorks:  "Invariant: during the merge, for every visible user with unread tweets, the heap holds exactly one entry: their newest tweet not yet put in the feed. The overall newest unread tweet is the newest of some user's unread tweets, so it is the heap's top (largest time, i.e. smallest -time). After popping it, pushing that user's next older tweet restores the invariant. So the feed comes out in exact newest-first order. Time stamps come from a global counter, so they are unique and ties never need a tie-breaker. Cost: building the heap is O(f), and 10 pops and pushes are O(log f) each.",
@@ -522,14 +735,124 @@ class Twitter:
 		},
 	},
 	{
+		ID:              "find-k-pairs-with-smallest-sums",
+		Number:          373,
+		Order:           8,
+		Title:           "Find K Pairs with Smallest Sums",
+		Slug:            "find-k-pairs-with-smallest-sums",
+		Difficulty:      "Medium",
+		Category:        "heap-priority-queue",
+		Tags:            []string{"Array", "Heap (Priority Queue)", "Google", "Google L4", "Google Phone Screen"},
+		RelatedChapters: []int{11, 7},
+		Description: `You are given two integer arrays ` + "`nums1`" + ` and ` + "`nums2`" + `, each sorted in non-decreasing order, and an integer ` + "`k`" + `.
+
+A **pair** ` + "`[u, v]`" + ` takes one value ` + "`u`" + ` from ` + "`nums1`" + ` and one value ` + "`v`" + ` from ` + "`nums2`" + `. Pairs are formed from positions, so if a value appears twice in an array, it can form two different pairs with the same partner.
+
+Return the ` + "`k`" + ` pairs with the **smallest sums** ` + "`u + v`" + `. Return the pairs in **any order**. When several pairs tie for the last place, any of them may be chosen, as long as the sums you return are the ` + "`k`" + ` smallest.`,
+		Constraints: []string{
+			"1 <= nums1.length, nums2.length <= 10^5",
+			"-10^9 <= nums1[i], nums2[i] <= 10^9",
+			"nums1 and nums2 are sorted in non-decreasing order",
+			"1 <= k <= 10^4 and k <= nums1.length * nums2.length",
+		},
+		Examples: []Example{
+			{Input: "nums1 = [1,3,9], nums2 = [2,5,8], k = 3", Output: "[[1,2],[3,2],[1,5]]", Explanation: "The sums of all nine pairs are 3, 6, 9 (with u = 1), 5, 8, 11 (u = 3) and 11, 14, 17 (u = 9). The three smallest are 3, 5 and 6."},
+			{Input: "nums1 = [1,1,2], nums2 = [1,2,3], k = 2", Output: "[[1,1],[1,1]]", Explanation: "Both 1s in nums1 pair with nums2[0] = 1 for a sum of 2. They come from different positions, so the pair appears twice."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"nums1": []int{1, 3, 9}, "nums2": []int{2, 5, 8}, "k": 3}, Expected: [][]int{{1, 2}, {3, 2}, {1, 5}}, Hidden: false, Note: "the example: the answer moves along both arrays"},
+			{Input: map[string]interface{}{"nums1": []int{1, 1, 2}, "nums2": []int{1, 2, 3}, "k": 2}, Expected: [][]int{{1, 1}, {1, 1}}, Hidden: false, Note: "duplicate values form separate pairs"},
+			{Input: map[string]interface{}{"nums1": []int{1, 2}, "nums2": []int{3}, "k": 2}, Expected: [][]int{{1, 3}, {2, 3}}, Hidden: true, Note: "k is every possible pair"},
+			{Input: map[string]interface{}{"nums1": []int{5}, "nums2": []int{5}, "k": 1}, Expected: [][]int{{5, 5}}, Hidden: true, Note: "one value in each array"},
+			{Input: map[string]interface{}{"nums1": []int{-10, -4, 0}, "nums2": []int{-3, 5, 6}, "k": 4}, Expected: [][]int{{-10, -3}, {-4, -3}, {-10, 5}, {-10, 6}}, Hidden: true, Note: "negative values"},
+			{Input: map[string]interface{}{"nums1": []int{1, 2, 3}, "nums2": []int{1, 100, 200}, "k": 3}, Expected: [][]int{{1, 1}, {2, 1}, {3, 1}}, Hidden: true, Note: "walking only along nums2 with u = nums1[0] fails here"},
+			{Input: map[string]interface{}{"nums1": []int{1, 100}, "nums2": []int{1, 2, 3}, "k": 3}, Expected: [][]int{{1, 1}, {1, 2}, {1, 3}}, Hidden: true, Note: "walking only along nums1 with v = nums2[0] fails here"},
+			{Input: map[string]interface{}{"nums1": []int{1, 2, 3}, "nums2": []int{1, 2, 3}, "k": 6}, Expected: [][]int{{1, 1}, {1, 2}, {2, 1}, {1, 3}, {2, 2}, {3, 1}}, Hidden: true, Note: "pushing both neighbours without a visited set returns [2,2] twice"},
+		},
+		TimeComplexity:  "O(k log k)",
+		SpaceComplexity: "O(k)",
+		StarterCode:     "def kSmallestPairs(nums1, nums2, k):\n    # Write your solution here\n    pass",
+		Harness: Harness{
+			Validator: `def check(raw, args, result, expected):
+    from collections import Counter
+    nums1, nums2, k = raw["nums1"], raw["nums2"], raw["k"]
+    if not isinstance(result, list) or len(result) != k:
+        return False, "return exactly k pairs"
+    have1, have2 = Counter(nums1), Counter(nums2)
+    used = Counter()
+    for pair in result:
+        if not isinstance(pair, list) or len(pair) != 2:
+            return False, "each pair must be a list [u, v]"
+        u, v = pair
+        if have1[u] == 0 or have2[v] == 0:
+            return False, str(pair) + " does not take u from nums1 and v from nums2"
+        used[(u, v)] += 1
+        if used[(u, v)] > have1[u] * have2[v]:
+            return False, str(pair) + " appears more times than it can be formed"
+    got = sorted(u + v for u, v in result)
+    want = sorted(u + v for u, v in expected)
+    if got != want:
+        return False, "the sums " + str(got) + " are not the k smallest " + str(want)
+    return True, ""`,
+		},
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "Picture all pairs as a grid: row i uses nums1[i], column j uses nums2[j]. Because both arrays are sorted, each row's sums only grow to the right. Which single pair in each row is the only one that could be the next smallest overall?"},
+			{Level: 2, Type: "insight", Content: "Each row is a sorted list, so this is the k-way merge from Design Twitter: keep one 'frontier' entry per row in a min-heap, keyed by sum. Pop the smallest; it is the next answer. Then push the next pair from the same row, (i, j + 1). Seed the heap with column 0 of the first k rows only: a row beyond k can't contribute, since the k rows above it already have smaller first sums.", ChapterRef: 11},
+			{Level: 3, Type: "plan", Content: "1. Seed the heap: for the first k values of nums1, push (nums1[i] + nums2[0], i, 0).\n2. Pop the smallest sum: append [nums1[i], nums2[j]] to the answer.\n3. Refill from the same row: if j + 1 is in range, push (nums1[i] + nums2[j + 1], i, j + 1).\n4. Stop after k pairs."},
+			{Level: 4, Type: "skeleton", Content: "import heapq\n\ndef kSmallestPairs(nums1, nums2, k):\n    heap = [(____, i, 0) for i, a in enumerate(nums1[:k])]\n    heapq.heapify(heap)\n    result = []\n    while len(result) < k:\n        _, i, j = heapq.heappop(heap)\n        result.append([nums1[i], nums2[j]])\n        if ____:\n            heapq.heappush(heap, (____, i, j + 1))\n    return result"},
+		},
+		Solution: Solution{
+			Code: `import heapq
+
+
+def kSmallestPairs(nums1, nums2, k):
+    # seed the heap: each of the first k rows starts at column 0
+    heap = [(a + nums2[0], i, 0) for i, a in enumerate(nums1[:k])]
+    heapq.heapify(heap)
+    result = []
+    while len(result) < k:
+        _, i, j = heapq.heappop(heap)          # pop the smallest sum
+        result.append([nums1[i], nums2[j]])
+        if j + 1 < len(nums2):                 # refill from the same row
+            heapq.heappush(heap, (nums1[i] + nums2[j + 1], i, j + 1))
+    return result`,
+			Explanation: "Builds on Design Twitter (problem 7), which merged several sorted tweet lists by keeping each list's frontier in a heap and refilling from the list that was popped. Here the sorted lists are implicit: row i is nums1[i] paired with every nums2[j], in increasing sum order. The new twist is that there could be 10^5 rows, but only the first k can ever matter, so the heap is seeded with at most k frontiers.",
+			BruteForce:  "Build all m * n pairs, sort them by sum and return the first k: O(mn log(mn)) time and O(mn) memory. With 10^5 values per array that is 10^10 pairs. The waste: we build and sort every pair, though only k of them, and only pairs near the top-left of the grid, can ever be in the answer.",
+			KeyInsight:  "In row i the sums increase with j, so the smallest unused pair of that row is always its leftmost unused one. The next smallest pair overall is therefore one of the row frontiers, and a min-heap of frontiers finds it in O(log k). Each pop exposes just one new candidate: the next pair in the same row.",
+			WhyItWorks:  "Invariant: for every seeded row i, the heap holds exactly one entry, the leftmost pair of that row not yet returned (unless the row is used up), and every returned pair has a sum <= every pair still unreturned. Any unreturned pair (i, j) has a sum >= its row's frontier, which is >= the heap's top, so popping the top returns a smallest remaining pair. Pushing (i, j + 1) restores the one-per-row invariant. Rows i >= k never matter: rows 0..k-1 each have a first pair whose sum is <= nums1[i] + nums2[0], so they alone already hold k pairs no larger than any pair in a later row. Each pair is pushed at most once (only from its left neighbour), so no pair can be returned twice.",
+			CommonMistakes: []string{
+				"Pushing both neighbours (i + 1, j) and (i, j + 1) after each pop without a visited set. Pair (1, 1) is reached from (0, 1) and from (1, 0), so it is returned twice. Either keep a visited set or, as here, seed the whole first column and only ever move right.",
+				"Walking a single row or column greedily, e.g. pairing nums1[0] with every value of nums2. On nums1 = [1,2,3], nums2 = [1,100,200] the three smallest sums all use nums2[0]. Every row's frontier has to compete in the heap.",
+				"Seeding every row of nums1. It is correct, but with 10^5 rows and k = 1 it does far more work than needed; only the first min(k, len(nums1)) rows can contribute.",
+			},
+			TimeComplexity:  "O(k log k): at most k entries are seeded, and k pops and pushes each cost O(log k)",
+			SpaceComplexity: "O(k) for the heap",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Seed the heap", Explanation: "Each of the first k rows starts at its smallest pair, column 0. Rows after the k-th can never be needed.", CodeSnippet: "heap = [(a + nums2[0], i, 0) for i, a in enumerate(nums1[:k])]\nheapq.heapify(heap)", LineStart: 6, LineEnd: 7},
+				{Title: "Pop the smallest sum", Explanation: "The top is the smallest frontier, and every unused pair is at least its row's frontier, so the top is the next answer.", CodeSnippet: "_, i, j = heapq.heappop(heap)\nresult.append([nums1[i], nums2[j]])", LineStart: 10, LineEnd: 11},
+				{Title: "Refill from the same row", Explanation: "Only row i's frontier moved; its next candidate is one column to the right, if there is one.", CodeSnippet: "if j + 1 < len(nums2):\n    heapq.heappush(heap, (nums1[i] + nums2[j + 1], i, j + 1))", LineStart: 12, LineEnd: 13},
+			},
+			Alternatives: []AltSolution{
+				{Name: "Sort every pair", Code: `def kSmallestPairs(nums1, nums2, k):
+    pairs = [[u, v] for u in nums1 for v in nums2]   # all m * n pairs
+    pairs.sort(key=lambda pair: pair[0] + pair[1])
+    return pairs[:k]`, TimeComplexity: "O(mn log(mn))", SpaceComplexity: "O(mn)", Explanation: "The brute force: build the whole grid of pairs and sort by sum. Easy to trust, and useful to check the heap version on small inputs, but it can't handle arrays of 10^5 values."},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "Why is it safe to seed only the first k rows?", Answer: "The first pair of row i, nums1[i] + nums2[0], is the smallest sum in that row, and nums1 is sorted, so it is >= the first pair of every earlier row. If i >= k, the k rows before it each already have a pair with a sum <= every sum in row i, so k answers can be found without row i (ties can be broken in favour of the earlier rows)."},
+			{Prompt: "How does this relate to finding the k-th smallest element of a sorted matrix?", Answer: "It is the same problem: the grid of sums has rows and columns sorted. Seed the first column, pop k times and refill from the same row; the k-th pop is the k-th smallest. The heap holds at most one entry per row, so it stays O(min(k, rows))."},
+		},
+	},
+	{
 		ID:              "find-median-from-data-stream",
 		Number:          295,
-		Order:           6,
+		Order:           9,
 		Title:           "Find Median from Data Stream",
 		Slug:            "find-median-from-data-stream",
 		Difficulty:      "Hard",
 		Category:        "heap-priority-queue",
-		Tags:            []string{"Two Pointers", "Design", "Sorting", "Heap (Priority Queue)", "Data Stream"},
+		Tags:            []string{"Two Pointers", "Design", "Sorting", "Heap (Priority Queue)", "Data Stream", "Google", "Google L5", "Google Onsite"},
 		RelatedChapters: []int{11, 9},
 		Description: `The **median** of a list of numbers is the middle value once the list is sorted. If the list has an even length, it is the average of the two middle values: the median of [2,3,4] is 3, and of [2,3] it is 2.5.
 
@@ -583,7 +906,7 @@ class MedianFinder:
         if len(self.low) > len(self.high):                # odd count: low's top
             return float(-self.low[0])
         return (-self.low[0] + self.high[0]) / 2          # even count: average of the tops`,
-			Explanation: "The ladder's last rung combines everything so far: a max-heap by negation (Last Stone Weight), a heap whose top is a boundary value (Kth Largest), and two heaps working together. The new idea is keeping two heaps balanced: the max-heap's top and the min-heap's top are the two middle values, so the median is always read from the tops in O(1).",
+			Explanation: "This rung combines the core tools of the ladder so far: a max-heap by negation (Last Stone Weight), a heap whose top is a boundary value (Kth Largest), and two heaps working together. The new idea is keeping two heaps balanced: the max-heap's top and the min-heap's top are the two middle values, so the median is always read from the tops in O(1).",
 			BruteForce:  "Keep all numbers in a list and sort it on every findMedian: O(n log n) per query. Keeping the list sorted with bisect.insort is better but each insert still shifts up to n elements: O(n) per add, around 1.25 * 10^9 element moves for 5 * 10^4 adds in the worst case. The waste: the median only needs the middle, but we maintain the full order of both halves.",
 			KeyInsight:  "We never need the full order, only the boundary between the halves. A max-heap exposes the largest of the lower half and a min-heap the smallest of the upper half, which are exactly the one or two middle values, and each insert costs O(log n).",
 			WhyItWorks:  "Invariant after each addNum: (a) every value in low is <= every value in high, and (b) len(low) == len(high) or len(low) == len(high) + 1. Adding num: push it into low, then move low's maximum m to high. Everything left in low is <= m, since m was the largest; and everything left in low is <= the old contents of high, since it is either an old low value (true by (a)) or num when num < m, and then m was an old low value, so num < m <= old high. So (a) holds. If high is now bigger, moving its minimum back to low keeps (a) (that minimum is >= all of low and <= all of high) and restores (b). With (a) and (b), the sorted list is low's values followed by high's, so the middle value is low's maximum (odd count) and the two middle values are low's maximum and high's minimum (even count).",
@@ -622,6 +945,212 @@ class MedianFinder:
 		SelfCheck: []SelfCheck{
 			{Prompt: "Why route every number through low and then move low's top to high, instead of comparing num with the median first?", Answer: "Routing always works without special cases: after pushing num into low, low's maximum is the only value that could break 'low <= high', and moving it to high fixes that. Comparing with the current median also works, but needs care when a heap is empty and still needs the rebalance step."},
 			{Prompt: "If 99% of the numbers were known to lie in 0..100, how could you make addNum O(1)?", Answer: "Keep a count array for 0..100 plus counts (or small heaps) for the rare outliers below and above. findMedian walks the 101 counters to find the middle position, which is O(1) for a fixed range. This is a classic follow-up; the two-heap answer is the general one."},
+		},
+	},
+	{
+		ID:              "meeting-rooms-iii",
+		Number:          2402,
+		Order:           10,
+		Title:           "Meeting Rooms III",
+		Slug:            "meeting-rooms-iii",
+		Difficulty:      "Hard",
+		Category:        "heap-priority-queue",
+		Tags:            []string{"Array", "Hash Table", "Sorting", "Heap (Priority Queue)", "Simulation", "Google", "Google L5", "Google Phone Screen"},
+		RelatedChapters: []int{11, 18},
+		Description: `An office has ` + "`n`" + ` meeting rooms numbered ` + "`0`" + ` to ` + "`n - 1`" + `. You are given a list of ` + "`meetings`" + `, where ` + "`meetings[i] = [start, end]`" + ` is a meeting that wants the half-open time range ` + "`[start, end)`" + `: it occupies a room from ` + "`start`" + ` up to, but not including, ` + "`end`" + `, so a room whose meeting ends at time 5 is free for a meeting starting at 5. Every ` + "`start`" + ` is different. The list is **not** necessarily sorted.
+
+Rooms are assigned to meetings in order of their **original start times**, using these rules:
+1. A meeting takes the free room with the **lowest number**.
+2. If no room is free, the meeting is **delayed** until a room frees up. It takes the room that becomes free **earliest** (the lowest-numbered one if several free up at the same time), and it keeps its original **duration** ` + "`end - start`" + `.
+3. When rooms free up, waiting meetings are served in order of their original start times.
+
+Return the number of the room that hosted the **most meetings**. If several rooms tie, return the lowest number.`,
+		Constraints: []string{
+			"1 <= n <= 100",
+			"1 <= meetings.length <= 10^5",
+			"meetings[i].length == 2",
+			"0 <= start < end <= 5 * 10^5",
+			"all start values are unique",
+		},
+		Examples: []Example{
+			{Input: "n = 2, meetings = [[0,6],[1,3],[2,5],[4,9]]", Output: "0", Explanation: "[0,6) takes room 0 and [1,3) takes room 1. At time 2 both rooms are busy; room 1 frees first (at 3), so [2,5) is delayed to [3,6) in room 1. At time 4 both rooms are busy until 6; room 0 is the lower number, so [4,9) runs as [6,11) in room 0. Each room hosted 2 meetings; the tie goes to room 0."},
+			{Input: "n = 3, meetings = [[1,20],[2,10],[3,5],[4,9],[6,8]]", Output: "1", Explanation: "Rooms 0, 1, 2 take the first three meetings (ending at 20, 10, 5). [4,9) waits for room 2 and runs as [5,10). [6,8) waits: rooms 1 and 2 both free at 10, so it takes room 1 as [10,12). Counts are [1,2,2], so room 1 wins the tie."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"n": 2, "meetings": [][]int{{0, 6}, {1, 3}, {2, 5}, {4, 9}}}, Expected: 0, Hidden: false, Note: "the example: rooms tie on count, lowest number wins"},
+			{Input: map[string]interface{}{"n": 3, "meetings": [][]int{{1, 20}, {2, 10}, {3, 5}, {4, 9}, {6, 8}}}, Expected: 1, Hidden: false, Note: "delayed meetings; two rooms free at the same time"},
+			{Input: map[string]interface{}{"n": 2, "meetings": [][]int{{9, 12}, {0, 5}, {7, 9}}}, Expected: 0, Hidden: true, Note: "unsorted input: processing in the given order picks room 1"},
+			{Input: map[string]interface{}{"n": 2, "meetings": [][]int{{6, 10}, {7, 9}, {5, 11}, {9, 10}}}, Expected: 0, Hidden: true, Note: "a delayed meeting keeps its duration and does not end at its original end"},
+			{Input: map[string]interface{}{"n": 3, "meetings": [][]int{{3, 6}, {4, 5}, {6, 8}}}, Expected: 0, Hidden: true, Note: "a room ending at 6 is free for a meeting starting at 6"},
+			{Input: map[string]interface{}{"n": 2, "meetings": [][]int{{1, 5}, {3, 4}, {9, 14}}}, Expected: 0, Hidden: true, Note: "lowest free room number, not the room that freed up first"},
+			{Input: map[string]interface{}{"n": 3, "meetings": [][]int{{0, 10}, {1, 10}, {2, 3}, {4, 5}, {6, 7}}}, Expected: 2, Hidden: true, Note: "the highest-numbered room can win"},
+			{Input: map[string]interface{}{"n": 1, "meetings": [][]int{{5, 10}, {0, 3}, {2, 4}}}, Expected: 0, Hidden: true, Note: "a single room hosts everything"},
+			{Input: map[string]interface{}{"n": 2, "meetings": [][]int{{3, 6}, {0, 4}, {1, 2}, {5, 8}, {7, 9}}}, Expected: 1, Hidden: true, Note: "rooms are reused as soon as they free up"},
+		},
+		TimeComplexity:  "O(m log m + m log n)",
+		SpaceComplexity: "O(m + n)",
+		StarterCode:     "def mostBooked(n, meetings):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "When a meeting arrives, you need two different answers quickly: 'which free room has the lowest number?' and, if none is free, 'which busy room frees up first?'. Can one ordering answer both questions?"},
+			{Level: 2, Type: "insight", Content: "Use two heaps. free is a min-heap of room numbers. busy is a min-heap of (end time, room). Process meetings sorted by start. First move every busy room whose end time is <= start into free. If free is non-empty, pop the lowest room. Otherwise pop the top of busy: it frees earliest (lowest number on a tie, thanks to the tuple), and the delayed meeting ends at that time plus its duration.", ChapterRef: 11},
+			{Level: 3, Type: "plan", Content: "1. Set up two heaps: free holds all room numbers; busy starts empty; count is a list of zeros.\n2. Sort the meetings by start.\n3. Release finished rooms: pop every (end, room) from busy with end <= start and push room into free.\n4. Take the lowest free room: if free is non-empty, pop it and push (end, room) into busy.\n5. Delay into the earliest room: otherwise pop (finish, room) from busy and push (finish + duration, room).\n6. Count the meeting for that room; at the end return the lowest room with the highest count."},
+			{Level: 4, Type: "skeleton", Content: "import heapq\n\ndef mostBooked(n, meetings):\n    free = list(range(n))\n    busy = []\n    count = [0] * n\n    for start, end in sorted(meetings):\n        while busy and ____:\n            _, room = heapq.heappop(busy)\n            heapq.heappush(free, room)\n        if free:\n            room = heapq.heappop(free)\n            heapq.heappush(busy, ____)\n        else:\n            finish, room = heapq.heappop(busy)\n            heapq.heappush(busy, ____)\n        count[room] += 1\n    return ____"},
+		},
+		Solution: Solution{
+			Code: `import heapq
+
+
+def mostBooked(n, meetings):
+    free = list(range(n))              # min-heap of free room numbers
+    busy = []                          # min-heap of (end time, room)
+    count = [0] * n
+    for start, end in sorted(meetings):
+        while busy and busy[0][0] <= start:    # release rooms that are done
+            _, room = heapq.heappop(busy)
+            heapq.heappush(free, room)
+        if free:                               # take the lowest free room
+            room = heapq.heappop(free)
+            heapq.heappush(busy, (end, room))
+        else:                                  # delay into the earliest room
+            finish, room = heapq.heappop(busy)
+            heapq.heappush(busy, (finish + end - start, room))
+        count[room] += 1
+    return count.index(max(count))`,
+			Explanation: "Builds on Task Scheduler (problem 6), where a task waited in a cooling queue until a known time and then moved back to the ready heap. Here rooms do the same: they sit in a busy heap keyed by end time and move to a free heap once a meeting starts at or after that time. Like Find Median (problem 9), two heaps work together, but now each answers its own question: free gives the lowest room number, busy gives the room that frees up first.",
+			BruteForce:  "Keep each room's next free time in an array. For every meeting, scan all n rooms for the lowest-numbered free one; if none is free, scan again for the earliest free time. That is O(m log m + m * n), which is fine for n <= 100 but wasteful: each scan re-reads rooms whose state hasn't changed since the last meeting.",
+			KeyInsight:  "The two questions need two orders: free rooms by number, busy rooms by end time (then number). Keeping each set in its own heap makes both questions O(log n), and a room moves between the heaps only when its end time is reached.",
+			WhyItWorks:  "Invariant: just before a meeting is placed, free holds exactly the rooms whose current meeting ends at or before its start, and busy holds the rest with their true end times. Meetings are handled in start order, and delayed meetings only ever start later, so a room released for one start is also free for every later start. If free is non-empty, its top is the lowest free number (rule 1). If it is empty, every room is busy past start; busy's top has the smallest end time, ties broken by room number because the tuple compares the room next (rule 2). A delayed meeting starts at that end time, so it ends at finish + (end - start). Because meetings are processed in start order, a waiting meeting always gets the next room before any later meeting (rule 3).",
+			CommonMistakes: []string{
+				"Using one heap of (free time, room) and always popping its top. When several rooms are already free, that picks the room that freed up earliest, not the lowest-numbered one. Release every finished room into a separate heap ordered by number first.",
+				"Giving a delayed meeting its original end time. It starts when the room frees up, so it ends at finish + (end - start).",
+				"Releasing rooms with end < start instead of end <= start. Meetings are half-open, so a room whose meeting ends at 6 is free for one starting at 6.",
+				"Forgetting to sort the meetings. Rooms must be handed out in order of start time; the input can be in any order.",
+			},
+			TimeComplexity:  "O(m log m + m log n): sorting m meetings, then each room move or assignment is a heap operation on at most n rooms",
+			SpaceComplexity: "O(m + n): the sorted copy of the meetings and the two heaps",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Set up two heaps", Explanation: "list(range(n)) is already sorted, so it is a valid min-heap of free rooms. busy will hold (end time, room).", CodeSnippet: "free = list(range(n))\nbusy = []\ncount = [0] * n", LineStart: 5, LineEnd: 7},
+				{Title: "Release finished rooms", Explanation: "Every room whose meeting ends at or before this start goes back to free. The busy heap gives them in end-time order, so we stop at the first room still in use.", CodeSnippet: "while busy and busy[0][0] <= start:\n    _, room = heapq.heappop(busy)\n    heapq.heappush(free, room)", LineStart: 9, LineEnd: 11},
+				{Title: "Take the lowest free room", Explanation: "The free heap's top is the lowest room number; the meeting holds it until end.", CodeSnippet: "room = heapq.heappop(free)\nheapq.heappush(busy, (end, room))", LineStart: 13, LineEnd: 14},
+				{Title: "Delay into the earliest room", Explanation: "No room is free. The busy top frees first (lowest number on a tie); the meeting starts then and keeps its duration.", CodeSnippet: "finish, room = heapq.heappop(busy)\nheapq.heappush(busy, (finish + end - start, room))", LineStart: 16, LineEnd: 17},
+				{Title: "Read the answer", Explanation: "Count each meeting for its room. list.index returns the first maximum, which is the lowest room number on a tie.", CodeSnippet: "count[room] += 1\nreturn count.index(max(count))", LineStart: 18, LineEnd: 19},
+			},
+			Alternatives: []AltSolution{
+				{Name: "Scan every room", Code: `def mostBooked(n, meetings):
+    free_at = [0] * n                  # when each room is next free
+    count = [0] * n
+    for start, end in sorted(meetings):
+        room = next((r for r in range(n) if free_at[r] <= start), None)
+        if room is None:               # all busy: earliest, lowest number on a tie
+            room = min(range(n), key=lambda r: free_at[r])
+            free_at[room] += end - start
+        else:
+            free_at[room] = end
+        count[room] += 1
+    return count.index(max(count))`, TimeComplexity: "O(m log m + m * n)", SpaceComplexity: "O(m + n)", Explanation: "The brute force: one array of free times, scanned for every meeting. With n <= 100 it is fast enough, and it is a good way to check the heap version, but the heaps make each meeting O(log n) instead of O(n)."},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "Why must every finished room be released before choosing, rather than just checking the top of busy?", Answer: "Several rooms may have finished by this start, and the rule is to take the lowest-numbered of them, not the one that finished first. Only after all finished rooms are in the free heap does its top answer 'lowest free number'. Rooms that finished long ago are already there from earlier releases."},
+			{Prompt: "What changes if a delayed meeting should take the lowest-numbered room among all rooms that become free within the next 5 time units?", Answer: "The busy heap's top alone is no longer enough. You would pop every busy room with end <= top_end + 5 into a temporary list, choose the lowest number among them, and push the others back. The two-heap structure stays; only the delay rule changes."},
+		},
+	},
+	{
+		ID:              "the-skyline-problem",
+		Number:          218,
+		Order:           11,
+		Title:           "The Skyline Problem",
+		Slug:            "the-skyline-problem",
+		Difficulty:      "Hard",
+		Category:        "heap-priority-queue",
+		Tags:            []string{"Array", "Divide and Conquer", "Binary Indexed Tree", "Segment Tree", "Line Sweep", "Heap (Priority Queue)", "Ordered Set", "Google", "Google L5", "Google Onsite"},
+		RelatedChapters: []int{11, 8, 18},
+		Description: `A city is drawn as rectangles standing on flat ground (height 0). Each building is ` + "`buildings[i] = [left, right, height]`" + `: it covers the x-range from ` + "`left`" + ` up to ` + "`right`" + ` (the building's left wall is at ` + "`left`" + `, its right wall at ` + "`right`" + `) and is ` + "`height`" + ` tall. The list is sorted by ` + "`left`" + `.
+
+The **skyline** is the outline you see from far away: at every x, its height is the height of the tallest building covering x, where a building covers x when ` + "`left <= x < right`" + `, or 0 if no building does.
+
+Return the skyline as a list of **key points** ` + "`[x, y]`" + `, sorted by x. A key point marks an x where the skyline's height changes to ` + "`y`" + `, and the height stays ` + "`y`" + ` until the next key point. The last key point is where the rightmost building ends, with ` + "`y = 0`" + `. Two consecutive key points must never have the same height: if the height doesn't change, don't add a point.`,
+		Constraints: []string{
+			"1 <= buildings.length <= 10^4",
+			"0 <= left < right <= 2^31 - 1",
+			"1 <= height <= 2^31 - 1",
+			"buildings is sorted by left in non-decreasing order",
+		},
+		Examples: []Example{
+			{Input: "buildings = [[1,6,5],[2,4,8],[3,9,6],[10,14,4],[12,16,3]]", Output: "[[1,5],[2,8],[4,6],[9,0],[10,4],[14,3],[16,0]]", Explanation: "At 1 the skyline rises to 5. At 2 the 8-tall building takes over. At 4 it ends; the tallest still standing is the 6-tall one (the 5-tall one runs until 6, but it's hidden). At 9 nothing is standing, so the height drops to 0. The second group gives 4 at 10, 3 at 14 when the 4-tall building ends, and 0 at 16."},
+			{Input: "buildings = [[0,3,4],[3,6,4]]", Output: "[[0,4],[6,0]]", Explanation: "The two buildings touch at x = 3 with the same height, so the height never changes there and no key point is added."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"buildings": [][]int{{1, 6, 5}, {2, 4, 8}, {3, 9, 6}, {10, 14, 4}, {12, 16, 3}}}, Expected: [][]int{{1, 5}, {2, 8}, {4, 6}, {9, 0}, {10, 4}, {14, 3}, {16, 0}}, Hidden: false, Note: "the example: overlaps, hidden buildings and a gap"},
+			{Input: map[string]interface{}{"buildings": [][]int{{0, 3, 4}, {3, 6, 4}}}, Expected: [][]int{{0, 4}, {6, 0}}, Hidden: false, Note: "touching buildings of equal height: no point at 3"},
+			{Input: map[string]interface{}{"buildings": [][]int{{1, 5, 3}}}, Expected: [][]int{{1, 3}, {5, 0}}, Hidden: true, Note: "a single building"},
+			{Input: map[string]interface{}{"buildings": [][]int{{1, 10, 8}, {3, 5, 4}}}, Expected: [][]int{{1, 8}, {10, 0}}, Hidden: true, Note: "a shorter building fully hidden inside a taller one"},
+			{Input: map[string]interface{}{"buildings": [][]int{{1, 3, 2}, {5, 7, 4}}}, Expected: [][]int{{1, 2}, {3, 0}, {5, 4}, {7, 0}}, Hidden: true, Note: "a gap drops the skyline to the ground"},
+			{Input: map[string]interface{}{"buildings": [][]int{{1, 6, 4}, {2, 6, 7}}}, Expected: [][]int{{1, 4}, {2, 7}, {6, 0}}, Hidden: true, Note: "two buildings end at the same x: one point, not two"},
+			{Input: map[string]interface{}{"buildings": [][]int{{1, 4, 2}, {1, 3, 5}}}, Expected: [][]int{{1, 5}, {3, 2}, {4, 0}}, Hidden: true, Note: "two buildings start at the same x: only the taller one shows"},
+			{Input: map[string]interface{}{"buildings": [][]int{{1, 3, 5}, {3, 6, 2}}}, Expected: [][]int{{1, 5}, {3, 2}, {6, 0}}, Hidden: true, Note: "right walls are exclusive: at x = 3 only the 2-tall building stands"},
+			{Input: map[string]interface{}{"buildings": [][]int{{0, 2147483647, 2147483647}}}, Expected: [][]int{{0, 2147483647}, {2147483647, 0}}, Hidden: true, Note: "maximum coordinates and height"},
+		},
+		TimeComplexity:  "O(n log n)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def getSkyline(buildings):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "The skyline can only change at an x where some building starts or ends. If you swept from left to right over just those x values, what one number would you need to read at each of them, and what set of buildings would you need to keep to read it?"},
+			{Level: 2, Type: "insight", Content: "Sweep over the sorted wall positions and keep a max-heap of the buildings standing there, as (-height, right). At each x, push every building whose left wall is at or before x. Removing an ended building from the middle of a heap is expensive, so delete lazily: while the top's right <= x, pop it. Ended buildings below the top don't matter until they surface. The top's height is the skyline height at x; record [x, height] only if it differs from the last point.", ChapterRef: 11},
+			{Level: 3, Type: "plan", Content: "1. Collect the critical x's: every left and right wall, sorted and de-duplicated.\n2. Start the heap with a ground entry (height 0, never ends).\n3. Push buildings that start: for each x, push (-height, right) for every building with left <= x not pushed yet.\n4. Drop ended buildings: while the top's right <= x, pop it.\n5. Read the top and record a change: if -top height differs from the last recorded height, append [x, height].\n6. Return the key points."},
+			{Level: 4, Type: "skeleton", Content: "import heapq\n\ndef getSkyline(buildings):\n    xs = sorted({x for left, right, _ in buildings for x in (left, right)})\n    live = [(0, float(\"inf\"))]\n    result = []\n    i = 0\n    for x in xs:\n        while i < len(buildings) and buildings[i][0] <= x:\n            left, right, height = buildings[i]\n            heapq.heappush(live, ____)\n            i += 1\n        while ____:\n            heapq.heappop(live)\n        height = ____\n        if not result or ____:\n            result.append([x, height])\n    return result"},
+		},
+		Solution: Solution{
+			Code: `import heapq
+
+
+def getSkyline(buildings):
+    xs = sorted({x for left, right, _ in buildings for x in (left, right)})
+    live = [(0, float("inf"))]          # max-heap of (-height, right); 0 = ground
+    result = []
+    i = 0
+    for x in xs:
+        while i < len(buildings) and buildings[i][0] <= x:
+            left, right, height = buildings[i]     # push buildings that start here
+            heapq.heappush(live, (-height, right))
+            i += 1
+        while live[0][1] <= x:                     # drop ended buildings lazily
+            heapq.heappop(live)
+        height = -live[0][0]                       # read the top
+        if not result or result[-1][1] != height:  # record only real changes
+            result.append([x, height])
+    return result`,
+			Explanation: "Builds on Meeting Rooms III (problem 10), where rooms left a heap once their end time was reached. Here buildings leave when the sweep passes their right wall, but the heap is ordered by height, not by end, so an ended building can be buried below the top where we can't cheaply reach it. The new idea is lazy deletion (mentioned in Kth Largest's self-check): leave ended buildings in the heap and discard them only when they reach the top, because only the top is ever read.",
+			BruteForce:  "For every critical x (each left or right wall), scan all n buildings to find the tallest one with left <= x < right, and record the height when it changes. That is O(n^2): there are up to 2n critical x's, and each scan re-checks every building, although only the buildings that start or end near x changed since the previous x.",
+			KeyInsight:  "Between two consecutive critical x's the set of standing buildings doesn't change, so the skyline is the maximum of a set that gains a building at each left wall and loses one at each right wall. A max-heap gives that maximum, and lazy deletion lets us remove ended buildings only when they would otherwise be read.",
+			WhyItWorks:  "Invariant: after processing x, every building with left <= x has been pushed, and the heap's top is a building with right > x (or the ground entry, which never ends). Buildings below the top may have ended, but each is at most as tall as the top, which is still standing, so they can't change the maximum until they surface, and at that point the while loop pops them. So -top height is the tallest building with left <= x < right, which is the skyline height at x. The height is constant between consecutive critical x's, so checking only those x's finds every change, and comparing with the last recorded height drops points that don't change it. Each building is pushed and popped at most once, giving O(n log n).",
+			CommonMistakes: []string{
+				"Treating the right wall as part of the building (left <= x <= right). At x = right the building must already be gone: on [[1,3,5],[3,6,2]] the height at 3 is 2, not 5. Pop while right <= x.",
+				"Appending a point at every critical x, even when the height didn't change. Two touching buildings of equal height ([[0,3,4],[3,6,4]]) would produce a spurious [3,4]. Compare with the last recorded height first.",
+				"Handling each wall as a separate event with its own output point. When two buildings start or end at the same x, that yields two points with the same x. Process all buildings at one x before reading the top, as the sorted set of x's does here.",
+				"Trying to remove an ended building from the middle of the heap with list.remove and re-heapify. That is O(n) per removal and O(n^2) overall; lazy deletion keeps it O(log n).",
+			},
+			TimeComplexity:  "O(n log n): sorting up to 2n critical x's, and every building is pushed and popped at most once",
+			SpaceComplexity: "O(n) for the critical x's, the heap and the result",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Collect the critical x's", Explanation: "The skyline can only change where a wall stands. A set removes duplicates, so buildings sharing a wall produce one x.", CodeSnippet: "xs = sorted({x for left, right, _ in buildings for x in (left, right)})", LineStart: 5, LineEnd: 5},
+				{Title: "Push buildings that start", Explanation: "buildings is sorted by left, so a single pointer i adds each building once, as soon as the sweep reaches its left wall. Negate the height for a max-heap and keep right to know when it ends.", CodeSnippet: "while i < len(buildings) and buildings[i][0] <= x:\n    left, right, height = buildings[i]\n    heapq.heappush(live, (-height, right))\n    i += 1", LineStart: 10, LineEnd: 13},
+				{Title: "Drop ended buildings", Explanation: "Lazy deletion: only the top is ever read, so only an ended building on top has to go. The ground entry has right = infinity and is never popped.", CodeSnippet: "while live[0][1] <= x:\n    heapq.heappop(live)", LineStart: 14, LineEnd: 15},
+				{Title: "Read the top and record a change", Explanation: "The top is the tallest standing building. Add a key point only when the height differs from the previous one.", CodeSnippet: "height = -live[0][0]\nif not result or result[-1][1] != height:\n    result.append([x, height])", LineStart: 16, LineEnd: 18},
+			},
+			Alternatives: []AltSolution{
+				{Name: "Scan every building at each x", Code: `def getSkyline(buildings):
+    result = []
+    for x in sorted({x for left, right, _ in buildings for x in (left, right)}):
+        height = max((h for left, right, h in buildings if left <= x < right), default=0)
+        if not result or result[-1][1] != height:
+            result.append([x, height])
+    return result`, TimeComplexity: "O(n^2)", SpaceComplexity: "O(n)", Explanation: "The brute force: at each critical x, take the tallest building covering it directly. It uses the same critical x's and the same 'record only changes' rule, so it is a good check for the heap version, but each x re-scans all n buildings."},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "Why is it safe to leave ended buildings in the heap?", Answer: "We only ever read the top. An ended building below the top is no taller than the top, which is still standing, so it can't affect the maximum. If it later reaches the top, the while loop sees right <= x and pops it before the top is read. Each building is still popped at most once, so the total cost is unchanged."},
+			{Prompt: "What changes if the buildings are not sorted by left?", Answer: "Sort them by left first (O(n log n), which doesn't change the overall bound); the pointer i depends on that order. Alternatively, build an event list of (x, -height, right) for left walls and handle right walls by lazy deletion, sorting the events by x."},
 		},
 	},
 }

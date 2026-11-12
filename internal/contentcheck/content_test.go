@@ -231,13 +231,17 @@ func checkHarness(t *testing.T, p *practice.Problem) {
 		}
 	}
 	// Problems on linked lists and trees must convert their inputs.
+	// ListNode/TreeNode must be whole words: validateBinaryTreeNodes takes
+	// plain lists even though its name contains "TreeNode".
 	starter := strings.ToLower(p.StarterCode)
-	needsTypes := strings.Contains(starter, "listnode") || strings.Contains(starter, "treenode") ||
+	needsTypes := nodeWord.MatchString(p.StarterCode) ||
 		strings.Contains(starter, "(head") || strings.Contains(starter, "(root")
 	if needsTypes && len(h.ParamTypes) == 0 && h.ReturnType == "" && h.Mode != "design" {
 		t.Errorf("starter code uses nodes but Harness has neither ParamTypes nor ReturnType")
 	}
 }
+
+var nodeWord = regexp.MustCompile(`(?i)\b(list|tree)node\b`)
 
 func checkHints(t *testing.T, p *practice.Problem) {
 	if len(p.Hints) != len(hintTypes) {

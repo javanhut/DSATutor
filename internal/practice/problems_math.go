@@ -2,9 +2,9 @@ package practice
 
 // MathProblems contains all math-geometry category problems, in ladder order:
 // digit arithmetic first (Plus One, Happy Number), then matrix index
-// manipulation (Rotate Image, Set Matrix Zeroes, Spiral Matrix), fast power,
-// long multiplication and finally coordinate geometry with counting
-// (Detect Squares). Chapter 19 teaches the subgoals they share.
+// manipulation (Rotate Image, Set Matrix Zeroes, Game of Life, Spiral
+// Matrix), fast power, long multiplication and finally coordinate geometry
+// with counting (Detect Squares). Chapter 19 teaches the subgoals they share.
 var MathProblems = []*Problem{
 	{
 		ID:              "plus-one",
@@ -409,9 +409,120 @@ Follow-up: an O(m * n) extra-space copy is easy, and O(m + n) extra space is a g
 		},
 	},
 	{
+		ID:              "game-of-life",
+		Number:          289,
+		Order:           5,
+		Title:           "Game of Life",
+		Slug:            "game-of-life",
+		Difficulty:      "Medium",
+		Category:        "math-geometry",
+		Tags:            []string{"Array", "Matrix", "Simulation", "Google", "Google L4", "Google Phone Screen"},
+		RelatedChapters: []int{19},
+		Description: `You are given an m x n grid board where each cell is either alive (1) or dead (0). Each cell has up to eight neighbours: the cells directly above, below, left, right and on the four diagonals. Cells outside the grid do not exist; the board does not wrap around at its edges.
+
+Advance the board by one generation. Every cell's next state depends only on the current states of the cell and its neighbours, and all cells change at the same moment:
+
+- A live cell with fewer than 2 live neighbours dies.
+- A live cell with 2 or 3 live neighbours stays alive.
+- A live cell with more than 3 live neighbours dies.
+- A dead cell with exactly 3 live neighbours becomes alive; any other dead cell stays dead.
+
+Update board in place and return nothing. Follow-up: can you do it using only O(1) extra space, without a copy of the board?`,
+		Constraints: []string{
+			"m == board.length",
+			"n == board[i].length",
+			"1 <= m, n <= 25",
+			"board[i][j] is 0 or 1",
+		},
+		Examples: []Example{
+			{ID: "1", Input: "board = [[0,1,0],[0,0,1],[1,1,1],[0,0,0]]", Output: "[[0,0,0],[1,0,1],[0,1,1],[0,1,0]]", Explanation: "The live cell at the top has only 1 live neighbour and dies. The dead cell at row 1, column 0 has exactly 3 live neighbours (row 0 col 1, row 2 col 0, row 2 col 1) and comes alive. The live cell at row 2, column 0 has only 1 live neighbour and dies."},
+			{ID: "2", Input: "board = [[1,1],[1,0]]", Output: "[[1,1],[1,1]]", Explanation: "Each live cell has 2 live neighbours and survives; the dead corner has 3 and comes alive."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"board": [][]int{{0, 1, 0}, {0, 0, 1}, {1, 1, 1}, {0, 0, 0}}}, Expected: [][]int{{0, 0, 0}, {1, 0, 1}, {0, 1, 1}, {0, 1, 0}}, Note: "example 1: births, deaths and survivors"},
+			{Input: map[string]interface{}{"board": [][]int{{1, 1}, {1, 0}}}, Expected: [][]int{{1, 1}, {1, 1}}, Note: "example 2: a birth in the corner"},
+			{Input: map[string]interface{}{"board": [][]int{{1}}}, Expected: [][]int{{0}}, Hidden: true, Note: "1x1 live cell has no neighbours and dies"},
+			{Input: map[string]interface{}{"board": [][]int{{0, 1, 0}, {0, 1, 0}, {0, 1, 0}}}, Expected: [][]int{{0, 0, 0}, {1, 1, 1}, {0, 0, 0}}, Hidden: true, Note: "blinker: updating cells one by one without remembering old states gets this wrong"},
+			{Input: map[string]interface{}{"board": [][]int{{1, 1, 1}}}, Expected: [][]int{{0, 1, 0}}, Hidden: true, Note: "single row: ends have 1 neighbour, the middle has 2"},
+			{Input: map[string]interface{}{"board": [][]int{{1, 1, 1}, {1, 1, 1}, {1, 1, 1}}}, Expected: [][]int{{1, 0, 1}, {0, 0, 0}, {1, 0, 1}}, Hidden: true, Note: "overcrowding: only corners (3 neighbours) survive; counting the cell itself would kill them"},
+			{Input: map[string]interface{}{"board": [][]int{{1, 0, 0, 1}, {0, 0, 0, 0}, {1, 0, 0, 1}}}, Expected: [][]int{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}}, Hidden: true, Note: "corners are not neighbours: negative indices must not wrap around the edge"},
+			{Input: map[string]interface{}{"board": [][]int{{1, 1}, {1, 1}}}, Expected: [][]int{{1, 1}, {1, 1}}, Hidden: true, Note: "a 2x2 block never changes"},
+			{Input: map[string]interface{}{"board": [][]int{{0, 0}, {0, 0}}}, Expected: [][]int{{0, 0}, {0, 0}}, Hidden: true, Note: "all dead stays dead"},
+		},
+		TimeComplexity:  "O(m * n)",
+		SpaceComplexity: "O(1)",
+		StarterCode:     "def gameOfLife(board):\n    # Modify board in place; do not return anything\n    pass",
+		Harness:         Harness{InPlace: "board"},
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "If you write a cell's new state as soon as you compute it, what goes wrong when its neighbour is computed next? What would each cell need to hold so that both its old and its new state are available?"},
+			{Level: 2, Type: "insight", Content: "Each cell stores 0 or 1, but an integer has room for more. Keep the current state in bit 0 and write the next state into bit 1 (value 2). While counting neighbours, read only bit 0 (cell & 1), so cells that were already updated still report their old state. After every cell is decided, shift each value right by one to make the next state current. This is the 'Use the input as storage' idea from Set Matrix Zeroes; see Chapter 19.", ChapterRef: 19},
+			{Level: 3, Type: "plan", Content: "1. Count live neighbours: for each cell, add bit 0 of each of the up to eight neighbours inside the grid, skipping the cell itself.\n2. Decide the next state: the cell lives next generation if it has exactly 3 live neighbours, or 2 and is alive now.\n3. Store it beside the old state: if it lives, set bit 1 (board[r][c] |= 2) and leave bit 0 alone.\n4. Commit the new generation: after the whole pass, shift every cell right by one."},
+			{Level: 4, Type: "skeleton", Content: "def gameOfLife(board):\n    rows, cols = len(board), len(board[0])\n    for r in range(rows):\n        for c in range(cols):\n            live = 0\n            for dr in (-1, 0, 1):\n                for dc in (-1, 0, 1):\n                    nr, nc = r + dr, c + dc\n                    if ____:\n                        live += ____\n            if ____:\n                board[r][c] |= 2\n    for r in range(rows):\n        for c in range(cols):\n            ____"},
+		},
+		Solution: Solution{
+			Code: `def gameOfLife(board):
+    rows, cols = len(board), len(board[0])
+    # bit 0 = alive now, bit 1 = alive in the next generation
+    for r in range(rows):
+        for c in range(cols):
+            live = 0
+            for dr in (-1, 0, 1):
+                for dc in (-1, 0, 1):
+                    nr, nc = r + dr, c + dc
+                    if (dr or dc) and 0 <= nr < rows and 0 <= nc < cols:
+                        live += board[nr][nc] & 1
+            if live == 3 or (live == 2 and board[r][c] & 1):
+                board[r][c] |= 2
+    for r in range(rows):
+        for c in range(cols):
+            board[r][c] >>= 1`,
+			Explanation: "Builds on Set Matrix Zeroes, which also had to change a matrix in place while some cells still needed the original values, and solved it by storing extra information inside the input. There the first row and column held flags; here every cell keeps both generations at once, the current state in bit 0 and the next state in bit 1. The new pieces are bounds-checked neighbour counting over all eight directions and the final 'commit' pass that shifts the next generation into place.",
+			BruteForce:  "Copy the whole board, read neighbour counts from the copy and write new states into board. That is correct and O(m * n) time, but it uses O(m * n) extra memory, which the follow-up rules out. Updating in place with no copy at all is cheaper but wrong, because a cell updated early is read as its new state by the neighbours computed after it.",
+			KeyInsight:  "A cell's value is only ever 0 or 1, so the rest of the integer is free storage. Writing the next state into a different bit keeps the old state readable, so the board can serve as both the old and the new generation until every cell has been decided.",
+			WhyItWorks:  "Invariant during the first pass: for every cell, bit 0 still holds its state in the current generation. The pass only ever sets bit 1 (|= 2), never touches bit 0, and the neighbour count reads cell & 1, so every count is computed from the current generation exactly as if a separate copy existed. The rule 'alive next if live == 3, or live == 2 and alive now' is the four rules combined: a live cell survives with 2 or 3, a dead cell is born with exactly 3, and every other case is dead, which is a 0 in bit 1. After the pass, bit 1 of every cell holds its correct next state, and shifting right by one moves it into bit 0 and clears the old state, leaving only 0s and 1s as required.",
+			CommonMistakes: []string{
+				"Writing the new 0 or 1 straight into the board during the counting pass. Neighbours computed later then see the new value, so the vertical blinker [[0,1,0],[0,1,0],[0,1,0]] does not turn horizontal. Fix: keep the old state readable, with a second bit or a copy.",
+				"Counting the cell itself as one of its neighbours. A live cell then sees one extra neighbour, so the corners of a full 3x3 board die with 4 instead of surviving with 3. Fix: skip dr == 0 and dc == 0 together.",
+				"Relying on Python's negative indexing at the edges. board[-1] is the last row, so the board silently wraps around and opposite corners count as neighbours. Fix: check 0 <= nr < rows and 0 <= nc < cols before reading.",
+			},
+			TimeComplexity:  "O(m * n)",
+			SpaceComplexity: "O(1)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Count live neighbours", Explanation: "Visit the eight surrounding offsets, skip the cell itself and anything off the grid, and add bit 0 of each neighbour. Bit 0 is the current state even if that neighbour has already been decided.", CodeSnippet: "for dr in (-1, 0, 1):\n    for dc in (-1, 0, 1):\n        nr, nc = r + dr, c + dc\n        if (dr or dc) and 0 <= nr < rows and 0 <= nc < cols:\n            live += board[nr][nc] & 1", LineStart: 6, LineEnd: 11},
+				{Title: "Decide the next state", Explanation: "Alive next generation means exactly 3 neighbours, or 2 neighbours and alive now. In example 1, the cell at row 1, column 0 is dead with 3 live neighbours, so it is born.", CodeSnippet: "if live == 3 or (live == 2 and board[r][c] & 1):", LineStart: 12, LineEnd: 12},
+				{Title: "Store it beside the old state", Explanation: "Setting bit 1 records 'alive next' without disturbing bit 0. A cell can now be 0 (dead, stays dead), 1 (alive, dies), 2 (dead, is born) or 3 (alive, survives).", CodeSnippet: "board[r][c] |= 2", LineStart: 13, LineEnd: 13},
+				{Title: "Commit the new generation", Explanation: "Only after every cell is decided, shift right so the next state becomes the current one: 0 and 1 become 0, 2 and 3 become 1.", CodeSnippet: "for r in range(rows):\n    for c in range(cols):\n        board[r][c] >>= 1", LineStart: 14, LineEnd: 16},
+			},
+			Alternatives: []AltSolution{
+				{
+					Name: "Copy the board first",
+					Code: `def gameOfLife(board):
+    old = [row[:] for row in board]
+    rows, cols = len(old), len(old[0])
+    for r in range(rows):
+        for c in range(cols):
+            live = 0
+            for nr in range(max(0, r - 1), min(rows, r + 2)):
+                for nc in range(max(0, c - 1), min(cols, c + 2)):
+                    live += old[nr][nc]
+            live -= old[r][c]  # the loop above counted the cell itself
+            alive_next = live == 3 or (live == 2 and old[r][c] == 1)
+            board[r][c] = 1 if alive_next else 0`,
+					TimeComplexity:  "O(m * n)",
+					SpaceComplexity: "O(m * n)",
+					Explanation:     "Reads every neighbour from an untouched copy, so updating board directly is safe. It is the clearest version and a fine first answer; the bit trick removes the copy for the O(1) follow-up. Clamping the ranges with max and min is another way to stay inside the grid.",
+				},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "Why must the shift (>>= 1) happen in a separate pass instead of right after a cell is decided?", Answer: "Shifting a cell erases its current state from bit 0. Its neighbours to the right and below have not been decided yet and still need that current state when they count their neighbours. Only when every cell has been decided is the old generation no longer needed."},
+			{Prompt: "What changes if the board were infinite, or huge but with only a few live cells?", Answer: "A grid no longer fits, so store only the live cells in a set of (row, col) pairs. Count neighbours with a hash map: for each live cell add 1 to each of its eight neighbours. The next generation is every position with count 3, plus live cells with count 2. The work is proportional to the number of live cells, not the board area."},
+		},
+	},
+	{
 		ID:              "spiral-matrix",
 		Number:          54,
-		Order:           5,
+		Order:           6,
 		Title:           "Spiral Matrix",
 		Slug:            "spiral-matrix",
 		Difficulty:      "Medium",
@@ -521,7 +632,7 @@ Spiral order starts at the top-left cell, goes right along the top row, then dow
 	{
 		ID:              "powx-n",
 		Number:          50,
-		Order:           6,
+		Order:           7,
 		Title:           "Pow(x, n)",
 		Slug:            "powx-n",
 		Difficulty:      "Medium",
@@ -626,7 +737,7 @@ Answers within 10^-5 of the exact value are accepted.`,
 	{
 		ID:              "multiply-strings",
 		Number:          43,
-		Order:           7,
+		Order:           8,
 		Title:           "Multiply Strings",
 		Slug:            "multiply-strings",
 		Difficulty:      "Medium",
@@ -754,7 +865,7 @@ Neither input has leading zeros, except the number zero itself, which is written
 	{
 		ID:              "detect-squares",
 		Number:          2013,
-		Order:           8,
+		Order:           9,
 		Title:           "Detect Squares",
 		Slug:            "detect-squares",
 		Difficulty:      "Medium",

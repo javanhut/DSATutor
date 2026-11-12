@@ -1,8 +1,9 @@
 package practice
 
 // StackProblems contains all stack category problems, in ladder order:
-// plain stack matching, a stack that carries extra state, a stack as an
-// evaluator, then monotonic stacks (next warmer day, fleets, histogram), and
+// plain stack matching, matching where unmatched items stay (removing "AB"
+// and "CD"), a stack that carries extra state, a stack as an evaluator, then
+// monotonic stacks (next warmer day, fleets, visible people, histogram), and
 // finally Generate Parentheses, where the stack shrinks to a counter.
 var StackProblems = []*Problem{
 	{
@@ -13,7 +14,7 @@ var StackProblems = []*Problem{
 		Slug:            "valid-parentheses",
 		Difficulty:      "Easy",
 		Category:        "stack",
-		Tags:            []string{"String", "Stack"},
+		Tags:            []string{"String", "Stack", "Google", "Google L3", "Google Phone Screen"},
 		RelatedChapters: []int{5, 2},
 		Description: `You are given a string s made only of the six bracket characters '(', ')', '[', ']', '{' and '}'. Decide whether the brackets are balanced and return true or false.
 
@@ -109,9 +110,97 @@ The string is balanced when all three rules hold:
 		},
 	},
 	{
+		ID:              "minimum-string-length-after-removing-substrings",
+		Number:          2696,
+		Order:           2,
+		Title:           "Minimum String Length After Removing Substrings",
+		Slug:            "minimum-string-length-after-removing-substrings",
+		Difficulty:      "Easy",
+		Category:        "stack",
+		Tags:            []string{"String", "Stack", "Simulation", "Google", "Google L3", "Google Phone Screen"},
+		RelatedChapters: []int{5, 2},
+		Description: `You are given a string s of uppercase English letters. In one move you may delete any occurrence of the two-letter substring "AB" or "CD" from s; the pieces on either side then join up. A deletion can create a new "AB" or "CD" where two letters meet, and that new pair may be deleted in a later move.
+
+Keep making moves for as long as you like. Return the shortest length the string can reach.
+
+Only those two pairs, in that order, can be deleted: "BA" and "DC" stay.`,
+		Constraints: []string{
+			"1 <= s.length <= 100",
+			"s consists only of uppercase English letters",
+		},
+		Examples: []Example{
+			{ID: "1", Input: `s = "ABFCACDB"`, Output: "2", Explanation: `Delete "AB" to get "FCACDB". Delete "CD" to get "FCAB". Now "AB" has formed; delete it to get "FC". No pair is left, so the answer is 2.`},
+			{ID: "2", Input: `s = "ACBBD"`, Output: "5", Explanation: `Neither "AB" nor "CD" appears anywhere, so nothing can be deleted.`},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"s": "ABFCACDB"}, Expected: 2, Note: "example 1: deleting CD makes a new AB"},
+			{Input: map[string]interface{}{"s": "ACBBD"}, Expected: 5, Note: "example 2: nothing to delete"},
+			{Input: map[string]interface{}{"s": "A"}, Expected: 1, Hidden: true, Note: "a single letter"},
+			{Input: map[string]interface{}{"s": "BA"}, Expected: 2, Hidden: true, Note: "order matters: BA is not a deletable pair"},
+			{Input: map[string]interface{}{"s": "ACDB"}, Expected: 0, Hidden: true, Note: "nested: one pass of replace() leaves AB behind; deletions must cascade"},
+			{Input: map[string]interface{}{"s": "CCAABBDD"}, Expected: 0, Hidden: true, Note: "deeply nested pairs of both kinds vanish completely"},
+			{Input: map[string]interface{}{"s": "ABAB"}, Expected: 0, Note: "pairs side by side"},
+			{Input: map[string]interface{}{"s": "DCBA"}, Expected: 4, Hidden: true, Note: "both pairs reversed: nothing can be deleted"},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def minLength(s):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "Read s from left to right and keep the letters that have survived so far. When a new letter arrives, which single earlier letter is the only one it could pair up with and delete?"},
+			{Level: 2, Type: "insight", Content: "A new letter can only form a pair with the letter directly before it among the survivors, and after the pair is deleted, the survivor before that becomes the neighbour of whatever comes next. 'Look at the most recent survivor, maybe remove it' is a stack, exactly as in Valid Parentheses (Chapter 5), where 'B' closes 'A' and 'D' closes 'C'.", ChapterRef: 5},
+			{Level: 3, Type: "plan", Content: "1. Decide what the stack holds: the letters that survive so far, in order.\n2. Pop what the new item resolves: if the top of the stack followed by the new letter is \"AB\" or \"CD\", pop the top and drop the new letter.\n3. Push the new item: otherwise push the new letter.\n4. Handle what is left on the stack: the survivors are the final string, so return the stack's size."},
+			{Level: 4, Type: "skeleton", Content: "def minLength(s):\n    stack = []\n    for ch in s:\n        if stack and ____:\n            ____\n        else:\n            ____\n    return len(stack)"},
+		},
+		Solution: Solution{
+			Code: `def minLength(s):
+    stack = []  # letters that survive so far, in order
+    for ch in s:
+        if stack and stack[-1] + ch in ("AB", "CD"):
+            stack.pop()  # ch completes a pair with the top: delete both
+        else:
+            stack.append(ch)  # ch waits; a later letter might pair with it
+    return len(stack)`,
+			Explanation: "This is Valid Parentheses in disguise and builds directly on it: 'A' and 'C' act like openers, and 'B' and 'D' close them, but only when they arrive right after their partner. The stack holds the letters that survive so far. Each new letter either deletes the top (when the two form \"AB\" or \"CD\") or waits on the stack. Deleting the top exposes the letter below, so pairs created by earlier deletions are found automatically, without rescanning the string.",
+			BruteForce:  "Repeat: find any \"AB\" or \"CD\", cut it out, and start scanning again, until no pair is left. Each pass is O(n) and can remove a single pair, so nested input like \"CCAABBDD\" needs about n/2 passes: O(n^2). The waste is rescanning the whole string to find the one pair that a deletion just created, when it can only be at the spot where the two pieces joined, which is the top of the stack.",
+			KeyInsight:  "After a deletion, the only new neighbours are the letters on either side of the cut. Reading left to right with a stack, the letter on the left side of the cut is always the top of the stack, so every new pair is caught at the moment it forms.",
+			WhyItWorks:  "Invariant: after reading a prefix of s, the stack holds that prefix with every possible deletion already made, and no two adjacent stack letters form \"AB\" or \"CD\". A new letter can only form a pair with the stack's top, its only neighbour on the left; if it does, both go, and the new top and the next letter become neighbours, which the next step checks. Deletions never conflict: \"AB\" and \"CD\" share no letters, so a letter can belong to at most one deletable pair with its left neighbour, and the order of deletions does not change what remains (the same reduced string is reached whichever pair is deleted first). So the stack's final size is the shortest reachable length.",
+			CommonMistakes: []string{
+				"Calling s.replace(\"AB\", \"\").replace(\"CD\", \"\") once. Deleting one pair can create another: \"ACDB\" becomes \"AB\" and stops at length 2 instead of 0. Use the stack, or repeat the replacements until the string stops changing.",
+				"Counting letters instead of checking order, for example pairing every 'A' with any 'B'. \"BA\" has one of each but nothing can be deleted, so the answer is 2. Check that the top of the stack comes first: stack[-1] + ch must equal \"AB\" or \"CD\".",
+				"Reading stack[-1] when the stack is empty, which crashes when the string starts with 'B' or 'D'. Check that the stack is non-empty before looking at the top.",
+			},
+			TimeComplexity:  "O(n)",
+			SpaceComplexity: "O(n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Decide what the stack holds", Explanation: "The stack holds the letters that have survived every deletion so far, in their original order, so its top is the left neighbour of the next letter.", CodeSnippet: "stack = []  # letters that survive so far, in order", LineStart: 2, LineEnd: 2},
+				{Title: "Pop what the new item resolves", Explanation: "If the top and the new letter spell \"AB\" or \"CD\", both are deleted. In \"ABFCACDB\": B deletes A, D deletes C, and then the final B deletes the A that the CD deletion exposed.", CodeSnippet: "for ch in s:\n    if stack and stack[-1] + ch in (\"AB\", \"CD\"):\n        stack.pop()  # ch completes a pair with the top: delete both", LineStart: 3, LineEnd: 5},
+				{Title: "Push the new item", Explanation: "A letter that doesn't complete a pair waits on the stack. In \"ABFCACDB\" the letters F, C, A and C are pushed.", CodeSnippet: "stack.append(ch)  # ch waits; a later letter might pair with it", LineStart: 6, LineEnd: 7},
+				{Title: "Handle what is left on the stack", Explanation: "The survivors form the final string. For \"ABFCACDB\" the stack ends as [F, C], so the answer is 2.", CodeSnippet: "return len(stack)", LineStart: 8, LineEnd: 8},
+			},
+			Alternatives: []AltSolution{
+				{
+					Name: "Brute force: delete pairs until nothing changes",
+					Code: `def minLength(s):
+    previous = None
+    while previous != s:
+        previous = s
+        s = s.replace("AB", "").replace("CD", "")
+    return len(s)`,
+					TimeComplexity:  "O(n^2)",
+					SpaceComplexity: "O(n)",
+					Explanation:     "Keeps deleting every visible pair until a pass changes nothing. Correct, because deleting pairs in any order reaches the same final string, but nested input needs many full passes.",
+				},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "How is this problem the same as Valid Parentheses, and how is it different?", Answer: "Same: a later character cancels the most recent unmatched earlier character, so a stack's top is the only thing to check. Different: here a letter that doesn't match is not an error; it just stays (pushed), and the answer is how many letters remain rather than whether none remain. Also, 'B' and 'D' can be pushed as ordinary letters when they don't complete a pair."},
+			{Prompt: "What if the deletable pairs could overlap, for example \"AB\" and \"BC\"? Would the greedy left-to-right stack still give the shortest length?", Answer: "Not necessarily. With overlapping pairs, deleting one pair can destroy another, so the order of deletions matters: in \"ABC\" you can delete \"AB\" (leaving \"C\") or \"BC\" (leaving \"A\"), and in longer strings one choice can enable more deletions than the other. The stack commits to the first pair it sees. You'd need to argue the order doesn't matter (it does here only because \"AB\" and \"CD\" share no letters) or search over choices."},
+		},
+	},
+	{
 		ID:              "min-stack",
 		Number:          155,
-		Order:           2,
+		Order:           3,
 		Title:           "Min Stack",
 		Slug:            "min-stack",
 		Difficulty:      "Medium",
@@ -210,7 +299,7 @@ values = [[],[-2],[0],[-3],[],[],[],[]]`, Output: "[null,null,null,null,-3,null,
 
     def getMin(self) -> int:
         return self.stack[-1][1]`,
-			Explanation:     "Valid Parentheses used the stack only for its order. Here each entry also carries a snapshot: the minimum of everything at or below it. Because a stack changes only at its top, that snapshot stays correct for as long as the entry is on the stack, so getMin is a single read and pop needs no recomputation.",
+			Explanation:     "Valid Parentheses and Minimum String Length After Removing Substrings used the stack only for its order. Here each entry also carries a snapshot: the minimum of everything at or below it. Because a stack changes only at its top, that snapshot stays correct for as long as the entry is on the stack, so getMin is a single read and pop needs no recomputation.",
 			BruteForce:      "Keep a plain list and compute min(self.stack) on every getMin call. push, pop and top are O(1), but getMin scans all n elements, O(n). The waste: the minimum of the lower part of the stack is recomputed from scratch every time, although that part hasn't changed since the last call.",
 			KeyInsight:      "The elements below the top never change until the top is popped, so the minimum of \"this entry and everything below\" can be computed once at push time and stored with the entry.",
 			WhyItWorks:      "Invariant: for every entry i, stack[i][1] == min of the values stack[0][0] .. stack[i][0]. Push keeps it: the new entry's minimum is min(val, previous top's minimum), and min over a prefix extended by one element is exactly that. Pop keeps it: removing the top doesn't change any lower entry or the prefix it covers. So stack[-1][1] is always the minimum of the whole stack. Each method does a constant amount of work.",
@@ -284,7 +373,7 @@ values = [[],[-2],[0],[-3],[],[],[],[]]`, Output: "[null,null,null,null,-3,null,
 	{
 		ID:              "evaluate-reverse-polish-notation",
 		Number:          150,
-		Order:           3,
+		Order:           4,
 		Title:           "Evaluate Reverse Polish Notation",
 		Slug:            "evaluate-reverse-polish-notation",
 		Difficulty:      "Medium",
@@ -409,7 +498,7 @@ You are given the expression as a list of string tokens. Each token is either on
 	{
 		ID:              "daily-temperatures",
 		Number:          739,
-		Order:           4,
+		Order:           5,
 		Title:           "Daily Temperatures",
 		Slug:            "daily-temperatures",
 		Difficulty:      "Medium",
@@ -507,7 +596,7 @@ Return a list answer of the same length, where answer[i] is the number of days f
 	{
 		ID:              "car-fleet",
 		Number:          853,
-		Order:           5,
+		Order:           6,
 		Title:           "Car Fleet",
 		Slug:            "car-fleet",
 		Difficulty:      "Medium",
@@ -625,9 +714,141 @@ Return how many fleets arrive at the destination.`,
 		},
 	},
 	{
+		ID:              "number-of-visible-people-in-a-queue",
+		Number:          1944,
+		Order:           7,
+		Title:           "Number of Visible People in a Queue",
+		Slug:            "number-of-visible-people-in-a-queue",
+		Difficulty:      "Hard",
+		Category:        "stack",
+		Tags:            []string{"Array", "Stack", "Monotonic Stack", "Google", "Google L5", "Google Phone Screen"},
+		RelatedChapters: []int{5},
+		Description: `n people stand in a line, numbered 0 to n - 1 from left to right, and everyone looks to the right. heights[i] is the height of person i, and all heights are different.
+
+Person i can see person j (with i < j) when everyone standing strictly between them is shorter than both of them: min(heights[i], heights[j]) > max(heights[i+1], ..., heights[j-1]). Two neighbours (j = i + 1) always see each other, because nobody stands between them.
+
+Return a list answer of length n, where answer[i] is the number of people to the right that person i can see.`,
+		Constraints: []string{
+			"n == heights.length",
+			"1 <= n <= 10^5",
+			"1 <= heights[i] <= 10^5",
+			"All values in heights are distinct",
+		},
+		Examples: []Example{
+			{ID: "1", Input: "heights = [10,6,8,5,11,9]", Output: "[3,1,2,1,1,0]", Explanation: "Person 0 (height 10) sees 6, then 8 (6 is shorter than both), then 11 (6, 8 and 5 are all shorter than 10 and 11). Nobody behind 11 is visible to person 0, because 11 is taller than 10. Person 2 (height 8) sees 5 and 11. Person 5 has nobody to the right."},
+			{ID: "2", Input: "heights = [5,1,2,3,10]", Output: "[4,1,1,1,0]", Explanation: "Person 0 (height 5) sees 1, 2, 3 and 10: each person in between is shorter than 5 and shorter than the one being looked at. Person 1 (height 1) sees only 2, which blocks everything after it."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"heights": []int{10, 6, 8, 5, 11, 9}}, Expected: []int{3, 1, 2, 1, 1, 0}, Note: "example 1: a taller person ends the view"},
+			{Input: map[string]interface{}{"heights": []int{5, 1, 2, 3, 10}}, Expected: []int{4, 1, 1, 1, 0}, Note: "example 2: a staircase is fully visible from a taller person"},
+			{Input: map[string]interface{}{"heights": []int{7}}, Expected: []int{0}, Hidden: true, Note: "a single person sees nobody"},
+			{Input: map[string]interface{}{"heights": []int{4, 3, 2, 1}}, Expected: []int{1, 1, 1, 0}, Hidden: true, Note: "decreasing: nobody is ever popped, so each person's only view (the next, shorter neighbour) must be counted from the taller side"},
+			{Input: map[string]interface{}{"heights": []int{1, 2, 3, 4}}, Expected: []int{1, 1, 1, 0}, Note: "increasing: each person sees only the next one, who blocks everything after"},
+			{Input: map[string]interface{}{"heights": []int{3, 1, 2}}, Expected: []int{2, 1, 0}, Hidden: true, Note: "the taller person at the front sees past a shorter one to a taller one behind it"},
+			{Input: map[string]interface{}{"heights": []int{10, 6, 8, 5, 11, 9, 1}}, Expected: []int{3, 1, 2, 1, 1, 1, 0}, Hidden: true, Note: "counting every shorter person to the right is wrong: 5 is shorter than 10 but hidden behind 8"},
+			{Input: map[string]interface{}{"heights": []int{2, 5, 1, 4, 3, 6}}, Expected: []int{1, 3, 1, 2, 1, 0}, Hidden: true, Note: "mixed heights: person 1 (5) sees 1, 4 and 6 but not 3"},
+		},
+		TimeComplexity:  "O(n)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def canSeePersonsCount(heights):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "When a new person j arrives at the end of the line, which of the earlier people can still see them? What happens to the view of an earlier person who is shorter than j, and what about the nearest earlier person who is taller than j?"},
+			{Level: 2, Type: "insight", Content: "Keep a stack of the people whose view to the right is still open, the same decreasing stack as Daily Temperatures (Chapter 5). When person j arrives, every shorter person on top sees j, and j then blocks them for good, so pop them and add 1 to each. After that, the person left on top (if any) is taller than j and also sees j, but is not blocked, so add 1 to them without popping. Then push j.", ChapterRef: 5},
+			{Level: 3, Type: "plan", Content: "1. Decide what the stack holds: indices of people whose view is still open, heights decreasing from bottom to top. Start answer as all zeros.\n2. Pop what the new item resolves: while the top person is shorter than person j, pop them.\n3. Record the answer at pop time: each popped person sees j, so add 1 to their count.\n4. Count the taller neighbour: if the stack is not empty, the top person is taller than j and sees j; add 1 to their count but leave them on the stack.\n5. Push the new item: push j.\n6. Handle what is left on the stack: those people are never blocked again and their counts are already final."},
+			{Level: 4, Type: "skeleton", Content: `def canSeePersonsCount(heights):
+    answer = [0] * len(heights)
+    stack = []
+    for j, h in enumerate(heights):
+        while stack and ____:
+            shorter = stack.pop()
+            ____
+        if stack:
+            ____
+        stack.append(j)
+    return answer`},
+		},
+		Solution: Solution{
+			Code: `def canSeePersonsCount(heights):
+    answer = [0] * len(heights)
+    stack = []  # people whose view is still open; heights decrease bottom to top
+    for j, h in enumerate(heights):
+        while stack and heights[stack[-1]] < h:
+            shorter = stack.pop()
+            answer[shorter] += 1  # sees j, and j blocks everyone after
+        if stack:
+            answer[stack[-1]] += 1  # the taller person left of j also sees j
+        stack.append(j)
+    return answer`,
+			Explanation: "This builds on Daily Temperatures: the same decreasing stack of indices, where a newcomer pops every shorter (colder) person waiting on top. There each pop recorded one answer, the first warmer day. Here a person collects a count over time instead: every newcomer who reaches them adds 1, and the first taller newcomer adds a last 1 and pops them. The new twist is the extra step after the pops: the taller person left on top also sees the newcomer, but stays on the stack because the newcomer is shorter and doesn't block them.",
+			BruteForce:  "For each person i, walk right keeping the tallest height seen so far; person j is visible when min(heights[i], heights[j]) > tallest-in-between, and the walk stops at the first person taller than i. On a decreasing line except for a giant at the end, like [9, 8, 7, ..., 1, 10], every walk reaches the end: about n^2/2 steps, 5 billion for n = 10^5, so O(n^2). The waste: person i re-walks over people that earlier walks already showed are hidden behind someone taller.",
+			KeyInsight:  "Once a taller person j stands to the right of person i, i can see nobody past j. And a person who is shorter than someone further right is hidden from everyone further left. So the only people who can still see a newcomer are the ones whose view is still open, and they form a decreasing stack whose top is the nearest one.",
+			WhyItWorks:  "Invariant: before person j arrives, the stack holds, bottom to top, exactly the people i < j who have nobody taller than them in heights[i+1..j-1], and their heights decrease. People not on the stack were blocked by a taller person and can't see j. For a stack person i shorter than h: everyone between i and j is shorter than heights[i] (or i would have been popped), so i sees j; j is taller than i, so i is blocked from now on and is popped. Next, the person t left on top (if any) is taller than h. Everyone between t and j is shorter than h: those still on the stack above t were just popped for being shorter than h, and anyone popped earlier was popped by one of them or by someone they were popped by, each shorter still. So t sees j, and t stays because j is shorter than t. Stack people below t are hidden from j by t, which is taller than j. So every pair (i, j) with i seeing j is counted exactly once. Each index is pushed and popped at most once: O(n).",
+			CommonMistakes: []string{
+				"Counting only the pops. The taller person left on top also sees the newcomer, so [4,3,2,1] would return all zeros instead of [1,1,1,0]. After the while loop, add 1 to the top if the stack is not empty.",
+				"Counting every shorter person to the right, ignoring who blocks whom. In [10,6,8,5,11,9,1] person 0 would count 6, 8, 5, 9 and 1, but 5 is hidden behind 8 and nobody past 11 is visible. Use the stack, which only keeps people whose view is still open.",
+				"Popping the taller person too (popping while the stack is non-empty, or using <= in the condition with no ties to justify it). A shorter newcomer does not block a taller person, so in [3,1,2] person 0 must still be on the stack to see 2. Pop only people shorter than the newcomer.",
+			},
+			TimeComplexity:  "O(n)",
+			SpaceComplexity: "O(n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Decide what the stack holds", Explanation: "The stack holds indices of people nobody has blocked yet, tallest at the bottom. Every count starts at 0 and only grows.", CodeSnippet: "answer = [0] * len(heights)\nstack = []  # people whose view is still open; heights decrease bottom to top", LineStart: 2, LineEnd: 3},
+				{Title: "Pop what the new item resolves", Explanation: "Everyone on top who is shorter than the newcomer sees them, and then the newcomer blocks their view for good. In example 1, person 4 (11) pops person 3 (5), then person 2 (8), then person 0 (10).", CodeSnippet: "while stack and heights[stack[-1]] < h:\n    shorter = stack.pop()", LineStart: 5, LineEnd: 6},
+				{Title: "Record the answer at pop time", Explanation: "Each popped person sees the newcomer: their final 1 is added as they leave. Person 0 had already counted 6 and 8, so 11 makes it 3.", CodeSnippet: "answer[shorter] += 1  # sees j, and j blocks everyone after", LineStart: 7, LineEnd: 7},
+				{Title: "Count the taller neighbour", Explanation: "The person now on top is taller than the newcomer and sees them, but isn't blocked, so they stay. In example 1, when 8 arrives it pops 6, and 10 on top also gets +1.", CodeSnippet: "if stack:\n    answer[stack[-1]] += 1  # the taller person left of j also sees j", LineStart: 8, LineEnd: 9},
+				{Title: "Push the new item", Explanation: "The newcomer's own view is open, and they are shorter than everyone below, so the decreasing order holds.", CodeSnippet: "stack.append(j)", LineStart: 10, LineEnd: 10},
+				{Title: "Handle what is left on the stack", Explanation: "People left on the stack were never blocked; their counts are already complete. In example 1 the stack ends as [11, 9] and their counts are 1 and 0.", CodeSnippet: "return answer", LineStart: 11, LineEnd: 11},
+			},
+			Alternatives: []AltSolution{
+				{
+					Name: "Brute force: walk right from each person",
+					Code: `def canSeePersonsCount(heights):
+    n = len(heights)
+    answer = []
+    for i in range(n):
+        seen = 0
+        tallest_between = 0
+        for j in range(i + 1, n):
+            if min(heights[i], heights[j]) > tallest_between:
+                seen += 1
+            if heights[j] > heights[i]:
+                break  # nobody past a taller person is visible
+            tallest_between = max(tallest_between, heights[j])
+        answer.append(seen)
+    return answer`,
+					TimeComplexity:  "O(n^2)",
+					SpaceComplexity: "O(1) extra",
+					Explanation:     "Applies the definition directly, tracking the tallest person between i and j. The early break helps on many inputs, but a decreasing line with a giant at the end still makes every walk reach the end.",
+				},
+				{
+					Name: "Monotonic stack, right to left",
+					Code: `def canSeePersonsCount(heights):
+    answer = [0] * len(heights)
+    stack = []  # heights to the right that are not hidden; increasing from top to bottom
+    for i in range(len(heights) - 1, -1, -1):
+        seen = 0
+        while stack and stack[-1] < heights[i]:
+            stack.pop()  # visible to i, but hidden behind i from everyone further left
+            seen += 1
+        if stack:
+            seen += 1  # the first taller person to the right is visible too
+        answer[i] = seen
+        stack.append(heights[i])
+    return answer`,
+					TimeComplexity:  "O(n)",
+					SpaceComplexity: "O(n)",
+					Explanation:     "Scans from the right, so each person's whole answer is computed at once: the shorter people they pop, plus the first taller person (if any). The stack holds exactly the people a newcomer on the left could see past.",
+				},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "Why does a shorter newcomer add 1 to the person on top of the stack but not pop them?", Answer: "Everyone between the top person t and the newcomer j was shorter than j (they were just popped, or hidden behind someone who was), so t sees j. But j is shorter than t, so j doesn't block t's view: someone taller than j standing behind j could still be visible to t. t's view stays open, so t stays on the stack."},
+			{Prompt: "What if heights could repeat, and a person of equal height also blocks the view (people strictly between must be shorter than both)? What would change?", Answer: "An equal newcomer is seen by the person on top (everyone between is shorter) and also blocks them, since nothing behind the newcomer can be taller than both without also being taller than the newcomer. So pop while the top is <= the newcomer instead of <, adding 1 to each popped person; whoever is left on top is then strictly taller and still gets +1 without being popped. With the right-to-left version: pop while stack top < heights[i], then if the top equals heights[i], count it and pop it, and only otherwise count a taller top."},
+		},
+	},
+	{
 		ID:              "largest-rectangle-in-histogram",
 		Number:          84,
-		Order:           6,
+		Order:           8,
 		Title:           "Largest Rectangle in Histogram",
 		Slug:            "largest-rectangle-in-histogram",
 		Difficulty:      "Hard",
@@ -729,12 +950,12 @@ Find the largest area of a rectangle that fits entirely inside the histogram. Th
 	{
 		ID:              "generate-parentheses",
 		Number:          22,
-		Order:           7,
+		Order:           9,
 		Title:           "Generate Parentheses",
 		Slug:            "generate-parentheses",
 		Difficulty:      "Medium",
 		Category:        "stack",
-		Tags:            []string{"String", "Backtracking", "Stack"},
+		Tags:            []string{"String", "Backtracking", "Stack", "Google", "Google L4", "Google Onsite"},
 		RelatedChapters: []int{5, 12, 8},
 		Description: `Given an integer n, return every string of n '(' characters and n ')' characters that is a balanced parenthesis string, each exactly once. A string is balanced when, reading left to right, no prefix has more ')' than '(' and the totals are equal (the single-bracket-type case of Valid Parentheses).
 

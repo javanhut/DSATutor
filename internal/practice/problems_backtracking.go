@@ -3,6 +3,10 @@ package practice
 // BacktrackingProblems contains all backtracking category problems, in ladder
 // order. Every solution follows the same plan from chapter 12: record a
 // complete answer, prune bad choices, choose, explore, un-choose.
+//
+// Ladder: 1 Subsets, 2 Combination Sum, 3 Permutations, 4 Subsets II,
+// 5 Combination Sum II, 6 Letter Combinations of a Phone Number, 7 Palindrome
+// Partitioning, 8 Word Search, 9 N-Queens, 10 Optimal Account Balancing.
 var BacktrackingProblems = []*Problem{
 	{
 		ID:              "subsets",
@@ -213,7 +217,7 @@ def combinationSum(candidates, target):
 		Slug:            "permutations",
 		Difficulty:      "Medium",
 		Category:        "backtracking",
-		Tags:            []string{"Array", "Backtracking"},
+		Tags:            []string{"Array", "Backtracking", "Google", "Google L4", "Google Onsite"},
 		RelatedChapters: []int{12, 8},
 		Description: `You are given an array ` + "`nums`" + ` of **distinct** integers. Return every permutation of it: every way to arrange all of its elements in a row.
 
@@ -601,7 +605,7 @@ def letterCombinations(digits):
 		Slug:            "palindrome-partitioning",
 		Difficulty:      "Medium",
 		Category:        "backtracking",
-		Tags:            []string{"String", "Backtracking", "Dynamic Programming"},
+		Tags:            []string{"String", "Backtracking", "Dynamic Programming", "Google", "Google L4", "Google Phone Screen"},
 		RelatedChapters: []int{12, 8, 3},
 		Description: `You are given a string ` + "`s`" + `. Cut it into pieces (keeping the letters in order, every letter in exactly one piece) so that **every piece is a palindrome**: it reads the same forwards and backwards. Return every way to do this.
 
@@ -898,6 +902,172 @@ def solveNQueens(n):
 			{Prompt: "Why do all squares on a down-right diagonal share the same r - c?", Answer: "Moving one step down-right adds 1 to both r and c, so r - c doesn't change. Moving down-left adds 1 to r and subtracts 1 from c, so r + c doesn't change. That's why one number identifies each diagonal, and a set of those numbers tells you which diagonals are taken."},
 			{Prompt: "What changes for N-Queens II, which asks only for the number of solutions?", Answer: "Replace 'build the strings and append' with 'count += 1' (or return 1 from the base case and sum the recursive results). The queens list isn't needed at all; the three sets are enough."},
 			{Prompt: "Why is there no need to check rows?", Answer: "The recursion places exactly one queen in each row (row is the recursion depth), so two queens can never share a row. Choosing the right decision for each level can remove whole constraints from the check."},
+		},
+	},
+	{
+		ID:              "optimal-account-balancing",
+		Number:          465,
+		Order:           10,
+		Title:           "Optimal Account Balancing",
+		Slug:            "optimal-account-balancing",
+		Difficulty:      "Hard",
+		Category:        "backtracking",
+		Tags:            []string{"Array", "Backtracking", "Bit Manipulation", "Dynamic Programming", "Google", "Google L5", "Google Phone Screen"},
+		RelatedChapters: []int{12, 8},
+		Description: `A group of friends paid for things for each other. Each entry of **transactions** is a list [from, to, amount], meaning person **from** paid **amount** on behalf of person **to**, so **to** now owes **from** that amount. People are identified by integer IDs, and only people who appear in some transaction are involved.
+
+To settle up, people make **transfers**: one transfer moves any positive amount of money directly from one person to another. Debts are settled when, for every person, the money they paid out (in transactions and transfers) equals the money they received. It does not matter who pays whom, only that everyone ends even.
+
+Return the **minimum number of transfers** needed to settle all debts. If everyone is already even, return 0.`,
+		Constraints: []string{
+			"1 <= transactions.length <= 8",
+			"transactions[i].length == 3",
+			"0 <= from, to < 12 and from != to",
+			"1 <= amount <= 100",
+		},
+		Examples: []Example{
+			{Input: "transactions = [[0,1,10],[2,0,5]]", Output: "2", Explanation: "Person 0 paid 10 for person 1 and received 5 from person 2, so 0 is owed 5 overall. Person 1 owes 10 and person 2 is owed 5. Two transfers settle it: 1 pays 5 to 0 and 5 to 2."},
+			{Input: "transactions = [[0,1,10],[1,0,1],[1,2,5],[2,0,5]]", Output: "1", Explanation: "Netting everything out, person 1 owes 4, person 0 is owed 4, and person 2 is even. One transfer of 4 from 1 to 0 settles it."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"transactions": [][]int{{0, 1, 10}, {2, 0, 5}}}, Expected: 2, Hidden: false, Note: "Example 1: three people with non-zero balances need two transfers"},
+			{Input: map[string]interface{}{"transactions": [][]int{{0, 1, 10}, {1, 0, 1}, {1, 2, 5}, {2, 0, 5}}}, Expected: 1, Hidden: false, Note: "Example 2: netting balances first reduces four transactions to one transfer"},
+			{Input: map[string]interface{}{"transactions": [][]int{{0, 1, 5}, {1, 0, 5}}}, Expected: 0, Hidden: true, Note: "the two transactions cancel: everyone is already even"},
+			{Input: map[string]interface{}{"transactions": [][]int{{0, 1, 7}}}, Expected: 1, Hidden: true, Note: "a single debt"},
+			{Input: map[string]interface{}{"transactions": [][]int{{0, 4, 4}, {3, 1, 2}, {0, 2, 1}, {3, 2, 2}}}, Expected: 3, Hidden: true, Note: "balances +5 -2 -3 and +4 -4: matching the largest creditor with the largest debtor needs 4 transfers"},
+			{Input: map[string]interface{}{"transactions": [][]int{{0, 1, 5}, {1, 2, 5}}}, Expected: 1, Hidden: true, Note: "person 1 only passes the money on and ends even, so they need no transfer"},
+			{Input: map[string]interface{}{"transactions": [][]int{{0, 4, 3}, {2, 1, 3}, {2, 3, 2}, {2, 4, 1}, {5, 7, 1}, {6, 7, 1}, {3, 5, 4}, {5, 3, 4}}}, Expected: 5, Hidden: true, Note: "eight transactions, eight people with debts that split into three even groups: 8 - 3 = 5"},
+			{Input: map[string]interface{}{"transactions": [][]int{{1, 5, 8}, {8, 9, 8}, {2, 3, 9}, {4, 3, 9}}}, Expected: 4, Hidden: true, Note: "IDs are not 0..n-1 and equal balances repeat: three separate groups"},
+		},
+		TimeComplexity:  "O(k!) for k people with non-zero balances",
+		SpaceComplexity: "O(k)",
+		StarterCode:     "def minTransfers(transactions):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "Does it matter who paid whom originally, or only how much each person is up or down overall? Once you know each person's net balance, what is the most that a single transfer can achieve?"},
+			{Level: 2, Type: "insight", Content: "Reduce everyone to a net balance and drop the people at zero. Then backtrack: take the first person who is not even, and choose someone with the opposite sign to absorb their whole balance in one transfer. That person is now even, so recurse on the rest and keep the minimum. Only opposite signs are worth trying, and two people with the same balance lead to the same subproblem, so try each balance once. This is the choose, explore, un-choose plan from the chapter, with a minimum instead of a list of answers.", ChapterRef: 12},
+			{Level: 3, Type: "plan", Content: "1. Set up the state: net balance per person; keep only the non-zero ones in a list debts.\n2. Record a complete answer: skip people who are already even; if nobody is left, 0 more transfers are needed.\n3. Prune: for the first unsettled person, only consider later people with the opposite sign, and each distinct balance once.\n4. Choose: move the first person's whole balance onto that partner (one transfer).\n5. Explore: recurse on the next person and add 1.\n6. Un-choose: move the balance back, then try the next partner; return the smallest total."},
+			{Level: 4, Type: "skeleton", Content: `def minTransfers(transactions):
+    balance = {}
+    for giver, receiver, amount in transactions:
+        balance[giver] = balance.get(giver, 0) + amount
+        balance[receiver] = balance.get(receiver, 0) - amount
+    debts = ____
+
+    def settle(start):
+        while start < len(debts) and debts[start] == 0:
+            start += 1
+        if start == len(debts):
+            return ____
+        best = float("inf")
+        tried = set()
+        for i in range(start + 1, len(debts)):
+            if ____:
+                continue
+            tried.add(debts[i])
+            ____
+            best = min(best, 1 + settle(start + 1))
+            ____
+        return best
+
+    return settle(0)`},
+		},
+		Solution: Solution{
+			Code: `def minTransfers(transactions):
+    balance = {}
+    for giver, receiver, amount in transactions:
+        balance[giver] = balance.get(giver, 0) + amount  # giver is owed this back
+        balance[receiver] = balance.get(receiver, 0) - amount
+    debts = [b for b in balance.values() if b != 0]
+
+    def settle(start):
+        while start < len(debts) and debts[start] == 0:
+            start += 1  # this person is already even
+        if start == len(debts):
+            return 0  # record: everyone is settled
+        best = float("inf")
+        tried = set()
+        for i in range(start + 1, len(debts)):
+            if debts[i] * debts[start] >= 0 or debts[i] in tried:
+                continue  # prune: same sign, or a balance already tried
+            tried.add(debts[i])
+            debts[i] += debts[start]  # choose: one transfer clears start into i
+            best = min(best, 1 + settle(start + 1))  # explore
+            debts[i] -= debts[start]  # un-choose
+        return best
+
+    return settle(0)`,
+			Explanation: "The ladder's last rung builds on N-Queens: the same choose, explore, un-choose recursion with strong pruning, but now it searches for a minimum rather than listing every answer. The first step is to throw away the history: only each person's net balance matters. Then the first unsettled person settles their whole balance with one partner of the opposite sign, and the recursion handles everyone after them. Skipping same-sign partners and repeated balances cuts the tree down to a few thousand nodes for the largest inputs.",
+			BruteForce:  "Try every sequence of transfers between every pair of people with every amount, which is unbounded. A finite version still tries every partner for the first unsettled person regardless of sign (the first alternative below): (k - 1)! orderings for k non-zero balances, about 5,000 for k = 8. Greedy shortcuts are fast but wrong: always matching the largest creditor with the largest debtor needs 4 transfers for balances +5, -2, -3, +4, -4, while 3 suffice.",
+			KeyInsight:  "Some optimal plan settles one person completely in each transfer: the first unsettled person sends (or receives) their whole balance to someone of the opposite sign. So the only real choice at each step is which partner, and the search is a permutation-style tree over at most k - 1 partners, shrinking by one person per level.",
+			WhyItWorks:  "Every step is a real transfer and leaves the remaining balances summing to zero, so whatever the recursion returns is achievable; it can never beat the true minimum. For the other direction, split the k non-zero people into the largest possible number g of groups that each sum to zero; any settlement needs at least k - g transfers, because each group of s people needs at least s - 1 transfers to become even (a transfer graph on s people with fewer than s - 1 edges is disconnected, so some part would have to sum to zero on its own). The recursion can reach k - g: the first unsettled person's group sums to zero, so it contains someone of opposite sign; moving the whole balance onto them costs one transfer and leaves a smaller zero-sum group. Repeating settles each group of s people in at most s - 1 transfers. Skipping same-sign partners loses nothing, since that path is the one used here, and skipping a repeated balance only skips a subproblem that is a reordering of one already solved.",
+			CommonMistakes: []string{
+				"Simulating the original transactions or counting them. Only net balances matter; a person who receives and passes on the same amount is even and needs no transfer.",
+				"Using a greedy rule such as largest creditor pays largest debtor. It can split groups that would have settled among themselves and use an extra transfer; you have to search.",
+				"Answering 'number of people with non-zero balance minus one'. That is right only when no smaller set of people sums to zero; separate even groups each save one transfer.",
+				"Forgetting the un-choose step (debts[i] -= debts[start]). The next partner would then see a balance already modified by a sibling branch.",
+			},
+			TimeComplexity:  "O(k!) in the worst case for k non-zero balances (k <= 12, and in practice far smaller after pruning).",
+			SpaceComplexity: "O(k) for the balances and the recursion.",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Set up the state", Explanation: "Turn the history into net balances: positive means the person is owed money, negative means they owe it. People at zero are dropped.", CodeSnippet: "balance[giver] = balance.get(giver, 0) + amount\nbalance[receiver] = balance.get(receiver, 0) - amount\ndebts = [b for b in balance.values() if b != 0]", LineStart: 4, LineEnd: 6},
+				{Title: "Record a complete answer", Explanation: "Skip anyone already brought to zero by earlier choices. When nobody is left, no more transfers are needed.", CodeSnippet: "while start < len(debts) and debts[start] == 0:\n    start += 1\nif start == len(debts):\n    return 0", LineStart: 9, LineEnd: 12},
+				{Title: "Prune", Explanation: "A partner with the same sign cannot cancel this balance, and two partners with equal balances lead to the same subproblem, so each is tried once.", CodeSnippet: "if debts[i] * debts[start] >= 0 or debts[i] in tried:\n    continue\ntried.add(debts[i])", LineStart: 16, LineEnd: 18},
+				{Title: "Choose", Explanation: "One transfer moves start's whole balance onto person i. Start is now even (we never look at index start again), and i carries what is left.", CodeSnippet: "debts[i] += debts[start]", LineStart: 19, LineEnd: 19},
+				{Title: "Explore, then un-choose", Explanation: "Count this transfer plus the best way to settle everyone after start, then restore i's balance before trying the next partner.", CodeSnippet: "best = min(best, 1 + settle(start + 1))\ndebts[i] -= debts[start]", LineStart: 20, LineEnd: 21},
+			},
+			Alternatives: []AltSolution{
+				{
+					Name: "Brute force: try every partner",
+					Code: `def minTransfers(transactions):
+    balance = {}
+    for giver, receiver, amount in transactions:
+        balance[giver] = balance.get(giver, 0) + amount
+        balance[receiver] = balance.get(receiver, 0) - amount
+    debts = [b for b in balance.values() if b != 0]
+
+    def settle(start):
+        while start < len(debts) and debts[start] == 0:
+            start += 1
+        if start == len(debts):
+            return 0
+        best = float("inf")
+        for i in range(start + 1, len(debts)):
+            debts[i] += debts[start]
+            best = min(best, 1 + settle(start + 1))
+            debts[i] -= debts[start]
+        return best
+
+    return settle(0)`,
+					TimeComplexity:  "O(k!)",
+					SpaceComplexity: "O(k)",
+					Explanation:     "The same recursion without the Prune step: the first unsettled person may hand their balance to anyone after them, even someone with the same sign. Every branch is still a legal transfer, so the minimum is the same, but it always explores all (k - 1)! orderings, about 5,000 for eight balances.",
+				},
+				{
+					Name: "Bitmask DP: most zero-sum groups",
+					Code: `def minTransfers(transactions):
+    balance = {}
+    for giver, receiver, amount in transactions:
+        balance[giver] = balance.get(giver, 0) + amount
+        balance[receiver] = balance.get(receiver, 0) - amount
+    debts = [b for b in balance.values() if b != 0]
+    k = len(debts)
+    total = [0] * (1 << k)   # total[mask] = sum of the balances in mask
+    groups = [0] * (1 << k)  # most zero-sum groups mask can be split into
+    for mask in range(1, 1 << k):
+        lowest = (mask & -mask).bit_length() - 1
+        total[mask] = total[mask & (mask - 1)] + debts[lowest]
+        best = max(groups[mask ^ (1 << i)] for i in range(k) if mask >> i & 1)
+        groups[mask] = best + (1 if total[mask] == 0 else 0)
+    return k - groups[(1 << k) - 1]`,
+					TimeComplexity:  "O(2^k * k)",
+					SpaceComplexity: "O(2^k)",
+					Explanation:     "Uses the formula from the correctness argument directly: the answer is k minus the largest number of groups summing to zero. Build each subset by adding one person at a time; a subset gains a group whenever its total reaches zero. No search tree at all, but the table has 2^k entries, which is only practical because k is at most 12.",
+				},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "Why is it enough for each transfer to settle one person completely?", Answer: "Any zero-sum group of s people can be settled in s - 1 transfers that each clear one person: the first person hands their whole balance to someone of opposite sign in the group, leaving a zero-sum group of s - 1. No plan can do better than s - 1 per group, so restricting the search to these transfers loses nothing and makes the choice at each step just 'which partner'."},
+			{Prompt: "How would you turn this into a decision version: can the debts be settled in at most t transfers?", Answer: "Pass the remaining budget down the recursion and prune any branch that would exceed it: return as soon as a branch settles everyone within the budget. Since the minimum is k - g, it is also enough to compute the maximum number of zero-sum groups g and compare k - g with t."},
 		},
 	},
 }

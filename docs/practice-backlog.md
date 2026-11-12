@@ -1,7 +1,7 @@
 # Practice Coverage
 
-All 75 Blind 75 problems are present, along with 64 more from NeetCode 150,
-for 139 in total. `internal/contentcheck` and `internal/judge` hold every
+All 75 Blind 75 problems are present, along with 64 more from NeetCode 150
+and 32 Google-reported problems (see practice.md), for 171 in total. `internal/contentcheck` and `internal/judge` hold every
 problem to the rules in [pedagogy.md](pedagogy.md), and every reference
 solution passes every test.
 
@@ -13,8 +13,7 @@ Permutations (46), Unique Paths (62), and Jump Game (55).
 These NeetCode 150 problems would fill gaps in the ladders. Each must meet
 pedagogy.md before it is added.
 
-- Trees: Diameter of Binary Tree, Balanced Binary Tree, Right Side View, Count
-  Good Nodes
+- Trees: Diameter of Binary Tree, Balanced Binary Tree, Count Good Nodes
 - Heap: Kth Largest Element in an Array
 - Graphs: Max Area of Island
 - 1-D DP: Min Cost Climbing Stairs (currently used as a chapter 15 completion

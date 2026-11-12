@@ -1,6 +1,12 @@
 package practice
 
-// GreedyProblems contains all greedy category problems, in ladder order.
+// GreedyProblems contains all greedy category problems, in ladder order:
+// one-pass frontier and running-sum greedies (Jump Game, Maximum Subarray,
+// Jump Game II, Gas Station), forced choices on sorted values with a count
+// map (Hand of Straights, Find Original Array From Doubled Array), taking
+// every safe choice (Merge Triplets), keeping the longest safe prefix and
+// repairing it (Monotone Increasing Digits), then Partition Labels and
+// Valid Parenthesis String.
 //
 // Subgoal labels shared with chapter 17: "Choose the greedy rule",
 // "Order the input", "Track the greedy state", "Commit or skip",
@@ -206,7 +212,7 @@ Every subarray ends at some index, so best = max over i of current is the true m
 		Slug:            "jump-game-ii",
 		Difficulty:      "Medium",
 		Category:        "greedy",
-		Tags:            []string{"Array", "Greedy", "Dynamic Programming"},
+		Tags:            []string{"Array", "Greedy", "Dynamic Programming", "Google", "Google L4", "Google Phone Screen"},
 		RelatedChapters: []int{17, 13, 15},
 		Description: `You start on index 0 of an integer array nums of length n. From index i you may jump forward to any index from i + 1 up to i + nums[i].
 
@@ -508,9 +514,116 @@ All count[c] copies of c are smallest at once, so all of them start groups toget
 		},
 	},
 	{
+		ID:              "find-original-array-from-doubled-array",
+		Number:          2007,
+		Order:           6,
+		Title:           "Find Original Array From Doubled Array",
+		Slug:            "find-original-array-from-doubled-array",
+		Difficulty:      "Medium",
+		Category:        "greedy",
+		Tags:            []string{"Array", "Hash Table", "Greedy", "Sorting", "Google", "Google L4", "Google Phone Screen"},
+		RelatedChapters: []int{17, 2},
+		Description: `Someone took an integer array original, appended a copy of every element multiplied by 2 (so each value v gains a partner 2 * v), and then shuffled the result. You are given that shuffled array, changed.
+
+Rebuild original: return a list of numbers such that changed can be split into pairs (v, 2 * v), one pair per returned number v, using every element of changed exactly once. The numbers may be returned in any order.
+
+If changed cannot be split that way (for example, its length is odd, or some value has no partner left), return an empty list. Note that 0 is its own double, so zeros can only pair with other zeros.`,
+		Constraints: []string{
+			"1 <= changed.length <= 10^5",
+			"0 <= changed[i] <= 10^5",
+		},
+		Examples: []Example{
+			{Input: "changed = [1,3,4,2,6,8]", Output: "[1,3,4]", Explanation: "Sorted, the values are 1,2,3,4,6,8. The smallest, 1, can't be anyone's double, so it is an original and takes 2. Next 3 takes 6, then 4 takes 8. Any order of [1,3,4] is accepted."},
+			{Input: "changed = [6,3,0,1]", Output: "[]", Explanation: "The single 0 has no other 0 to pair with, so no split exists."},
+			{Input: "changed = [1]", Output: "[]", Explanation: "An odd number of elements can never be split into pairs."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"changed": []int{1, 3, 4, 2, 6, 8}}, Expected: []int{1, 3, 4}, Note: "example 1: three clean pairs"},
+			{Input: map[string]interface{}{"changed": []int{6, 3, 0, 1}}, Expected: []int{}, Note: "example 2: a lone zero has no partner"},
+			{Input: map[string]interface{}{"changed": []int{1}}, Expected: []int{}, Hidden: true, Note: "odd length: impossible"},
+			{Input: map[string]interface{}{"changed": []int{0, 0, 0, 0}}, Expected: []int{0, 0}, Hidden: true, Note: "zeros pair with each other: four zeros give two originals (catches 0 matching its own copy)"},
+			{Input: map[string]interface{}{"changed": []int{0, 0, 0, 1, 2, 6}}, Expected: []int{}, Hidden: true, Note: "even length but an odd number of zeros"},
+			{Input: map[string]interface{}{"changed": []int{4, 8, 2, 16}}, Expected: []int{2, 8}, Hidden: true, Note: "pairing 4 with 8 first strands 2 (catches not sorting)"},
+			{Input: map[string]interface{}{"changed": []int{2, 1, 2, 4, 2, 4}}, Expected: []int{1, 2, 2}, Hidden: true, Note: "a value is both a double (of 1) and an original (of 4)"},
+			{Input: map[string]interface{}{"changed": []int{1, 1, 2, 2}}, Expected: []int{1, 1}, Hidden: true, Note: "duplicates: two copies of the same pair"},
+			{Input: map[string]interface{}{"changed": []int{3, 6, 6, 7}}, Expected: []int{}, Hidden: true, Note: "after 3 takes one 6, the other 6 has no 12 to pair with"},
+			{Input: map[string]interface{}{"changed": []int{100000, 50000}}, Expected: []int{50000}, Hidden: true, Note: "largest values, given largest first"},
+		},
+		TimeComplexity:  "O(n log n)",
+		SpaceComplexity: "O(n)",
+		StarterCode:     "def findOriginalArray(changed):\n    # Write your solution here\n    pass",
+		Harness:         Harness{Compare: "unordered"},
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "Look at the smallest positive value in changed. Could it be the doubled copy of some other element, and if not, what must its partner be?"},
+			{Level: 2, Type: "insight", Content: "The smallest remaining value x > 0 can't be a double, because its half would be smaller still and nothing smaller is left. So x is an original and its partner is forced to be 2x. As in Hand of Straights, visit values from smallest up and remove forced pairs from a count map (chapter 2). Zero is the one exception: it is its own double, so zeros pair with zeros. See chapter 17 on forced choices.", ChapterRef: 17},
+			{Level: 3, Type: "plan", Content: "1. Check for failure: an odd length can't be split into pairs.\n2. Track the greedy state: count how many copies of each value are still unpaired.\n3. Order the input: visit the values from smallest to largest.\n4. Commit or skip: skip a value whose copies were already used as doubles; otherwise use one copy as an original, and remove one copy of its double, returning [] if none is left.\n5. Return the answer: the list of originals you committed.\n6. Justify the choice: why must the smallest unpaired value be an original?"},
+			{Level: 4, Type: "skeleton", Content: "from collections import Counter\n\ndef findOriginalArray(changed):\n    if len(changed) % 2 == 1:\n        return []\n    count = Counter(changed)\n    original = []\n    for value in sorted(changed):\n        if ____:\n            continue\n        count[value] -= 1\n        if ____:\n            return []\n        count[____] -= 1\n        original.append(value)\n    return original"},
+		},
+		Solution: Solution{
+			Code: `from collections import Counter
+
+def findOriginalArray(changed):
+    if len(changed) % 2 == 1:
+        return []
+    count = Counter(changed)  # unpaired copies of each value
+    original = []
+    for value in sorted(changed):
+        if count[value] == 0:
+            continue  # this copy was already used as someone's double
+        count[value] -= 1  # take it as an original first
+        if count[value * 2] == 0:
+            return []  # its forced partner is missing
+        count[value * 2] -= 1
+        original.append(value)
+    return original`,
+			Explanation: "Builds on Hand of Straights: there the smallest card was forced to start a run; here the smallest unpaired value is forced to be an original, and its partner 2 * value is forced too. The same tools carry over, sorting for 'Order the input' and a count map (chapter 2) for removing partners in O(1). The new twist is a value that is its own partner: 0 must pair with another 0, which the 'take it first, then look for the double' order handles without a special case.",
+			BruteForce:  "Sort the array into a list, then repeatedly pop the smallest element and search the list for its double with list.remove: each search and removal is O(n), so the whole thing is O(n^2), about 10^10 steps for n = 10^5. Trying every way to split changed into pairs is worse still, exponential. The waste: scanning the list to find a partner whose count could be looked up directly.",
+			KeyInsight:  "Among the unpaired values, the smallest positive one has nothing smaller left to be its half, so it must be an original and must take one copy of its double. Visiting values in sorted order makes every pairing decision forced, and a count map makes each partner lookup O(1).",
+			WhyItWorks: `Exchange argument (forced-choice form): let x be the smallest unpaired value, with x > 0. In any valid split, x is in some pair (v, 2v). If x were the 2v side, then v = x / 2 < x would also be unpaired, contradicting that x is the smallest. So x is the original and its pair is (x, 2x). Every valid split therefore pairs x with a copy of 2x, and since all copies of 2x are identical, which copy is used doesn't matter. Taking that pair can't rule out any solution, and what remains is a smaller instance of the same question, so induction finishes the proof.
+Zero: a 0 can only pair with another 0. Taking one 0 off the count before looking for its double means a lone 0 can't match itself, so an odd number of zeros returns [].
+If some x has no 2x left, no valid split exists at all, because every valid split would need that pair.`,
+			CommonMistakes: []string{
+				"Visiting values in input order (or hash-map order) instead of sorted order. On [4,8,2,16], pairing 4 with 8 first leaves 2 with no 4, though the answer [2,8] exists. Fix: iterate sorted(changed) so each choice is forced.",
+				"Treating 0 like any other value. If you check for the double before removing the value itself (or count whole groups key by key, as in Hand of Straights), each 0 finds its own copy as its partner, so [0,0,0,0] returns four zeros instead of [0,0]. Fix: decrement count[value] first, then look for count[value * 2].",
+				"Forgetting to skip copies that were already used as doubles, so a 2 that was paired with 1 later tries to pair with 4 as well. Fix: continue when count[value] is 0.",
+			},
+			TimeComplexity:  "O(n log n)",
+			SpaceComplexity: "O(n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Check for failure", Explanation: "Every element ends up in exactly one pair, so an odd length is impossible before we look at any values.", CodeSnippet: "if len(changed) % 2 == 1:\n    return []", LineStart: 4, LineEnd: 5},
+				{Title: "Track the greedy state", Explanation: "count[v] is how many copies of v are still unpaired. For example 1 it starts as {1:1, 3:1, 4:1, 2:1, 6:1, 8:1}.", CodeSnippet: "count = Counter(changed)  # unpaired copies of each value\noriginal = []", LineStart: 6, LineEnd: 7},
+				{Title: "Order the input", Explanation: "Walk the values from smallest up, so the current value always has nothing smaller left to be its half. Copies already consumed as doubles are skipped.", CodeSnippet: "for value in sorted(changed):\n    if count[value] == 0:\n        continue  # this copy was already used as someone's double", LineStart: 8, LineEnd: 10},
+				{Title: "Commit or skip", Explanation: "Commit value as an original, then remove one copy of its forced partner. Example 1: 1 takes 2, then 2 is skipped (count 0), 3 takes 6, 4 takes 8, and 6 and 8 are skipped. On [0,0,0,1,2,6] the third 0 finds no 0 left and we return [].", CodeSnippet: "count[value] -= 1  # take it as an original first\nif count[value * 2] == 0:\n    return []  # its forced partner is missing\ncount[value * 2] -= 1\noriginal.append(value)", LineStart: 11, LineEnd: 15},
+				{Title: "Return the answer", Explanation: "Every element was consumed by a forced pair, so the committed originals are the answer.", CodeSnippet: "return original", LineStart: 16, LineEnd: 16},
+			},
+			Alternatives: []AltSolution{
+				{
+					Name: "Pop the smallest from a sorted list (brute force)",
+					Code: `def findOriginalArray(changed):
+    remaining = sorted(changed)
+    original = []
+    while remaining:
+        smallest = remaining.pop(0)
+        if smallest * 2 not in remaining:
+            return []
+        remaining.remove(smallest * 2)
+        original.append(smallest)
+    return original`,
+					TimeComplexity:  "O(n^2)",
+					SpaceComplexity: "O(n)",
+					Explanation:     "The same forced choice, but each partner search and removal scans the list. Popping the smallest before searching handles zeros correctly, and a leftover single element fails the search, which covers the odd-length case.",
+				},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "Why must the smallest unpaired positive value be an original rather than a double?", Answer: "If it were a double 2v, its original v = value / 2 would be smaller and still unpaired, which contradicts it being the smallest. So it has to be the original, and its partner is forced to be a copy of value * 2."},
+			{Prompt: "What changes if changed could also contain negative numbers?", Answer: "Smallest-first breaks for negatives: the double of -3 is -6, which is smaller, so the smallest value -6 is the double side, not the original. Sort by absolute value instead. Then the value closest to zero has no smaller-magnitude half left, so it is again forced to be an original, and the same count-map pass works."},
+		},
+	},
+	{
 		ID:              "merge-triplets-to-form-target",
 		Number:          1899,
-		Order:           6,
+		Order:           7,
 		Title:           "Merge Triplets to Form Target Triplet",
 		Slug:            "merge-triplets-to-form-target-triplet",
 		Difficulty:      "Medium",
@@ -561,7 +674,7 @@ Return true if, after some sequence of operations (possibly none), the target ap
             if triplet[k] == target[k]:
                 matched.add(k)
     return len(matched) == 3`,
-			Explanation: "Builds on Hand of Straights, where the greedy choice was forced; here the greedy rule is 'take everything that is safe'. Merging only takes maximums, so a triplet either can never be used (it overshoots somewhere) or can always be added without harm. That turns a question about subsets into a single filter-and-check pass.",
+			Explanation: "Builds on Hand of Straights and Find Original Array From Doubled Array, where the greedy choice was forced; here the greedy rule is 'take everything that is safe'. Merging only takes maximums, so a triplet either can never be used (it overshoots somewhere) or can always be added without harm. That turns a question about subsets into a single filter-and-check pass.",
 			BruteForce:  "Try every non-empty subset of triplets and compare its position-wise max with the target: O(2^n) subsets, hopeless beyond about 25 triplets. The waste: most subsets differ only by safe triplets that can't change whether the answer is reachable.",
 			KeyInsight:  "Max only grows. A triplet with a value above the target is unusable, and every other triplet is free to include, so the best subset is simply 'all safe triplets'.",
 			WhyItWorks: `Split the triplets into poison (some value above the target) and safe (every value <= the target).
@@ -603,9 +716,109 @@ def mergeTriplets(triplets, target):
 		},
 	},
 	{
+		ID:              "monotone-increasing-digits",
+		Number:          738,
+		Order:           8,
+		Title:           "Monotone Increasing Digits",
+		Slug:            "monotone-increasing-digits",
+		Difficulty:      "Medium",
+		Category:        "greedy",
+		Tags:            []string{"Math", "Greedy", "Google", "Google L4", "Google Phone Screen"},
+		RelatedChapters: []int{17, 19},
+		Description: `Call a non-negative integer monotone increasing if its decimal digits never go down when read from left to right: each digit is at least as large as the digit before it. For example 1234, 1299 and 7 are monotone increasing, but 332 and 10 are not (3 is followed by a smaller 2, and 1 by a smaller 0).
+
+Given an integer n, return the largest monotone increasing integer that is less than or equal to n. If n is already monotone increasing, the answer is n itself. Return the answer as an integer (no leading zeros).`,
+		Constraints: []string{
+			"0 <= n <= 10^9",
+		},
+		Examples: []Example{
+			{Input: "n = 10", Output: "9", Explanation: "10 is not monotone (1 then 0). 9 is the largest number below it whose digits never decrease."},
+			{Input: "n = 1234", Output: "1234", Explanation: "The digits already never decrease, so n is its own answer."},
+			{Input: "n = 332", Output: "299", Explanation: "Any answer starting with 3 would need its next digits to be at least 3, giving at least 333 > 332. So the first digit must drop to 2, and the rest can then be as large as possible: 99."},
+		},
+		TestCases: []TestCase{
+			{Input: map[string]interface{}{"n": 10}, Expected: 9, Note: "example 1: the answer has fewer digits"},
+			{Input: map[string]interface{}{"n": 1234}, Expected: 1234, Note: "example 2: already monotone"},
+			{Input: map[string]interface{}{"n": 332}, Expected: 299, Note: "example 3: equal digits before the drop push the fix to the front (catches fixing only the first drop)"},
+			{Input: map[string]interface{}{"n": 0}, Expected: 0, Hidden: true, Note: "zero: smallest input, a single digit"},
+			{Input: map[string]interface{}{"n": 120}, Expected: 119, Hidden: true, Note: "after lowering a digit, the rest must become 9s, not stay as they were"},
+			{Input: map[string]interface{}{"n": 100}, Expected: 99, Hidden: true, Note: "lowering the leading 1 leaves a leading zero that must disappear"},
+			{Input: map[string]interface{}{"n": 668841}, Expected: 667999, Hidden: true, Note: "several drops in a row cascade leftwards"},
+			{Input: map[string]interface{}{"n": 111111110}, Expected: 99999999, Hidden: true, Note: "a long run of equal digits: the fix travels all the way to the first digit"},
+			{Input: map[string]interface{}{"n": 1999}, Expected: 1999, Hidden: true, Note: "already monotone with trailing 9s"},
+			{Input: map[string]interface{}{"n": 1000000000}, Expected: 999999999, Hidden: true, Note: "largest input"},
+			{Input: map[string]interface{}{"n": 989999999}, Expected: 899999999, Hidden: true, Note: "answer is 90 million below n, so counting down one by one is far too slow"},
+		},
+		TimeComplexity:  "O(log n)",
+		SpaceComplexity: "O(log n)",
+		StarterCode:     "def monotoneIncreasingDigits(n):\n    # Write your solution here\n    pass",
+		Hints: []Hint{
+			{Level: 1, Type: "nudge", Content: "To make the answer as large as possible, which digits of n would you most like to keep unchanged, and what is the first place where keeping n's digit makes a monotone answer impossible?"},
+			{Level: 2, Type: "insight", Content: "Keep the longest prefix of n you can. At a drop (a digit larger than the one after it) you can't keep both, so lower the left digit by exactly 1; once a digit is lower than n's, everything after it is free, and the largest free choice is all 9s. Lowering a digit can create a new drop with the digit before it (332 -> 32 -> 2), so scan from right to left and let the fix cascade. This is greedy over digits from the most significant end, the same order you compare numbers in (chapter 17; digit arithmetic is in chapter 19).", ChapterRef: 17},
+			{Level: 3, Type: "plan", Content: "1. Track the greedy state: the digits of n as a list, and fill_from, the first position that will become 9 (start past the end).\n2. Order the input: scan adjacent pairs from right to left.\n3. Commit or skip: when a digit is larger than the digit after it, lower it by 1 and move fill_from to the position right after it.\n4. Return the answer: set every digit from fill_from onward to 9 and convert back to an integer (which drops a leading 0).\n5. Justify the choice: why can no answer keep more of n's prefix, and why is lowering by exactly 1 best?"},
+			{Level: 4, Type: "skeleton", Content: "def monotoneIncreasingDigits(n):\n    digits = list(str(n))\n    fill_from = len(digits)\n    for i in range(len(digits) - 1, 0, -1):\n        if ____:\n            digits[i - 1] = ____\n            fill_from = ____\n    for i in range(fill_from, len(digits)):\n        digits[i] = ____\n    return int(\"\".join(digits))"},
+		},
+		Solution: Solution{
+			Code: `def monotoneIncreasingDigits(n):
+    digits = list(str(n))
+    fill_from = len(digits)  # positions from here on become 9
+    for i in range(len(digits) - 1, 0, -1):
+        if digits[i - 1] > digits[i]:
+            digits[i - 1] = str(int(digits[i - 1]) - 1)
+            fill_from = i
+    for i in range(fill_from, len(digits)):
+        digits[i] = "9"
+    return int("".join(digits))`,
+			Explanation: "Builds on Merge Triplets to Form Target Triplet, whose rule was 'keep everything that is safe'. Here the safe part is the longest prefix of n's digits that a monotone answer can keep, and the new twist is a repair step: where keeping more would break the rule, lower one digit by exactly 1 and make every later digit as large as possible. Because lowering a digit can break the rule with the digit before it, the scan runs right to left so the fix can cascade.",
+			BruteForce:  "Count down from n and return the first number whose digits never decrease. Each check is O(log n), but the gap can be huge: for n = 989,999,999 the answer is 899,999,999, so the loop checks 90 million numbers. The waste: it tries every number between, though only the digits around the first drop matter.",
+			KeyInsight:  "A larger number wins at the first digit where they differ, so keep as many leading digits of n as possible. Find the position where keeping n's digits must stop, lower that digit by 1, and fill everything after it with 9s, the largest digits that keep the number monotone.",
+			WhyItWorks: `Let p be the position the scan finally lowers (the start of the run of equal digits that ends at n's first drop). Write the digits of n as d[0], d[1], ...
+No monotone x <= n keeps d[0..p] unchanged: digits p..q (q = the first drop) are all equal to d[p], so a monotone x that matches through p must have digits >= d[p] there; to stay <= n they must equal d[p] up to q, and then digit q+1 must be >= d[q] > d[q+1], making x > n.
+Exchange argument: take any monotone x <= n. It first differs from n at some position j <= p, where its digit is smaller. Compare it with our answer g, which keeps d[0..p-1], has d[p] - 1 at p, and 9s after. If j < p, g agrees with n longer, so g is larger at position j and g > x. If j = p, x's digit there is at most d[p] - 1 and every later digit is at most 9, so x <= g. So replacing any candidate with g never makes the answer smaller.
+g is valid: d[0..p-1] is monotone, d[p-1] < d[p] (p starts a run), so d[p-1] <= d[p] - 1 <= 9, and g < n. The right-to-left scan finds p because every lowered digit is re-compared with its left neighbour, so the fix moves left exactly while equal digits force it to.`,
+			CommonMistakes: []string{
+				"Scanning left to right and fixing only the first drop. 332 becomes 329, which still drops (3 then 2). Fix: scan right to left so a lowered digit is compared with its left neighbour again, or walk back over equal digits before lowering.",
+				"Lowering the digit but leaving the digits after it as they were. 120 becomes 110 instead of 119. Fix: once any digit is lowered, every later digit is free, so set them all to 9.",
+				"Returning the joined string, or building the number in a way that keeps a leading zero ('099' for 100). Fix: convert with int(...), which drops the leading 0.",
+			},
+			TimeComplexity:  "O(log n)",
+			SpaceComplexity: "O(log n)",
+			Walkthrough: []WalkthroughStep{
+				{Title: "Track the greedy state", Explanation: "Work on the digits as a list. fill_from starts past the end, meaning 'nothing becomes 9 yet'.", CodeSnippet: "digits = list(str(n))\nfill_from = len(digits)  # positions from here on become 9", LineStart: 2, LineEnd: 3},
+				{Title: "Order the input", Explanation: "Compare each digit with the one after it, from the right end towards the front, so a digit that gets lowered is checked against its own left neighbour next.", CodeSnippet: "for i in range(len(digits) - 1, 0, -1):", LineStart: 4, LineEnd: 4},
+				{Title: "Commit or skip", Explanation: "At a drop, lower the left digit by 1 and record that everything from i on will be 9. On 332: i = 2 sees 3 > 2, giving 322 with fill_from = 2; i = 1 now sees 3 > 2, giving 222 with fill_from = 1.", CodeSnippet: "if digits[i - 1] > digits[i]:\n    digits[i - 1] = str(int(digits[i - 1]) - 1)\n    fill_from = i", LineStart: 5, LineEnd: 7},
+				{Title: "Return the answer", Explanation: "Fill the free positions with 9 and convert back. 222 with fill_from = 1 becomes 299; for 10 the list becomes ['0', '9'] and int drops the leading zero to give 9.", CodeSnippet: "for i in range(fill_from, len(digits)):\n    digits[i] = \"9\"\nreturn int(\"\".join(digits))", LineStart: 8, LineEnd: 10},
+			},
+			Alternatives: []AltSolution{
+				{
+					Name: "Choose each digit from 9 down (digit-by-digit search)",
+					Code: `def monotoneIncreasingDigits(n):
+    length = len(str(n))
+    result = ""
+    for position in range(length):
+        lowest = int(result[-1]) if result else 0
+        for digit in range(9, lowest - 1, -1):
+            # smallest monotone completion that starts with this digit
+            candidate = result + str(digit) * (length - position)
+            if int(candidate) <= n:
+                result += str(digit)
+                break
+    return int(result)`,
+					TimeComplexity:  "O((log n)^2)",
+					SpaceComplexity: "O(log n)",
+					Explanation:     "A more direct greedy that is easy to trust: fix digits from the most significant end, trying 9 down to the previous digit. Repeating the digit is the smallest monotone way to finish, so if even that exceeds n the digit is too big. It does a little more work than the scan but never counts through the numbers in between, unlike the count-down brute force.",
+				},
+			},
+		},
+		SelfCheck: []SelfCheck{
+			{Prompt: "Why is lowering a digit by exactly 1, rather than by more, always the right repair?", Answer: "Once a digit is lower than n's digit at that position, the number is already below n no matter what follows, so the remaining digits can all be 9. Lowering by more would make the number smaller at that position with no benefit later, and since larger numbers win at the first differing digit, the smallest possible reduction gives the largest answer."},
+			{Prompt: "What changes if you need the smallest monotone decreasing number that is at least n (digits never go up)?", Answer: "Mirror the argument: scan right to left for a place where a digit is smaller than the one after it, raise the left digit by 1 and set every later digit to 0, the smallest free choice. Raising a digit can create a new rise with its left neighbour, so the fix cascades left exactly as before: 189 becomes 190 and then 200."},
+		},
+	},
+	{
 		ID:              "partition-labels",
 		Number:          763,
-		Order:           7,
+		Order:           9,
 		Title:           "Partition Labels",
 		Slug:            "partition-labels",
 		Difficulty:      "Medium",
@@ -707,7 +920,7 @@ Greedy stays ahead: its k-th cut is the k-th legal cut point, which is no later 
 	{
 		ID:              "valid-parenthesis-string",
 		Number:          678,
-		Order:           8,
+		Order:           10,
 		Title:           "Valid Parenthesis String",
 		Slug:            "valid-parenthesis-string",
 		Difficulty:      "Medium",

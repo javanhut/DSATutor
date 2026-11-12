@@ -3,7 +3,8 @@
 Practice mode is where learners solve LeetCode-style problems in Python, or
 in Oxigen (see [oxigen.md](oxigen.md)), after each chapter. Problems are grouped into categories, and each category is
 a ladder ordered easy → hard. Every Blind 75 problem is included, plus 64
-NeetCode 150 problems, for 139 in total. How problems are written, and why, is
+NeetCode 150 problems and 32 more that Google candidates reported in
+2024–2026, for 171 in total (see [Google interview prep](#google-interview-prep)). How problems are written, and why, is
 in [pedagogy.md](pedagogy.md).
 
 ## What a learner gets
@@ -38,24 +39,61 @@ exported and imported as JSON.
 
 | # | Category | Problems | Taught in chapter |
 |---|---|---|---|
-| 1 | Arrays & Hashing | 9 | 2 |
+| 1 | Arrays & Hashing | 14 | 2 |
 | 2 | Two Pointers | 5 | 3 |
-| 3 | Sliding Window | 6 | 4 |
-| 4 | Stack | 7 | 5 |
-| 5 | Binary Search | 7 | 6 |
-| 6 | Linked List | 9 | 7 |
-| 7 | Trees | 11 | 9 |
+| 3 | Sliding Window | 9 | 4 |
+| 4 | Stack | 9 | 5 |
+| 5 | Binary Search | 9 | 6 |
+| 6 | Linked List | 10 | 7 |
+| 7 | Trees | 15 | 9 |
 | 8 | Tries | 3 | 10 |
-| 9 | Heap / Priority Queue | 6 | 11 |
-| 10 | Backtracking | 9 | 12 |
-| 11 | Graphs | 12 | 13 |
+| 9 | Heap / Priority Queue | 11 | 11 |
+| 10 | Backtracking | 10 | 12 |
+| 11 | Graphs | 16 | 13 |
 | 12 | Advanced Graphs | 6 | 14 |
-| 13 | 1-D Dynamic Programming | 11 | 15 |
+| 13 | 1-D Dynamic Programming | 13 | 15 |
 | 14 | 2-D Dynamic Programming | 11 | 16 |
-| 15 | Greedy | 8 | 17 |
+| 15 | Greedy | 10 | 17 |
 | 16 | Intervals | 5 | 18 |
-| 17 | Math & Geometry | 8 | 19 |
+| 17 | Math & Geometry | 9 | 19 |
 | 18 | Bit Manipulation | 6 | 20 |
+
+## Google interview prep
+
+74 problems carry a `Google` tag: questions that candidates reported from
+Google phone screens, onsites and online assessments in 2024–2026. Pick
+**Topic → Google** (or a level or round) in the problem list to see only
+those; they stay in their technique ladders, so each still links to the
+chapter that teaches its pattern.
+
+| Tag | Meaning |
+|---|---|
+| `Google` | reported at Google |
+| `Google L3`, `Google L4`, `Google L5` | the level to aim it at. New problems use the level they were reported for; the 42 tagged existing problems follow difficulty (Easy → L3, Medium → L4, Hard → L5). |
+| `Google Phone Screen`, `Google Onsite`, `Google OA` | the round it was reported in |
+
+32 problems were added for this set: Longest Palindrome, Number of Unequal
+Triplets, Logger Rate Limiter, Insert Delete GetRandom O(1), First Missing
+Positive, Longest Continuous Increasing Subsequence, Longest Substring with
+At Most K Distinct Characters, Design Hit Counter, Minimum String Length
+After Removing Substrings, Number of Visible People in a Queue, Binary Tree
+Right Side View, Zigzag Level Order Traversal, Delete Leaves With a Given
+Value, Sum of Distances in Tree, Add Two Numbers II, Top K Frequent Words,
+Find K Pairs with Smallest Sums, Minimum Cost to Connect Sticks, Meeting
+Rooms III, The Skyline Problem, Number of Closed Islands, Satisfiability of
+Equality Equations, Validate Binary Tree Nodes, Number of Islands II, Optimal
+Account Balancing, Monotone Increasing Digits, Find Original Array From
+Doubled Array, Game of Life, House Robber III, New 21 Game, Russian Doll
+Envelopes and Longest Duplicate Substring.
+
+Sources: public candidate reports compiled by
+[lets-code.co.in](https://www.lets-code.co.in/previousyearcodingquestion/google-previous-year-coding-questions/),
+[landthelab.com](https://landthelab.com/companies/google/rounds/phone-screen),
+the [Hello Interview](https://www.hellointerview.com/guides/google/l4) level
+guides and [onsites.fyi](https://www.onsites.fyi/blog/article/google-L4-software-engineer-interview-questions).
+These are self-reported, so treat them as likely topics, not a guaranteed
+question bank. Statements are written in our own words, as for every
+problem.
 
 ## Architecture
 
