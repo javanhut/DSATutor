@@ -34,6 +34,11 @@ The course is built on well-replicated learning research; see
   [narration voices](docs/tts.md) — Ollama speech models (lfm3-audio, phonon)
   when available, with the bundled Piper voice as fallback — all synthesized
   server-side, so narration works the same wherever the container runs
+- **AI tutor (optional)**: press **Tutor** (or **Ask tutor** on a problem) to
+  chat, by text or microphone, with an [Ollama language model](docs/tutor.md)
+  that sees the lesson or problem, your code and your last run, and coaches
+  you toward the bug, the pattern and the complexity instead of handing over
+  the answer; replies can be read aloud with the narration voices
 - **Practice judge**: Python or [Oxigen](docs/oxigen.md) solutions run against
   visible and hidden tests, including linked-list, tree, graph and
   class-design problems
@@ -110,6 +115,7 @@ DSATutor/
 │   ├── judge/              # Runs code against a problem's tests and decides pass/fail
 │   ├── sandbox/            # Code execution: tracer.py, harness.py (Python), oxigen.go, harness_lib.oxi (Oxigen), security checks
 │   ├── tts/                # Lesson narration: Piper worker (speaker.py) behind /api/tts
+│   ├── tutor/              # Optional AI tutor: Ollama chat, speech-to-text, context-aware prompts
 │   ├── contentcheck/       # Tests that hold content to docs/pedagogy.md
 │   ├── storage/            # JSON import/export
 │   ├── ui/                 # Console renderer
@@ -203,6 +209,7 @@ See [docs/visualizer-system.md](docs/visualizer-system.md) for detailed document
 | `/api/chapters` | GET | List all chapters as JSON |
 | `/api/practice/*` | GET/POST | Practice problems, run and submit; see [docs/practice.md](docs/practice.md) |
 | `/api/tts` | POST | Lesson narration as `audio/wav`; see [docs/tts.md](docs/tts.md) |
+| `/api/tutor/*` | GET/POST | AI tutor chat and voice transcription; see [docs/tutor.md](docs/tutor.md) |
 | `/static/*` | GET | Static assets |
 
 ## Development

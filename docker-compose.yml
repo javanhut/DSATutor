@@ -15,6 +15,10 @@ services:
       # falls back to the bundled Piper voice when Ollama has no speech
       # models; see docs/tts.md.
       DSATUTOR_OLLAMA_URL: ${DSATUTOR_OLLAMA_URL:-http://ollama:11434}
+      # The optional AI tutor uses the same Ollama: any installed chat model
+      # (e.g. ollama pull gemma4) turns it on. Pin a default model with
+      # DSATUTOR_TUTOR_MODEL; see docs/tutor.md.
+      DSATUTOR_TUTOR_MODEL: ${DSATUTOR_TUTOR_MODEL:-}
     depends_on:
       - ollama
     restart: unless-stopped

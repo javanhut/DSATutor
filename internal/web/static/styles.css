@@ -7181,3 +7181,178 @@ h2 .tts-skip {
   border-color: var(--accent);
   color: var(--on-accent);
 }
+
+/* ==========================================================================
+   AI tutor (tutor.js): a drawer on the right. On wide screens the page
+   makes room for it so the editor stays visible beside the chat.
+   ========================================================================== */
+
+:root { --tutor-width: 420px; }
+
+.tutor-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  width: var(--tutor-width);
+  max-width: 100vw;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  transform: translateX(100%);
+  visibility: hidden;
+  transition: transform 0.2s ease, visibility 0.2s;
+}
+.tutor-panel.open { transform: none; visibility: visible; }
+
+@media (min-width: 1300px) {
+  body.tutor-open .app-layout { margin-right: var(--tutor-width); }
+}
+
+.tutor-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 16px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.tutor-title h2 {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+.tutor-context {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  font-family: var(--mono);
+}
+.tutor-head-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.tutor-close { font-size: 14px; line-height: 1; }
+
+.tutor-settings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-sm);
+}
+.tutor-settings select { max-width: 200px; font-size: var(--fs-sm); }
+.tutor-toggle { display: inline-flex; align-items: center; gap: 5px; color: var(--text-dim); cursor: pointer; }
+
+.tutor-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.tutor-empty { color: var(--text-dim); font-size: var(--fs-sm); }
+.tutor-empty-note { color: var(--muted); font-size: var(--fs-xs); }
+
+.tutor-msg {
+  max-width: 92%;
+  padding: 9px 12px;
+  border-radius: var(--radius-lg);
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.tutor-msg > :first-child { margin-top: 0; }
+.tutor-msg > :last-child { margin-bottom: 0; }
+.tutor-msg p, .tutor-msg ul, .tutor-msg ol { margin: 0 0 8px; }
+.tutor-msg ul, .tutor-msg ol { padding-left: 20px; }
+.tutor-msg h4 { margin: 10px 0 4px; font-size: var(--fs-sm); }
+.tutor-msg code { font-family: var(--mono); font-size: 0.92em; background: rgba(var(--ink-rgb), 0.06); padding: 1px 4px; border-radius: 3px; }
+.tutor-msg.user {
+  align-self: flex-end;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.tutor-msg.user code { background: rgba(255, 255, 255, 0.18); }
+.tutor-msg.assistant {
+  align-self: flex-start;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+}
+.tutor-code {
+  margin: 6px 0 8px;
+  padding: 8px 10px;
+  background: var(--code-bg);
+  color: var(--code-text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow-x: auto;
+  font-size: 12px;
+}
+.tutor-code code { background: none; padding: 0; }
+.tutor-typing { color: var(--muted); font-style: italic; }
+.tutor-think-count { font-style: normal; font-family: var(--mono); font-size: var(--fs-xs); }
+
+.tutor-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 16px 0;
+}
+.tutor-chip {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: var(--fs-xs);
+  background: transparent;
+  border: 1px solid var(--border-light);
+  color: var(--text-dim);
+}
+.tutor-chip:hover { border-color: var(--accent); color: var(--accent); }
+
+.tutor-input {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  padding: 10px 16px 6px;
+}
+.tutor-input textarea {
+  flex: 1;
+  resize: none;
+  min-height: 44px;
+  max-height: 160px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: var(--fs-sm);
+  color: var(--text);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.tutor-input textarea:focus { outline: 2px solid rgba(var(--accent-rgb), 0.35); border-color: var(--accent); }
+.tutor-input-actions { display: flex; gap: 6px; }
+.tutor-mic .icon { width: 16px; height: 16px; }
+.tutor-mic.recording {
+  color: var(--error);
+  border-color: var(--error);
+  background: rgba(var(--error-rgb), 0.1);
+  animation: tutor-pulse 1.2s ease-in-out infinite;
+}
+@keyframes tutor-pulse { 50% { box-shadow: 0 0 0 4px rgba(var(--error-rgb), 0.18); } }
+@media (prefers-reduced-motion: reduce) {
+  .tutor-panel { transition: none; }
+  .tutor-mic.recording { animation: none; }
+}
+
+.tutor-status {
+  min-height: 18px;
+  margin: 0;
+  padding: 0 16px 10px;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+}
+.tutor-status.error { color: var(--error); }
