@@ -7356,3 +7356,11 @@ h2 .tts-skip {
   font-size: var(--fs-xs);
 }
 .tutor-status.error { color: var(--error); }
+
+/* Destructive actions (Reset all): quiet until hovered. */
+button.ghost.danger:hover,
+.btn-small.ghost.danger:hover {
+  color: var(--error);
+  border-color: var(--error);
+  background: rgba(var(--error-rgb), 0.08);
+}

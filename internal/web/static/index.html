@@ -274,8 +274,10 @@
               <span id="progress-count">0 solved</span>
             </div>
             <div class="control-group">
-              <button id="export-progress" class="btn-small ghost">Export</button>
-              <button id="import-progress" class="btn-small ghost">Import</button>
+              <button id="export-progress" class="btn-small ghost" title="Download your progress as a JSON file">Export</button>
+              <button id="import-progress" class="btn-small ghost" title="Load progress from an exported file">Import</button>
+              <input id="import-progress-file" type="file" accept="application/json,.json" class="hidden">
+              <button id="reset-progress" class="btn-small ghost danger" title="Forget every solve, attempt, hint, review date and code draft">Reset all</button>
             </div>
           </div>
         </header>

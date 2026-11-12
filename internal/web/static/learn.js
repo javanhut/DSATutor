@@ -93,13 +93,7 @@ async function goToCategory(categoryId) {
 function goToChapter(num) {
   const ch = state.chapters.find(c => c.number === num);
   if (!ch) return;
-  const toggle = el('practice-toggle');
-  if (toggle && toggle.classList.contains('active')) {
-    toggle.classList.remove('active');
-    el('practice-list').classList.add('hidden');
-    el('practice-mode').classList.add('hidden');
-    el('chapters').classList.remove('hidden');
-  }
+  leaveModes();
   el('detail').classList.remove('hidden');
   el('detail-empty').classList.add('hidden');
   selectChapter(ch);

@@ -6503,6 +6503,23 @@ function setSandboxLanguage(language) {
 }
 
 // Toggle sandbox mode
+// leaveModes switches practice and the sandbox off so the chapter area can
+// show again; the chapter that was open stays selected.
+function leaveModes() {
+  const practiceBtn = el('practice-toggle');
+  if (practiceBtn && practiceBtn.classList.contains('active')) {
+    practiceBtn.classList.remove('active');
+    el('practice-list').classList.add('hidden');
+    el('practice-mode').classList.add('hidden');
+  }
+  if (sandboxState.isActive) {
+    sandboxState.isActive = false;
+    el('sandbox-mode').classList.add('hidden');
+    el('sandbox-toggle')?.classList.remove('active');
+    if (sandboxState.animator) sandboxState.animator.pause();
+  }
+}
+
 function toggleSandboxMode() {
   sandboxState.isActive = !sandboxState.isActive;
 
@@ -7002,7 +7019,9 @@ function renderChapters() {
         <div class="chapter-slug">${ch.slug}</div>
       </div>
     `;
-    item.onclick = () => selectChapter(ch);
+    // Through goToChapter so a chapter opens from practice or the sandbox
+    // too: the chapter list stays in the sidebar in every mode.
+    item.onclick = () => goToChapter(ch.number);
     container.appendChild(item);
   });
   markChapterDone();
@@ -8940,9 +8959,10 @@ function setupPracticeControls() {
           }
         }
 
-        // Entering practice mode - hide chapter content, show practice
-        if (chaptersEl) chaptersEl.classList.add('hidden');
+        // Entering practice mode - hide chapter content, show practice. The
+        // chapter list stays in the sidebar as the way back.
         if (detailEl) detailEl.classList.add('hidden');
+        document.querySelectorAll('.chapter-item').forEach(item => item.classList.remove('active'));
         if (detailEmptyEl) detailEmptyEl.classList.add('hidden');
 
         if (practiceState.problems.length === 0) {
@@ -8970,6 +8990,21 @@ function setupPracticeControls() {
       }
     };
   }
+
+  // Progress: export, import and reset
+  const exportBtn = el('export-progress');
+  if (exportBtn) exportBtn.onclick = exportProgress;
+  const importBtn = el('import-progress');
+  const importFile = el('import-progress-file');
+  if (importBtn && importFile) {
+    importBtn.onclick = () => importFile.click();
+    importFile.onchange = () => {
+      if (importFile.files[0]) importProgress(importFile.files[0]);
+      importFile.value = ''; // picking the same file again still fires
+    };
+  }
+  const resetBtn = el('reset-progress');
+  if (resetBtn) resetBtn.onclick = resetAllProgress;
 
   // Back button
   const backBtn = el('practice-back');
@@ -9129,14 +9164,42 @@ function importProgress(file) {
   reader.onload = (e) => {
     try {
       const data = JSON.parse(e.target.result);
+      if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('not a progress object');
       practiceState.progress = data;
       saveProgress();
       renderProblemsList();
+      updateProgressCount();
     } catch (err) {
       alert('Failed to import progress: Invalid file format');
     }
   };
   reader.readAsText(file);
+}
+
+// resetAllProgress starts practice over: every problem goes back to
+// unsolved with no attempts, hints, review dates or saved code. Chapter
+// progress is left alone.
+function resetAllProgress() {
+  const solved = Object.values(practiceState.progress).filter(p => p.solved).length;
+  const touched = Object.keys(practiceState.progress).length;
+  if (!touched && !Object.keys(practiceState.drafts).length) {
+    alert('There is no practice progress to reset yet.');
+    return;
+  }
+  const ok = confirm(
+    `Reset all practice progress?\n\n` +
+    `This forgets ${solved} solved problem${solved === 1 ? '' : 's'}, your attempts, revealed hints, ` +
+    `review schedule, code drafts and tutor chats for problems. Chapter progress is kept.\n\n` +
+    `It can't be undone. Use Export first if you might want it back.`
+  );
+  if (!ok) return;
+  practiceState.progress = {};
+  practiceState.drafts = {};
+  practiceState.hintsRevealed = 0;
+  saveProgress();
+  document.dispatchEvent(new CustomEvent('dsatutor:practice-reset'));
+  renderProblemsList();
+  updateProgressCount();
 }
 
 function setupPracticeVizControls() {

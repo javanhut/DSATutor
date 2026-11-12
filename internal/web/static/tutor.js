@@ -719,6 +719,19 @@
     if (tutor.open) setTimeout(() => { if (tutor.open && !tutor.busy) syncContext(); }, 400);
   });
 
+  // Resetting practice also forgets the tutor's problem conversations: they
+  // talk about attempts that no longer exist.
+  document.addEventListener('dsatutor:practice-reset', () => {
+    const all = load(HISTORY_KEY, {}) || {};
+    Object.keys(all).filter(k => k.startsWith('problem:')).forEach(k => delete all[k]);
+    save(HISTORY_KEY, all);
+    if (tutor.key.startsWith('problem:')) {
+      stopReply();
+      tutor.messages = [];
+      renderMessages();
+    }
+  });
+
   window.openTutor = openPanel;
   init();
 })();
