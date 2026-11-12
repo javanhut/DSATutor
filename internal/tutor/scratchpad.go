@@ -29,6 +29,13 @@ const (
 	scratchTimeoutMs = 5000
 )
 
+var (
+	sketchTypes  = []string{"text", "box", "circle", "arrow", "line", "cells", "node", "underline"}
+	sketchColors = []string{"ink", "red", "blue", "green", "orange"}
+)
+
+const maxSketchElements = 150
+
 var structureTypes = []string{"value", "array", "bars", "matrix", "linked_list", "tree", "hash_table", "set", "graph"}
 
 func scratchpadTools() []Tool {
@@ -65,6 +72,36 @@ func scratchpadTools() []Tool {
 					},
 				},
 			}, "title", "frames"),
+		fn("scratchpad_sketch",
+			"Draw on the scratchpad's whiteboard in a hand-drawn style, like a teacher at a board: handwritten notes, boxes, circles, arrows and rows of array cells, drawn stroke by stroke. Coordinates run 0-100 across and 0-60 down. Give elements a step number to build the drawing up over several steps the learner clicks through (step 0 first); captions[i] explains step i. Use it for intuition: why an idea works, a pointer moving, what a recurrence means. Draw, don't just write: a row of cells for an array, arrows for pointers, circles or marks on the cells that matter, boxes for variables; keep text to short labels (six words or fewer). To move pointers over steps, redraw the same cells with new pointers in the next step. Example: [{\"type\":\"cells\",\"x\":15,\"y\":12,\"values\":[2,1,5,1,3],\"text\":\"nums\",\"pointers\":{\"left\":0,\"right\":2}}, {\"type\":\"cells\",\"step\":1,\"x\":15,\"y\":12,\"values\":[2,1,5,1,3],\"marks\":[0],\"pointers\":{\"left\":1,\"right\":3}}, {\"type\":\"text\",\"step\":1,\"x\":15,\"y\":48,\"text\":\"drop 2, add 1\",\"color\":\"red\"}]. Cells are 8 wide, so values[i] sits at x + 8*i; leave 20 units below a row of cells for its pointers, and put notes below that or to the right of the row.",
+			map[string]any{
+				"title":    map[string]any{"type": "string"},
+				"captions": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "one short caption per step"},
+				"elements": map[string]any{
+					"type": "array",
+					"items": map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"type":     map[string]any{"type": "string", "enum": sketchTypes},
+							"step":     map[string]any{"type": "integer", "description": "which step reveals it (0 = first)"},
+							"x":        map[string]any{"type": "number"},
+							"y":        map[string]any{"type": "number"},
+							"x2":       map[string]any{"type": "number", "description": "arrow/line end"},
+							"y2":       map[string]any{"type": "number", "description": "arrow/line end"},
+							"w":        map[string]any{"type": "number", "description": "box width"},
+							"h":        map[string]any{"type": "number", "description": "box height"},
+							"r":        map[string]any{"type": "number", "description": "circle/node radius"},
+							"text":     map[string]any{"type": "string", "description": "text, or the label of a box/node/arrow"},
+							"size":     map[string]any{"type": "string", "enum": []string{"s", "m", "l"}},
+							"color":    map[string]any{"type": "string", "enum": sketchColors},
+							"values":   map[string]any{"type": "array", "description": "cells: the values in the row"},
+							"marks":    map[string]any{"type": "array", "items": map[string]any{"type": "integer"}, "description": "cells: indexes to circle"},
+							"pointers": map[string]any{"type": "object", "description": "cells: pointer name -> index, e.g. {\"left\": 0, \"right\": 4}; draws a labelled arrow under each of those cells. Prefer this to placing arrows by hand."},
+						},
+						"required": []string{"type"},
+					},
+				},
+			}, "title", "elements"),
 		fn("ask_learner",
 			"Ask the learner a question with clickable answers to check understanding, then stop and wait for their reply. Make wrong choices real misconceptions.",
 			map[string]any{
@@ -110,7 +147,7 @@ func executeScratchpad(call ToolCall) (string, Action) {
 		return b.String(), act
 
 	case "scratchpad_visualize":
-		frames, _ := args["frames"].([]any)
+		frames := listArg(args, "frames")
 		if len(frames) == 0 {
 			return "Error: frames is empty.", nil
 		}
@@ -123,7 +160,7 @@ func executeScratchpad(call ToolCall) (string, Action) {
 			if !ok {
 				return fmt.Sprintf("Error: frame %d is not an object.", i+1), nil
 			}
-			structs, _ := fm["structures"].([]any)
+			structs := listArg(fm, "structures")
 			for j, st := range structs {
 				sm, ok := st.(map[string]any)
 				if !ok || !validType(str(sm, "type")) {
@@ -138,9 +175,47 @@ func executeScratchpad(call ToolCall) (string, Action) {
 		return fmt.Sprintf("Drew %d frames in the scratchpad; the learner can step through them.", len(clean)),
 			Action{"name": "scratchpad_visualize", "title": truncate(str(args, "title"), 120), "frames": clean}
 
+	case "scratchpad_sketch":
+		raw := listArg(args, "elements")
+		if len(raw) == 0 {
+			return "Error: elements must be a non-empty JSON array of element objects.", nil
+		}
+		if len(raw) > maxSketchElements {
+			raw = raw[:maxSketchElements]
+		}
+		steps := 0
+		for i, e := range raw {
+			em, ok := e.(map[string]any)
+			if !ok || !contains(sketchTypes, str(em, "type")) {
+				return fmt.Sprintf("Error: element %d needs a type from %v.", i+1, sketchTypes), nil
+			}
+			for _, k := range []string{"values", "marks"} {
+				if _, isStr := em[k].(string); isStr {
+					em[k] = listArg(em, k)
+				}
+			}
+			steps = max(steps, intArg(em, "step")+1)
+		}
+		if steps > 20 {
+			return "Error: use at most 20 steps.", nil
+		}
+		var captions []string
+		if cs := listArg(args, "captions"); cs != nil {
+			for _, c := range cs {
+				if s, ok := c.(string); ok {
+					captions = append(captions, truncate(s, 300))
+				}
+			}
+		}
+		if b, _ := json.Marshal(raw); len(b) > maxFrameBytes {
+			return "Error: the sketch is too large; draw fewer elements.", nil
+		}
+		return fmt.Sprintf("Sketched %d elements over %d steps on the whiteboard; the learner can step through them.", len(raw), steps),
+			Action{"name": "scratchpad_sketch", "title": truncate(str(args, "title"), 120), "elements": raw, "captions": captions}
+
 	case "ask_learner":
 		q := strings.TrimSpace(str(args, "question"))
-		raw, _ := args["choices"].([]any)
+		raw := listArg(args, "choices")
 		var choices []string
 		for _, c := range raw {
 			if s, ok := c.(string); ok && strings.TrimSpace(s) != "" && len(choices) < 5 {
@@ -148,16 +223,18 @@ func executeScratchpad(call ToolCall) (string, Action) {
 			}
 		}
 		if q == "" || len(choices) < 2 {
-			return "Error: ask_learner needs a question and at least two choices.", nil
+			return "Error: ask_learner needs a question and choices as a JSON array of at least two strings, e.g. [\"yes\", \"no\"]. Don't retry more than once; ask in plain text instead.", nil
 		}
 		return "Asked. Stop here and wait for the learner's answer.", Action{"name": "ask_learner", "question": truncate(q, 400), "choices": choices}
 	}
 	return "Error: unknown tool", nil
 }
 
-func validType(t string) bool {
-	for _, s := range structureTypes {
-		if s == t {
+func validType(t string) bool { return contains(structureTypes, t) }
+
+func contains(list []string, s string) bool {
+	for _, x := range list {
+		if x == s {
 			return true
 		}
 	}

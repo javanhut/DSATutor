@@ -1,0 +1,185 @@
+/* Chapter 18 Merge Intervals animation (anim-intervals.js). */
+.iv-viz {
+  --label-w: 64px;
+  width: 100%;
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+}
+
+.iv-row {
+  display: flex;
+  align-items: center;
+  height: 30px;
+}
+
+.iv-label {
+  flex: 0 0 var(--label-w);
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.iv-track {
+  position: relative;
+  flex: 1;
+  height: 22px;
+  border-bottom: 1px dashed var(--border);
+}
+
+.iv-axis { height: 20px; }
+.iv-ticks { border-bottom: 1px solid var(--border-light); height: 16px; }
+.iv-tick {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.iv-section-title {
+  margin-top: 8px;
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.iv-rows { position: relative; }
+
+.iv-sweep {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  left: calc(var(--label-w) + (100% - var(--label-w)) * var(--f));
+  border-left: 2px dashed var(--mark);
+  z-index: 2;
+  pointer-events: none;
+}
+.iv-sweep span {
+  position: absolute;
+  top: -14px;
+  left: 4px;
+  font-size: 10px;
+  color: var(--mark);
+  white-space: nowrap;
+}
+
+.iv-bar {
+  position: absolute;
+  top: 2px;
+  height: 18px;
+  box-sizing: border-box;
+  border-radius: 4px;
+  border: 1.5px solid var(--accent);
+  background: rgba(var(--accent-rgb), 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  transition: background 0.2s, border-color 0.2s, opacity 0.2s;
+}
+.iv-bar-label {
+  font-size: 10px;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.iv-pending { opacity: 0.85; }
+.iv-processed {
+  opacity: 0.35;
+  border-style: dashed;
+}
+.iv-current {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.25);
+}
+.iv-current .iv-bar-label { color: var(--on-accent); font-weight: 500; }
+.iv-current.iv-gap {
+  background: var(--accent-2);
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 3px rgba(var(--accent-2-rgb), 0.25);
+}
+
+.iv-output .iv-track {
+  height: 26px;
+  background: rgba(var(--ink-rgb), 0.04);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.iv-output .iv-bar { top: 3px; }
+.iv-empty {
+  position: absolute;
+  left: 8px;
+  top: 4px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.iv-block {
+  background: rgba(var(--accent-2-rgb), 0.18);
+  border-color: var(--accent-2);
+}
+.iv-last {
+  background: rgba(var(--mark-rgb), 0.2);
+  border: 2px solid var(--mark);
+}
+.iv-final {
+  background: var(--accent-2);
+  border-color: var(--accent-2);
+}
+.iv-final .iv-bar-label { color: var(--on-accent); }
+
+.iv-legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.iv-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 10px;
+  border-radius: 2px;
+  margin-left: 8px;
+}
+.iv-swatch-last { background: rgba(var(--mark-rgb), 0.2); border: 2px solid var(--mark); }
+.iv-swatch-current { background: var(--accent); }
+
+/* Motion: bars slide into sorted order, the last block stretches, new
+   blocks pop in. Each render rebuilds the DOM, so keyframes replay. */
+.iv-moving { animation: iv-move 0.6s ease-out both; }
+.iv-stretch { animation: iv-stretch 0.5s ease-out both; }
+.iv-appear { animation: iv-appear 0.35s ease-out both; }
+
+@keyframes iv-move {
+  from { transform: translateY(var(--dy)); }
+}
+@keyframes iv-stretch {
+  from { width: var(--from); }
+}
+@keyframes iv-appear {
+  from { opacity: 0; transform: scaleX(0.4); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .iv-moving,
+  .iv-stretch,
+  .iv-appear { animation: none; }
+  .iv-bar { transition: none; }
+}
+
+@media (max-width: 520px) {
+  .iv-viz { --label-w: 48px; }
+  .iv-bar-label { font-size: 9px; }
+}

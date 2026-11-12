@@ -134,7 +134,10 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		model = reply.Model
-		if len(reply.ToolCalls) == 0 || ws == nil {
+		// Stop when the model answers in words, and always after the last
+		// round: some models keep emitting tool calls even when no tools are
+		// offered, which would otherwise loop forever.
+		if len(reply.ToolCalls) == 0 || ws == nil || round >= maxToolRounds {
 			break
 		}
 		messages = append(messages, tutor.Message{Role: "assistant", Content: reply.Content, ToolCalls: reply.ToolCalls})

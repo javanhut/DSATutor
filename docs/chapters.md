@@ -32,6 +32,25 @@ The page reads top to bottom as one lesson:
 8. **Practice Ladder**: the category's problems in order, with progress.
 9. **Code Examples**: every concept's code in one place.
 
+## Technique lessons
+
+Some practice problems need a technique beyond their chapter's core
+pattern. Each of those techniques is taught inside the chapter that owns the
+pattern, as a full lesson: a concept (why it works, intuition, mistakes,
+code), a worked example with traced steps, a completion exercise and check
+questions. The problems that need it name the lesson in their key-insight
+hint. Worked examples and exercises never use the practice problem itself,
+so the lesson teaches the technique without giving away the answer.
+
+| Chapter | Lesson | Used by |
+|---|---|---|
+| 2 | Index as a hash: cyclic sort | First Missing Positive |
+| 4 | Rolling hash: a window summary for strings | Longest Duplicate Substring |
+| 6 | Patience sorting: binary search over tails | Russian Doll Envelopes |
+| 9 | Rerooting: an answer for every root in two passes | Sum of Distances in Tree |
+| 11 | Sweep line with a heap of active items | The Skyline Problem, Meeting Rooms III |
+| 15 | Probability DP: average over the moves | New 21 Game |
+
 ## Data model
 
 ```go

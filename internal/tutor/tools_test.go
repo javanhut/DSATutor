@@ -101,8 +101,8 @@ func TestWorkspaceToolsAndTargets(t *testing.T) {
 		t.Errorf("chapter page got problem tools: %v", got)
 	}
 	// With nothing to point at, only the scratchpad remains.
-	if tools := NewWorkspace(Context{View: "home"}).Tools(); len(tools) != 3 {
-		t.Errorf("home page tools = %d, want the 3 scratchpad tools", len(tools))
+	if tools := NewWorkspace(Context{View: "home"}).Tools(); len(tools) != 4 {
+		t.Errorf("home page tools = %d, want the 4 scratchpad tools", len(tools))
 	}
 }
 
@@ -159,9 +159,29 @@ func TestScratchpadTools(t *testing.T) {
 		t.Error("unknown structure type accepted")
 	}
 
+	res, act = ws.Execute(call("scratchpad_sketch", map[string]any{
+		"title":    "window",
+		"captions": []any{"start", "slide"},
+		"elements": []any{
+			map[string]any{"type": "cells", "x": 10.0, "y": 10.0, "values": []any{2.0, 1.0, 5.0}},
+			map[string]any{"type": "arrow", "step": 1.0, "x": 10.0, "y": 30.0, "x2": 20.0, "y2": 15.0, "text": "left"},
+		},
+	}))
+	if act == nil || act["name"] != "scratchpad_sketch" || !strings.Contains(res, "2 steps") {
+		t.Errorf("sketch: %s %v", res, act)
+	}
+	if _, act := ws.Execute(call("scratchpad_sketch", map[string]any{"title": "x", "elements": []any{map[string]any{"type": "laser"}}})); act != nil {
+		t.Error("unknown sketch element accepted")
+	}
+
 	_, act = ws.Execute(call("ask_learner", map[string]any{"question": "Which pointer moves?", "choices": []any{"left", "right", ""}}))
 	if act == nil || len(act["choices"].([]string)) != 2 {
 		t.Errorf("ask_learner: %v", act)
+	}
+	// Lists sent as JSON strings, as some models do, still work.
+	_, act = ws.Execute(call("ask_learner", map[string]any{"question": "Which?", "choices": `["a", "b"]`}))
+	if act == nil || len(act["choices"].([]string)) != 2 {
+		t.Errorf("stringified choices: %v", act)
 	}
 	if _, act := ws.Execute(call("ask_learner", map[string]any{"question": "Q", "choices": []any{"only one"}})); act != nil {
 		t.Error("a question with one choice accepted")

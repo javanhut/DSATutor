@@ -26,6 +26,7 @@ This chapter shows how that works, why it is O(1) on average but not always, and
 			"Choose between a set (seen or not), a dict of counts (how many) and a dict of positions (where) for a given question.",
 			"Implement the seen-so-far pattern (look up before you store) and trace it on a small input.",
 			"Count items with a dict or Counter, and decide whether two collections hold the same items by comparing counts.",
+			"Use the array as its own hash set when values lie in 1..n (cyclic sort), and explain why its nested swap loop is still O(n).",
 		},
 		WhenToUse: []string{
 			"The task asks whether something has appeared before: duplicates, repeats, \"already seen\", \"first repeated\".",
@@ -34,6 +35,7 @@ This chapter shows how that works, why it is O(1) on average but not always, and
 			"Items must be grouped by a shared property (same sorted letters, same signature): use the property as a dictionary key.",
 			"Your brute force has an inner loop that only searches for a known value: replace that loop with a set or dict lookup.",
 			"The input is unsorted and n is up to 10^5 or more, so O(n^2) is too slow and you may use O(n) extra memory.",
+			"Values are integers in 1..n (or 0..n-1) for an array of length n and the task demands O(1) extra space: use the array as its own set, with value v at index v - 1 (or index v for 0..n-1).",
 		},
 		Concepts: []Concept{
 			{
@@ -186,6 +188,51 @@ The order inside the loop matters. Looking up before storing means the current i
 					},
 				},
 			},
+			{
+				Name:        "Index as a hash: cyclic sort",
+				Description: "When the values are integers in 1..n and the array has n slots, the array can be its own hash set: put each value v at index v - 1, then a slot that doesn't hold its own number reveals a missing value. O(n) time, O(1) extra space.",
+				WhyItWorks: `A hash set's job is to map a value to the one place it could be stored. When the values are 1..n, the map v -> v - 1 already does that, with no collisions and no extra array: index v - 1 of nums itself can record "v is present" by holding v.
+
+The placing loop visits each index i and, while nums[i] is in 1..n and its home slot nums[i] - 1 doesn't already hold that value, swaps it home. The invariant afterwards: every value v in 1..n that occurs in nums sits at index v - 1. If some v were not home, the while loop at the index where v ended up would have moved it, so the loop couldn't have stopped. The cost looks like a loop inside a loop, but count swaps instead: each swap puts at least one value into its home, and the condition never moves a value that is already home, so there are at most n swaps over the whole run. Add the n checks that end each while loop and the total is O(n).
+
+Values outside 1..n (zero, negatives, numbers above n) and extra copies of a value have no home of their own; they end up in whatever slots are left over, which are exactly the slots of the missing numbers. A second pass then reads the answer: slot i not holding i + 1 means i + 1 never appeared.
+
+A second way to use the index as a hash, when all values are in 1..n, is sign marking: for each value v, make nums[v - 1] negative to say "v seen", reading values through abs(). The signs are the set, and a slot that stays positive names a missing value.`,
+				Intuition: "A car park with spots numbered 1 to n and a car for each ticket number. Instead of keeping a separate list of which tickets came in (a hash set), you drive every car into the spot matching its ticket: car v goes to spot v (index v - 1). A car whose ticket has no spot, or whose spot is already taken by a car with the same ticket, parks in a leftover spot. Afterwards, walking along the row, the first spot holding the wrong car tells you which ticket never arrived.",
+				CoreIdeas: []string{
+					"Only works when values map onto indices: integers in 1..n (index v - 1) or 0..n-1 (index v), with the array as long as that range.",
+					"Swap a value home while it is in range and its home doesn't already hold it; then move to the next index.",
+					"Each swap settles a value for good, so at most n swaps happen: O(n) time despite the nested while.",
+					"After placing, slot i holds i + 1 exactly when i + 1 appeared; a misfit slot names a missing value and holds a duplicate or out-of-range value.",
+					"Sign marking (nums[v - 1] = -abs(nums[v - 1])) is the same idea without moving values; read values with abs() once marking has started.",
+					"It modifies the input. If the caller needs nums unchanged, copy it first or use an ordinary set.",
+				},
+				CommonMistakes: []string{
+					"Looping while nums[i] != i + 1. A duplicate can never reach its own index, so [1, 1] swaps 1 with 1 forever, and a 0 or a value above n indexes outside its range. Loop while 1 <= nums[i] <= n and nums[nums[i] - 1] != nums[i].",
+					"Swapping with nums[i], nums[nums[i] - 1] = nums[nums[i] - 1], nums[i]. Python assigns the targets left to right, so nums[i] is already overwritten when nums[nums[i] - 1] is resolved, and the value lands in the wrong slot ([2, 1] loops forever). Compute home = nums[i] - 1 first and swap nums[i] with nums[home].",
+					"Advancing i after a single swap. The value swapped in from home may also be out of place; keep the while loop on the same i until it stops.",
+					"Using cyclic sort when values are not bounded by n, such as arbitrary integers up to 10^9. There is no slot for them; use a set or sort instead.",
+				},
+				Examples: []CodeExample{
+					{
+						ID:       "cyclic-sort",
+						Title:    "Send every value in 1..n home",
+						Language: "python",
+						Snippet: `def place_home(nums):
+    n = len(nums)
+    for i in range(n):
+        # in range, and its home doesn't already hold this value
+        while 1 <= nums[i] <= n and nums[nums[i] - 1] != nums[i]:
+            home = nums[i] - 1           # compute before swapping
+            nums[i], nums[home] = nums[home], nums[i]
+    return nums
+
+print(place_home([3, 1, 2]))      # [1, 2, 3]
+print(place_home([4, -1, 1, 1]))  # [1, -1, 1, 4]: 2 and 3 are missing`,
+						Notes: "In the second call, -1 and the extra 1 have no home, so they sit in slots 1 and 2. Those are exactly the slots of the missing values 2 and 3.",
+					},
+				},
+			},
 		},
 		Animations: []Storyboard{
 			{
@@ -312,6 +359,63 @@ for ch in s:
             return i
     return -1`,
 			},
+			{
+				Title:   "Index as a hash: find every missing number",
+				Problem: "Given a list nums of length n whose values all lie in 1..n (some may repeat), return every number in 1..n that does not appear in nums, in increasing order. Use O(n) time and no extra space apart from the output list. Example: nums = [3, 4, 3, 1, 1] gives [2, 5].",
+				Steps: []WorkedStep{
+					{
+						Subgoal:     "Understand with examples",
+						Explanation: "Work small cases by hand. In [3, 4, 3, 1, 1] the values present are {1, 3, 4}, so 2 and 5 are missing. Each repeat \"uses up\" a slot that a missing number would have filled, so the number of missing values equals the number of extra copies. [1, 2] has no repeats, so nothing is missing.",
+						State:       "[3,4,3,1,1] -> [2,5]; [1,1] -> [2]; [1,2] -> []",
+					},
+					{
+						Subgoal:     "Give each value a home",
+						Explanation: "A set of seen values would solve this in O(n) time, but it costs O(n) extra space. The values are 1..n and there are exactly n slots, so let slot v - 1 stand for \"v is present\": the array becomes its own set. Every value here is in range, so no range check is needed.",
+						Code:        `n = len(nums)`,
+						State:       "n = 5: value 1 -> index 0, 2 -> 1, 3 -> 2, 4 -> 3, 5 -> 4",
+					},
+					{
+						Subgoal:     "Place each value home",
+						Explanation: "Visit each index and keep swapping its value into its home until the value standing there is home already, or its home holds an equal copy. The second test is what stops a duplicate: comparing nums[i] with i + 1 instead would swap two equal 3s forever.",
+						Code: `for i in range(n):
+    while nums[nums[i] - 1] != nums[i]:`,
+						State: "i=0: nums[0]=3, slot 2 already holds 3 -> no swap, move on",
+					},
+					{
+						Subgoal:     "Place each value home",
+						Explanation: "Compute home before swapping. Writing nums[nums[i] - 1] on the left of the swap would re-read nums[i] after it had already changed and put the value in the wrong slot. Each swap settles one value for good, so all swaps together are at most n.",
+						Code: `        home = nums[i] - 1
+        nums[i], nums[home] = nums[home], nums[i]`,
+						State: "i=1: [3,4,3,1,1] swap 4 into index 3 -> [3,1,3,4,1]; swap 1 into index 0 -> [1,3,3,4,1]; 3's home holds 3, stop. i=2,3,4: no swaps",
+					},
+					{
+						Subgoal:     "Scan for misfits",
+						Explanation: "After placing, every value that occurs sits at its home. So a slot i that does not hold i + 1 means i + 1 never appeared: whatever is in that slot is an extra copy of some other value.",
+						Code: `missing = []
+for i in range(n):
+    if nums[i] != i + 1:
+        missing.append(i + 1)`,
+						State: "[1,3,3,4,1]: index 1 holds 3 -> 2 missing; index 4 holds 1 -> 5 missing",
+					},
+					{
+						Subgoal:     "Return the answer",
+						Explanation: "The scan goes left to right, so the missing numbers come out in increasing order. One placing pass with at most n swaps plus one scan is O(n) time, and apart from the output only n, i and home are stored: O(1) extra space.",
+						Code:        `return missing`,
+						State:       "[3,4,3,1,1] -> [2, 5]",
+					},
+				},
+				Code: `def find_disappeared_numbers(nums):
+    n = len(nums)
+    for i in range(n):
+        while nums[nums[i] - 1] != nums[i]:
+            home = nums[i] - 1
+            nums[i], nums[home] = nums[home], nums[i]
+    missing = []
+    for i in range(n):
+        if nums[i] != i + 1:
+            missing.append(i + 1)
+    return missing`,
+			},
 		},
 		Completions: []CompletionProblem{
 			{
@@ -341,6 +445,21 @@ for ch in s:
     return True`,
 				Blanks:      []string{"available.get(ch, 0) + 1", "0", "available[ch] -= 1"},
 				Explanation: "Blank by blank. First, the counting line: available.get(ch, 0) reads ch's count so far, and the 0 default lets a letter's first appearance start from zero, where available[ch] += 1 would raise KeyError; + 1 adds this letter and the assignment stores the total. Second, the run-out check: available.get(ch, 0) == 0 asks \"is there none of ch left?\", and the same 0 default also covers a note letter the magazine never contained. Third, the spend: the check just guaranteed available[ch] exists and is at least 1, so available[ch] -= 1 is safe and uses one copy up. For note = \"aa\", magazine = \"ab\": counts {a: 1, b: 1}; the first 'a' spends a to 0, the second finds 0 and returns False. O(n + m) time, O(1) space for a fixed alphabet.",
+			},
+			{
+				Title:  "Set mismatch: the duplicate and the missing number",
+				Prompt: "nums has length n and should contain each of 1..n exactly once, but one number was replaced by a copy of another, so one value appears twice and one is missing. Return [duplicate, missing]. Use O(n) time and O(1) extra space by placing each value home, then scanning for the one misfit slot. Example: nums = [1, 2, 2, 4] gives [2, 3].",
+				Code: `def find_error_nums(nums):
+    n = len(nums)
+    for i in range(n):
+        while nums[nums[i] - 1] != nums[i]:
+            home = nums[i] - 1
+            ____
+    for i in range(n):
+        if ____:
+            return [____, ____]`,
+				Blanks:      []string{"nums[i], nums[home] = nums[home], nums[i]", "nums[i] != i + 1", "nums[i]", "i + 1"},
+				Explanation: "Blank by blank. First, the swap: home is computed on the line before, so nums[home] on the left doesn't shift when nums[i] changes. Every value is in 1..n, so no range check is needed, and the while condition already stops the duplicate, because its home holds an equal copy. Second, the misfit test nums[i] != i + 1: after placing, every value present is at its home, so exactly one slot is wrong, the missing number's slot. Third and fourth, read the answer from that slot: it holds the extra copy, nums[i], which is the duplicate, and its own number i + 1 never appeared, so that is the missing value. For [1, 2, 2, 4], nothing moves, slot 2 holds 2 instead of 3, so the answer is [2, 3]. For [3, 2, 3, 4, 1], placing gives [1, 2, 3, 4, 3], and slot 4 gives [3, 5].",
 			},
 		},
 		CheckQuestions: []CheckQuestion{
@@ -387,6 +506,16 @@ for ch in s:
 				Choices:     []string{"O(1)", "O(log n)", "O(n)", "O(n^2)"},
 				Answer:      2,
 				Explanation: "Lists store items side by side, so putting something at the front means shifting all n items one slot right: O(n). Only appending at the end is O(1) (amortised). Use collections.deque if you need fast inserts at the front.",
+			},
+			{
+				Prompt:      "In the cyclic sort loop below, a while loop sits inside a for loop. Why is the whole thing O(n) rather than O(n^2)?\n\nfor i in range(n):\n    while 1 <= nums[i] <= n and nums[nums[i] - 1] != nums[i]:\n        home = nums[i] - 1\n        nums[i], nums[home] = nums[home], nums[i]",
+				Choices:     []string{"Each swap puts one value into its home slot, where it stays for good, so there are at most n swaps across the whole run, plus n steps of the for loop", "The while loop runs at most once per i, because after one swap nums[i] is always correct", "It is O(n^2) in the worst case, as any loop inside a loop is; O(n) is only the average", "Values outside 1..n are skipped, and only that skipping keeps it linear"},
+				Answer:      0,
+				Explanation: "Count swaps, not loop levels. Every swap drops a value into its home slot, and the condition never moves a value that is already home, so at most n swaps happen in total, however they are spread over the values of i. The for loop adds n condition checks that end the while loop, giving O(n). The while loop can run several times for a single i: for [2, 3, 1], i = 0 swaps twice. Nested loops are only O(n^2) when the inner loop can do n work for each i.",
+			},
+			{
+				Prompt:      "Trace the cyclic sort loop (value v goes to index v - 1, stop when nums[i] is out of 1..n or its home already holds it) on nums = [2, 3, 1]. Write nums after every swap, and say how many swaps happen in total.",
+				Explanation: "i = 0: nums[0] = 2, its home index 1 holds 3, so swap: [3, 2, 1]. Still i = 0: nums[0] = 3, home index 2 holds 1, so swap: [1, 2, 3]. Still i = 0: nums[0] = 1 and index 0 already holds 1, so stop. i = 1 and i = 2 find their values already home and do nothing. Two swaps in total: every swap settled one value, and the third value (1) arrived home as a side effect. Final nums = [1, 2, 3].",
 			},
 		},
 	}

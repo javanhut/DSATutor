@@ -296,6 +296,20 @@ const animationRegistry = {
 };
 ```
 
+### Animators in their own files
+
+Newer animators live in their own files instead of `app.js`, loaded after
+it in `index.html` with an optional stylesheet: `static/anim-<name>.js`
+defines `class XAnimator extends AlgorithmAnimator` and registers it with
+`animationRegistry['<storyboard-id>'] = XAnimator;`. The content test finds
+registrations in every `static/*.js` file.
+
+| Storyboard | Chapter | File | Shows |
+|---|---|---|---|
+| `heap-sweep` | 11 | `anim-heap-sweep.js` | Car Pooling: a sweep line over a timeline, a load meter, and the drop-off min-heap drawn as a tree as items are pushed and expired tops popped |
+| `decision-tree` | 12 | `anim-decision-tree.js` | Combinations (n=4, k=3): the recursion tree growing, the current path, backtracked nodes greyed, pruned branches cut, answers collected |
+| `intervals` | 18 | `anim-intervals.js` | Merge Intervals on a number line: sorting, the sweep, the last merged block stretching or a new block being appended |
+
 ## AlgorithmAnimator Base Class
 
 All algorithm animators extend this base class:

@@ -22,6 +22,7 @@ func chapter15() Chapter {
 			"Convert a plain recursion into a memoized (top-down) version and into a tabulated (bottom-up) version, and trace the table on a small input",
 			"Reduce a table to rolling variables when the recurrence only reads a fixed number of earlier entries, and explain when that is not possible",
 			"Recognise when a problem needs DP rather than greedy, backtracking or a sliding window",
+			"Compute a probability DP by weighting each predecessor state by the chance of its move, excluding states where play has stopped, and keep an equally likely W-move average in O(1) per state with a window sum",
 		},
 		WhenToUse: []string{
 			"The question asks for a count of ways, a minimum or maximum, or a yes/no 'is it possible', not for a list of every solution",
@@ -30,6 +31,7 @@ func chapter15() Chapter {
 			"There is a sequence of choices (take or skip, which coin, how many digits, which word) and the best result after a choice does not depend on how you got there",
 			"Greedy looks tempting but you can construct a small counterexample (coins [1,3,4] for amount 6)",
 			"Input sizes around 10^2 to 10^4 where O(n^2) or O(n * amount) is acceptable but 2^n is not",
+			"The question asks for a probability or an expected value after random moves (dice, card draws, random steps), and each state's chance comes from the states one move earlier",
 		},
 		Concepts: []Concept{
 			{
@@ -185,6 +187,46 @@ def climb_rolling(n):
 					},
 				},
 			},
+			{
+				Name:        "Probability DP: average over the moves",
+				Description: "Sometimes each move is random and the question asks how likely an outcome is, not how many ways there are or which way is best. The recipe stays the same, but each table cell holds a probability, and the recurrence weights every earlier state by the chance of the move that leads from it.",
+				WhyItWorks:  "Define reach[x] = the probability that a random walk ever stands on square x. The walk can only stand on x if, one move earlier, it stood on some predecessor y and then made exactly the move from y to x. Every visit to x has exactly one previous square, so these cases are disjoint and together cover every way of arriving. The law of total probability then says reach[x] = sum over predecessors y of reach[y] x P(move y -> x). When all W moves are equally likely, every P(move) is 1/W and the sum becomes an average: reach[x] = (reach[x-1] + ... + reach[x-W]) / W. Moves only go forward, so the states form a DAG in increasing order: filling x = 1, 2, 3, ... means every predecessor is final before it is read. One extra rule: a state where play has stopped (a total of K or more in New 21 Game) has no outgoing moves, so it must not be a predecessor of anything. Finally, consecutive W-term sums share all but two terms, so a running window sum (add the newest state, drop the one that fell out of reach) makes each state O(1) instead of O(W).",
+				Intuition:   "Pour one litre of water onto the top step of a staircase of buckets. Each bucket keeps a record of how much water passed through it, then splits that water evenly into the next W buckets down. The litre is total probability 1, each bucket is a state, the amount that passed through bucket x is reach[x], and the even split is the 1/W chance of each move. A bucket that is a final stop (play has ended) is sealed at the bottom: water collects there and never flows on.",
+				CoreIdeas: []string{
+					"The state is a probability (between 0 and 1), and the base case is the start: the walk begins at 0 with probability 1, so dp[0] = 1.",
+					"Recurrence by the last move: dp[x] = sum of dp[y] x P(y -> x) over every predecessor y. With W equally likely moves this is the average of the W earlier states.",
+					"Only states where play continues feed later states. Stopped states (a total of K or more, a token that fell off the board) are endpoints: they collect probability but pass none on.",
+					"The window of predecessors [x - W, x - 1] slides right by one as x grows, so keep its sum: add dp[x] after computing it (if play continues from x), subtract dp[x - W].",
+					"The answer is often a sum of cells, e.g. the probabilities of every final total from K to n, because the outcome is 'ended in one of these states'.",
+				},
+				CommonMistakes: []string{
+					"Counting outcomes and dividing by the total count when the moves are not equally likely. With a hop of 1 at probability 0.75 and a hop of 2 at probability 0.25, the paths 1+1 and 2 are not equally likely (0.5625 vs 0.25). Multiply each predecessor by the probability of its own move instead.",
+					"Letting stopped states keep feeding later states. In New 21 Game a total of K or more ends the game, so it must not enter the window; if it does, you count draws that never happen and push probability onto totals that cannot occur. Add dp[x] to the window only when x < K.",
+					"Comparing floating-point probabilities with == or expecting an exact decimal. 1/3 + 1/3 + 1/3 need not print as 1.0; judges accept answers within 1e-5. To check a small case exactly, run the same code with fractions.Fraction.",
+				},
+				Examples: []CodeExample{
+					{
+						ID:       "probability-dp-reach",
+						Title:    "Probability of ever standing on each square",
+						Language: "python",
+						Snippet: `def reach_probs(n, moves):
+    # moves maps step size -> probability of that step (they add up to 1)
+    # State: reach[x] = probability the walk ever stands on square x
+    reach = [0.0] * (n + 1)
+    reach[0] = 1.0                      # the walk starts on square 0
+    for x in range(1, n + 1):
+        # Law of total probability: split on the last step taken
+        for step, p in moves.items():
+            if step <= x:
+                reach[x] += reach[x - step] * p
+    return reach
+
+# reach_probs(4, {1: 0.5, 2: 0.25, 3: 0.25})
+# -> [1.0, 0.5, 0.5, 0.625, 0.5625]`,
+						Notes: "Same shape as Climbing Stairs, but each predecessor is multiplied by the probability of its step instead of counted once. reach[2] = 0.5 x 0.5 + 1 x 0.25 = 0.5.",
+					},
+				},
+			},
 		},
 		Animations: []Storyboard{
 			{
@@ -264,6 +306,34 @@ def climb_rolling(n):
         two_back, one_back = one_back, one_back + two_back
     return one_back`,
 			},
+			{
+				Title:   "Probability a die walk lands exactly on square n",
+				Problem: "A token starts on square 0. Each turn you roll a fair W-sided die (faces 1..W, each with probability 1/W) and move the token forward that many squares. What is the probability that the token ever stands exactly on square n, rather than jumping past it? Trace W = 3, n = 4.",
+				Steps: []WorkedStep{
+					{Subgoal: "Define the state", Explanation: "The value is a probability, not a count: land[x] = the probability that the token ever stands on square x. The question is land[n], and the states are squares 0..n; squares past n can never lead back to n, so they are not needed.", Code: "land = [0.0] * (n + 1)   # land[x] = P(token ever stands on x)", State: "W = 3, n = 4: cells land[0..4], all unknown"},
+					{Subgoal: "Write the recurrence", Explanation: "Look at the last roll. To stand on x, the token stood on some y in x-W..x-1 and then rolled exactly x - y, which has probability 1/W. Each visit to x has exactly one previous square, so the cases are disjoint: sum land[y] x 1/W, which is the average of the W squares behind x.", Code: "land[x] = (land[x - 1] + land[x - 2] + land[x - 3]) / 3   # W = 3, skipping y < 0", State: "land[4] = (land[3] + land[2] + land[1]) / 3"},
+					{Subgoal: "Set the base cases", Explanation: "The token starts on square 0, so land[0] = 1 for certain. Squares below 0 do not exist and contribute 0, which is why the first few squares average over fewer predecessors. Check: land[1] = land[0] / 3 = 1/3, the chance the first roll is a 1.", Code: "land[0] = 1.0", State: "land = [1, ?, ?, ?, ?]"},
+					{Subgoal: "Choose the evaluation order", Explanation: "Every predecessor of x is a smaller square, so fill x = 1, 2, ..., n left to right; each value read is already final. Instead of re-adding W cells each time, keep window = the sum of the W cells behind x: use it, then add the new cell and drop the cell that is now W + 1 squares back.", Code: "window = 1.0                 # land[x-W] + ... + land[x-1]\nfor x in range(1, n + 1):\n    land[x] = window / W\n    window += land[x]\n    if x - W >= 0:\n        window -= land[x - W]", State: "x=1: land 1/3, window 4/3 | x=2: land 4/9, window 16/9 | x=3: land 16/27, window 16/9 + 16/27 - 1 = 37/27 | x=4: land 37/81, window 121/81"},
+					{Subgoal: "Locate the answer", Explanation: "The question asked about square n, the last cell. Check it by listing every roll sequence that sums to 4 with faces 1..3: 1+3, 3+1 and 2+2 (1/9 each), 1+1+2, 1+2+1 and 2+1+1 (1/27 each) and 1+1+1+1 (1/81). Total 27/81 + 9/81 + 1/81 = 37/81, about 0.457.", Code: "return land[n]", State: "land = [1, 1/3, 4/9, 16/27, 37/81] -> 37/81 = 0.4568"},
+					{Subgoal: "Optimise space", Explanation: "The window already makes each square O(1) time, so the whole walk is O(n) instead of O(n x W). Every cell read is at most W squares back, so a deque of the last W values would cut space to O(W); keep the full table while you are tracing.", Code: "# time O(n) with the window; space O(n) table, or O(W) with a deque of the last W cells", State: "W = 3, n = 4: 4 window updates instead of 9 additions"},
+				},
+				Code: `def land_exactly(n, W):
+    # Define the state: land[x] = probability the token ever stands on square x
+    land = [0.0] * (n + 1)
+    # Set the base cases: the token starts on square 0
+    land[0] = 1.0
+    window = 1.0              # land[x-W] + ... + land[x-1]
+    # Choose the evaluation order: squares left to right
+    for x in range(1, n + 1):
+        # Write the recurrence: average over the W squares one roll back
+        land[x] = window / W
+        # Slide the window one square right
+        window += land[x]
+        if x - W >= 0:
+            window -= land[x - W]
+    # Locate the answer
+    return land[n]`,
+			},
 		},
 		Completions: []CompletionProblem{
 			{
@@ -299,6 +369,28 @@ def climb_rolling(n):
     return ____`,
 				Blanks:      []string{"b, c, a + b + c", "c"},
 				Explanation: "Each step shifts the window by one: the old T(i-2) becomes the new T(i-3), the old T(i-1) becomes the new T(i-2), and the newest value is a + b + c, the sum of all three old ones — so the first blank is b, c, a + b + c. Writing it as one tuple assignment matters: the whole right side is evaluated from the old values before any variable changes, where separate lines (a = b, then b = c, then c = a + b + c) would feed already-overwritten values into the sum. After the last pass c is the newest value computed, so the second blank returns c, which is T(n). For n = 4: (a, b, c) starts at (0, 1, 1), i = 3 gives (1, 1, 2), i = 4 gives (1, 2, 4), and c = 4 = T(4).",
+			},
+			{
+				Title:  "Probability that k dice add up to exactly T",
+				Prompt: "Roll k fair dice, each with faces 1..faces. Return the probability that their total is exactly T. The state is a probability over totals, and each die is a round: the new table averages the old table over the faces values one die can show. Fill in the base case, the recurrence term, the move to the next round and the answer. Example: k = 2, faces = 6, T = 7 gives 6/36 = 0.1667.",
+				Code: `def dice_total_prob(k, faces, T):
+    # Define the state: dp[t] = probability that the dice rolled so far add up to exactly t
+    dp = [0.0] * (T + 1)
+    # Set the base cases: before any die is rolled the total is 0 for certain
+    dp[0] = ____
+    # Choose the evaluation order: one round per die
+    for _ in range(k):
+        new = [0.0] * (T + 1)
+        for t in range(1, T + 1):
+            for f in range(1, faces + 1):
+                if f <= t:
+                    # Write the recurrence: the last die showed f, with probability 1 / faces
+                    new[t] += ____
+        dp = ____
+    # Locate the answer
+    return ____`,
+				Blanks:      []string{"1.0", "dp[t - f] / faces", "new", "dp[T]"},
+				Explanation: "With no dice rolled the total is certainly 0, so dp[0] = 1.0. A total of t after this die means the earlier dice made t - f and this die showed f, which has probability 1 / faces; those cases are disjoint (the die shows one face), so add dp[t - f] / faces over every face f. The new table must be separate from dp, because every die must be rolled exactly once: updating dp in place would let one round read totals that already include this die. After the round, dp = new, and after k rounds dp[T] is the answer. For k = 2, faces = 6: after one die dp[1..6] = 1/6 each; after two, dp[7] = (dp[6] + dp[5] + ... + dp[1]) / 6 = 6/36 = 1/6.",
 			},
 		},
 		CheckQuestions: []CheckQuestion{
@@ -351,6 +443,18 @@ def climb_rolling(n):
 				Choices:     []string{"One: only the result is needed", "Two, as in Climbing Stairs", "Three: dp[i-1], dp[i-2] and dp[i-3] must all be kept", "None: rolling only works for sums, not for max"},
 				Answer:      2,
 				Explanation: "dp[i] reads dp[i-3], so the window must reach three cells back: dp[i-1], dp[i-2] and dp[i-3]. dp[i-2] is not read now, but it becomes dp[i-3] for the next i. Rolling works for any recurrence that reads a fixed number of earlier cells, whether it combines them with +, max, min or or.",
+			},
+			{
+				Prompt:      "New 21 Game: a player draws 1..W points uniformly at random while her total is below K, and stops as soon as it reaches K or more. In prob[x] = (window of prob[y] for y in [x - W, x - 1]) / W, why must totals y >= K never be added to the window?",
+				Choices:     []string{"Because totals of K or more are always larger than n, so they can never win", "Because the player stops at those totals, so no later total can be reached from them; adding them counts draws that never happen", "Only to keep the window at exactly W terms so the update stays O(1)", "Because adding them makes the floating-point error grow past 1e-5"},
+				Answer:      1,
+				Explanation: "A state passes probability on only if play continues from it. At a total of K or more the game is over, so the chance of moving from y >= K to x is 0, not 1/W. Totals of K or more can still be at most n (with K = 17, n = 21 the totals 17..21 all win), the window size is not the point (near 0 it already has fewer than W terms), and the error is about logic, not rounding.",
+			},
+			{
+				Prompt:      "Trace this code. What is dp[3]?\n\nK, W = 2, 2\ndp = [0.0] * 4\ndp[0] = 1.0\nfor x in range(1, 4):\n    dp[x] = sum(dp[y] for y in range(max(0, x - W), x) if y < K) / W",
+				Choices:     []string{"0.25", "0.625", "0.375", "0.5"},
+				Answer:      0,
+				Explanation: "dp[1] = dp[0] / 2 = 0.5. dp[2] = (dp[0] + dp[1]) / 2 = 0.75. dp[3] reads y = 1 and y = 2, but y = 2 is not below K = 2: the game stopped there, so only dp[1] counts and dp[3] = 0.5 / 2 = 0.25 (draw 1, then draw 2). Letting the stopped total 2 contribute would give (0.5 + 0.75) / 2 = 0.625, which is the walk that never stops.",
 			},
 		},
 	}

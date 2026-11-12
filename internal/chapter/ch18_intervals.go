@@ -1,12 +1,14 @@
 package chapter
 
+import "time"
+
 // chapter18 teaches interval problems: the overlap test, choosing whether to
 // sort by start or by end, and sweeping a timeline to count overlaps.
 //
 // Subgoal labels used here and in the intervals problems: "Sort the
 // intervals", "Test for overlap", "Merge or keep", "Track the running end",
 // "Return the answer".
-// Storyboards: none.
+// Storyboards: intervals.
 func chapter18() Chapter {
 	return Chapter{
 		Number:        18,
@@ -209,6 +211,85 @@ You don't need to know which meeting ended, only that one did, which is why star
         else:
             j += 1
     return result`,
+			},
+			{
+				Title:   "Remove covered intervals",
+				Problem: "You get a list of distinct closed intervals [start, end]. An interval [a, b] is covered by [c, d] when c <= a and b <= d: the second one contains the first. Remove every interval that some other interval covers, and return how many are left. Example: [[3,6],[1,4],[2,8],[1,2],[5,7],[9,10]] gives 3, because [1,2] sits inside [1,4], and [3,6] and [5,7] sit inside [2,8].",
+				Steps: []WorkedStep{
+					{
+						Subgoal:     "Sort the intervals",
+						Explanation: "Sort by start ascending, and for equal starts by end descending. After this, any interval that could cover the current one (it must start no later) comes before it, and of two intervals with the same start the longer one comes first, so it is the one that gets kept.",
+						Code:        "intervals = sorted(intervals, key=lambda iv: (iv[0], -iv[1]))",
+						State:       "sorted: [1,4],[1,2],[2,8],[3,6],[5,7],[9,10]",
+					},
+					{
+						Subgoal:     "Track the running end",
+						Explanation: "Every earlier interval starts at or before the current start, so the current one is covered exactly when some earlier interval ends at or after its end. Only the largest such end matters: keep it in max_end, starting at minus infinity.",
+						Code:        "remaining = 0\nmax_end = float('-inf')           # furthest end of any interval kept so far",
+						State:       "remaining=0, max_end=-inf",
+					},
+					{
+						Subgoal:     "Test for overlap",
+						Explanation: "Here the test is containment, not overlap: is end <= max_end? The first interval [1,4] has nothing before it, and 4 > -inf, so it is not covered.",
+						Code:        "for start, end in intervals:\n    if end <= max_end:            # an earlier interval reaches at least this far\n        continue                  # covered: skip it",
+						State:       "[1,4]: 4 <= -inf? no -> not covered",
+					},
+					{
+						Subgoal:     "Merge or keep",
+						Explanation: "An interval that isn't covered stays in the answer. Count it and move max_end to its end, since it now reaches the furthest of everything seen.",
+						Code:        "    remaining += 1                # not covered: keep it\n    max_end = end",
+						State:       "keep [1,4]: remaining=1, max_end=4",
+					},
+					{
+						Subgoal:     "Test for overlap",
+						Explanation: "[1,2]: 2 <= 4, so [1,4] covers it and we skip it. This is why ties sort by end descending: with plain sorted(), [1,2] would come first, get kept, and then [1,4] would be kept too (4 > 2), giving 4 instead of 3.",
+						Code:        "    if end <= max_end:\n        continue",
+						State:       "[1,2]: 2 <= 4 -> covered, skip; remaining=1, max_end=4",
+					},
+					{
+						Subgoal:     "Merge or keep",
+						Explanation: "[2,8] reaches past 4, so it is kept and max_end jumps to 8. Then [3,6] and [5,7] both end at or before 8 and are skipped: [2,8] starts no later and ends no earlier, so it covers both.",
+						Code:        "    remaining += 1\n    max_end = end",
+						State:       "keep [2,8]: remaining=2, max_end=8; [3,6]: 6 <= 8 covered; [5,7]: 7 <= 8 covered",
+					},
+					{
+						Subgoal:     "Return the answer",
+						Explanation: "[9,10] ends after 8, so it is kept: remaining=3. One sort and one pass, so O(n log n) time; the running end replaces comparing every pair, which would be O(n^2).",
+						Code:        "return remaining",
+						State:       "keep [9,10]: remaining=3, max_end=10 -> return 3",
+					},
+				},
+				Code: `def removeCoveredIntervals(intervals):
+    intervals = sorted(intervals, key=lambda iv: (iv[0], -iv[1]))
+    remaining = 0
+    max_end = float('-inf')           # furthest end of any interval kept so far
+    for start, end in intervals:
+        if end <= max_end:            # an earlier interval reaches at least this far
+            continue                  # covered: skip it
+        remaining += 1                # not covered: keep it
+        max_end = end
+    return remaining`,
+			},
+		},
+		Animations: []Storyboard{
+			{
+				ID:    "intervals",
+				Title: "Merge Intervals on a Number Line",
+				Goal:  "Show why sorting by start lets one pass merge every overlap by comparing each interval with the last merged block only.",
+				MemoryTips: []string{
+					"Sort by start, so overlaps end up next to each other",
+					"Compare with the last merged: start <= merged[-1][1] means overlap (closed intervals, touching counts)",
+					"Extend or append: overlap stretches the last block to max(ends); a gap starts a new block",
+					"Use max for the new end, so an interval inside the block can't shrink it",
+				},
+				Steps: []StoryboardStep{
+					{Cue: "input", Narration: "The intervals arrive in no particular order. Drawn on a number line, overlaps are easy to see, but in a list an interval could overlap any other one, which is what makes comparing every pair tempting.", VisualHint: "Unsorted bars on a number line", Duration: Duration(2 * time.Second), CodeRef: "merge: def merge(intervals)"},
+					{Cue: "sort", Narration: "Sort by start. Now every interval starts no earlier than the ones before it, so it can only stick out to the right of the block being built. That turns the problem into a single left-to-right sweep.", VisualHint: "Bars slide into start order", Duration: Duration(2 * time.Second), CodeRef: "merge: sorted(intervals, key=lambda i: i[0])"},
+					{Cue: "compare", Narration: "The sweep reaches the next interval. Compare its start with the end of the last merged block, merged[-1][1], and nothing else: every earlier block ended before the last one began.", VisualHint: "Sweep line at the start; last merged block highlighted", Duration: Duration(2 * time.Second), CodeRef: "merge: if merged and start <= merged[-1][1]"},
+					{Cue: "extend", Narration: "If it starts at or before that end, it overlaps. Stretch the last block's end to max(its end, this end). An interval fully inside the block leaves it unchanged.", VisualHint: "Merged bar stretches right", Duration: Duration(2 * time.Second), CodeRef: "merge: merged[-1][1] = max(merged[-1][1], end)"},
+					{Cue: "append", Narration: "If it starts after the end, there is a gap, and nothing later can bridge it because later intervals start even further right. Close the block and append this interval as a new one.", VisualHint: "New bar appended to the output row", Duration: Duration(2 * time.Second), CodeRef: "merge: merged.append([start, end])"},
+					{Cue: "done", Narration: "After one pass the output row holds disjoint blocks in start order. The sort costs O(n log n) and the sweep O(n).", VisualHint: "Final merged blocks", Duration: Duration(2 * time.Second), CodeRef: "merge: return merged"},
+				},
 			},
 		},
 		Completions: []CompletionProblem{

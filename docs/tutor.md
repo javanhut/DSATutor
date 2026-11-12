@@ -38,7 +38,7 @@ instead of only describing it:
 | `open_tab` | the problem panel switches to Description, Hints or Visualize (never Solution) |
 | `select_test` | a test case is selected, ready for Run |
 
-Each action leaves a chip in the conversation; clicking a *Pointed at…*
+A reply runs at most six rounds of tool calls before the model must answer in words; the server stops it there even if the model keeps calling tools, and it accepts list arguments that small models send as JSON strings. Each action leaves a chip in the conversation; clicking a *Pointed at…*
 chip shows that highlight again. The tutor edits your code only when you ask
 it to write, fix or scaffold code, or accept its offer.
 
@@ -69,8 +69,9 @@ On a chapter page, press **Teacher mode**. Instead of waiting for
 questions, the tutor teaches the chapter one idea at a time. Each turn it:
 
 1. points at the section it's on (`highlight`),
-2. makes the idea visible in the **Teacher's Scratchpad**, either as a
-   step-by-step diagram or as a small program it runs and traces, and
+2. makes the idea visible in the **Teacher's Scratchpad**, as a hand-drawn
+   whiteboard sketch, an exact step-by-step diagram, or a small program it
+   runs and traces, and
 3. asks you one question, often with clickable answers (`ask_learner`), and
    waits.
 
@@ -91,6 +92,17 @@ The **scratchpad** is a floating window that you can drag, resize and minimize:
   (array, bar chart, grid, linked list, tree, hash map, set, graph or a
   single value, with pointers and windows highlighted). They use the same
   renderer as the visualizer.
+- **Whiteboard sketches** (`scratchpad_sketch`) are hand-drawn: rough.js
+  draws boxes, circles, arrows and rows of array cells in a pen style, with
+  text in the Caveat handwriting font on grid paper. Each step's strokes
+  draw themselves in order like a pen, in about 2.5 seconds. Pointers are
+  given by index (`"pointers": {"left": 0, "right": 4}`) and drawn under
+  the right cells, and the board spaces out anything the model placed
+  overlapping. Without the rough.js CDN it falls back to its own wobbly
+  lines.
+- The **✎** button gives every other diagram and traced run a handwritten
+  look too (handwriting font, pen-wobble lines, grid paper). It's
+  remembered per browser.
 - You can edit the code and press **Run** yourself; **Code** opens the
   editor over a diagram. The tutor sees the scratchpad's code and output
   with every message, so "Let me try" exercises get reviewed.
@@ -188,7 +200,7 @@ The microphone needs a secure page: `http://localhost` works, but a plain
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/tutor/status` | GET | `{"available", "default", "models": [{"name", "thinking", "cloud"}], "transcribe", "reason"}` |
-| `/api/tutor/chat` | POST | `{"model", "think", "messages": [{"role", "content"}], "context": {"view", "problemId", "chapterNumber", "language", "code", "lastRun", "hintsRevealed", "solutionUnlocked", "voice", "targets": [{"id", "label", "lines", "writable"}], "testCount", "interview": {"elapsedSeconds", "durationSeconds", "level"}, "teach", "scratchpad": {"code", "output"}}}` → NDJSON stream of `{"type":"thinking"\|"delta","text"}` and `{"type":"action","name":"highlight"\|"write_code"\|"open_tab"\|"select_test"\|"scratchpad_code"\|"scratchpad_visualize"\|"ask_learner", ...}`, then `{"type":"done","model"}` or `{"type":"error","error"}` |
+| `/api/tutor/chat` | POST | `{"model", "think", "messages": [{"role", "content"}], "context": {"view", "problemId", "chapterNumber", "language", "code", "lastRun", "hintsRevealed", "solutionUnlocked", "voice", "targets": [{"id", "label", "lines", "writable"}], "testCount", "interview": {"elapsedSeconds", "durationSeconds", "level"}, "teach", "scratchpad": {"code", "output"}}}` → NDJSON stream of `{"type":"thinking"\|"delta","text"}` and `{"type":"action","name":"highlight"\|"write_code"\|"open_tab"\|"select_test"\|"scratchpad_code"\|"scratchpad_visualize"\|"scratchpad_sketch"\|"ask_learner", ...}`, then `{"type":"done","model"}` or `{"type":"error","error"}` |
 | `/api/tutor/interview/score` | POST | `{"model", "problemId", "language", "code", "messages", "elapsedSeconds", "durationSeconds", "level"}` → `{"scorecard", "tests": {"status", "passed", "total", "failures"}, "model"}` (`error` instead of `scorecard` if the write-up failed) |
 | `/api/tutor/transcribe` | POST | body: a WAV recording, `?model=` names the chat model in use → `{"text"}` |
 

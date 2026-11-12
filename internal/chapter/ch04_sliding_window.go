@@ -24,6 +24,7 @@ The gain is much bigger when the window size isn't fixed. "Find the longest stre
 			"Implement a variable window with the subgoals Grow the window, Shrink until valid (or Shrink while valid), Record the answer.",
 			"Explain why a nested while loop inside the for loop is still O(n), using the fact that left only moves forward.",
 			"Choose the window state (a sum, a set, a count map, a formed/required counter, a monotonic deque) that makes the validity check O(1).",
+			"Implement a rolling hash that updates a string window's fingerprint in O(1) per slide, and explain why every hash match must be confirmed by comparing the substrings.",
 		},
 		WhenToUse: []string{
 			"The question is about a contiguous subarray or substring (\"consecutive days\", \"substring\", \"subarray\"), not an arbitrary subset.",
@@ -31,6 +32,7 @@ The gain is much bigger when the window size isn't fixed. "Find the longest stre
 			"A window size k is given (\"every k consecutive elements\", \"a substring of length len(s1)\"): fixed window.",
 			"The condition is monotonic: making a valid window smaller keeps it valid (for longest problems), or making it bigger keeps it valid (for shortest problems). Sums of non-negative numbers, counts of distinct characters and \"at most k\" rules behave this way.",
 			"Warning sign: with negative numbers a sum condition is not monotonic, so a window can't decide when to shrink. Use prefix sums with a hash map (Chapter 2) instead.",
+			"You must compare, find or deduplicate all substrings of one length L (\"repeated 10-letter sequences\", \"does the pattern occur in the text\", \"a substring that appears twice\"): a fixed window whose summary is a rolling hash.",
 		},
 		Concepts: []Concept{
 			{
@@ -154,6 +156,46 @@ print(longest_two_distinct("eceba"))  # 3, from "ece"`,
 					},
 				},
 			},
+			{
+				Name:        "Rolling hash: a window summary for strings",
+				Description: "To compare windows of text quickly, give each length-L window a number (its hash) and update that number as the window slides, just like a running sum. Read the window as a number in base B: each character is a digit, so s[i..i+L-1] has hash code(s[i])*B^(L-1) + code(s[i+1])*B^(L-2) + ... + code(s[i+L-1]), taken mod a large prime M. This is the idea behind Rabin-Karp string search.",
+				WhyItWorks:  "Write h for the hash of s[i..i+L-1]. The leaving character s[i] contributes code(s[i])*B^(L-1). Subtract that, and what remains is the hash of the last L-1 characters; multiplying by B shifts each of them up one power, and adding code(s[i+L]) puts the entering character in the units place. So h' = (h - code(s[i])*B^(L-1)) * B + code(s[i+L]) mod M, which is exactly the next window's hash, computed in O(1) once B^(L-1) mod M is precomputed. Building the first window costs L steps and every slide costs O(1), so all n - L + 1 hashes take O(n) in total. Equal strings always get equal hashes. Different strings can still land on the same value mod M (a collision), with probability about 1/M for a random-looking choice, so a matching hash only says 'probably equal': confirm it by comparing the actual substrings.",
+				Intuition:   "A car's odometer showing the last L digits of a long number tape. To move one digit along, you wipe the leftmost digit (subtract it times its place value B^(L-1)), shift the rest one place left (multiply by B) and write the new digit in the units place (add it). The tape is the string, the digits are character codes, the odometer reading is the window's hash, and 'mod M' is the odometer rolling over when the number gets too long to display.",
+				CoreIdeas: []string{
+					"Map each character to a small number (code) and treat the window as a base-B number: a=1, b=2, ... with B larger than the biggest code, or ord(ch) with B = 256.",
+					"Precompute high = pow(B, L - 1, M) once; it is the place value of the leftmost character, the one that leaves next.",
+					"Build the first window with h = (h * B + code(ch)) % M for each of its L characters, then slide: drop code(s[right - L]) * high, multiply by B, add code(s[right]).",
+					"Hash equality is a filter, not a proof: on a match, compare the substrings (or store the substrings per hash) before reporting an answer.",
+					"Use a large prime modulus (10^9 + 7, or 2^61 - 1) so collisions are rare and the expected total time stays O(n).",
+				},
+				CommonMistakes: []string{
+					"Removing the leaving character with the wrong power. Before the multiply it carries B^(L-1); if you multiply first, it carries B^L. Pick one order, use the matching power, and test that every slid hash equals a hash computed from scratch.",
+					"Getting a negative hash after the subtraction. In Python, % always returns a value in [0, M), so (h - x) % M is safe; in Java, C++ or Go the remainder can be negative, so write ((h - x) % M + M) % M there.",
+					"Trusting a hash match without comparing the substrings. Two different windows can share a hash, and then you report a match that isn't there. Always check s[i:i + L] == candidate on a hit.",
+					"Using a tiny modulus (like 97 or 2^16) on real input. With thousands of windows collisions become common, every hit needs a comparison and the run slides back towards O(n * L). Small moduli are only for hand traces.",
+				},
+				Examples: []CodeExample{
+					{
+						ID:       "rolling-hash-windows",
+						Title:    "Hash every length-L window of a digit string",
+						Language: "python",
+						Snippet: `def window_hashes(s, L, base=10, mod=97):
+    high = pow(base, L - 1, mod)       # weight of the leftmost digit
+    h = 0
+    for ch in s[:L]:                   # build the first window
+        h = (h * base + int(ch)) % mod
+    hashes = [h]
+    for right in range(L, len(s)):     # slide: drop old, shift, add new
+        h = (h - int(s[right - L]) * high) % mod
+        h = (h * base + int(s[right])) % mod
+        hashes.append(h)
+    return hashes
+
+print(window_hashes("31415", 3))  # [23, 44, 27]: 314, 141, 415 mod 97`,
+						Notes: "With base 10 and digit strings the hash is just the window read as a number, mod 97, so you can check each value by hand: 314 % 97 = 23, 141 % 97 = 44, 415 % 97 = 27. Real code uses a large prime modulus and a base such as 256.",
+					},
+				},
+			},
 		},
 		WorkedExamples: []WorkedExample{
 			{
@@ -242,6 +284,65 @@ print(longest_two_distinct("eceba"))  # 3, from "ece"`,
         best = max(best, right - left + 1)
     return best`,
 			},
+			{
+				Title:   "Rolling hash: first occurrence of a pattern in a text (Rabin-Karp)",
+				Problem: "Given haystack = \"acgbcd\" and needle = \"bcd\" (lowercase letters), return the index of the first occurrence of needle in haystack, or -1 if it doesn't occur. (The answer is 3.) Every candidate has length len(needle), so this is a fixed window whose summary is a rolling hash. The trace uses base 10, modulus 97 and a=1, b=2, ... so each hash is the window read as a number, mod 97; real code uses a large prime such as 10^9 + 7.",
+				Steps: []WorkedStep{
+					{
+						Subgoal:     "Set up the window state",
+						Explanation: "Give each letter a code from 1 to 26 and precompute high = base^(L-1) mod M, the place value of the leftmost character. It is what the leaving character must be multiplied by when we remove it, and computing it once keeps every slide O(1).",
+						Code:        "L, n = len(needle), len(haystack)\nif L > n:\n    return -1\ncode = lambda ch: ord(ch) - ord('a') + 1\nhigh = pow(base, L - 1, mod)",
+						State:       "L = 3, n = 6, high = 10^2 mod 97 = 100 mod 97 = 3",
+					},
+					{
+						Subgoal:     "Build the first window",
+						Explanation: "Hash the needle and the first L characters of the haystack the same way: multiply by the base and add the next code, mod M. Using the same rule for both is what makes equal strings get equal hashes.",
+						Code:        "target = window = 0\nfor i in range(L):\n    target = (target * base + code(needle[i])) % mod\n    window = (window * base + code(haystack[i])) % mod",
+						State:       "needle \"bcd\" -> 2, 23, 234 mod 97 = 40, so target = 40. Window \"acg\" -> 1, 13, 137 mod 97 = 40, so window = 40",
+					},
+					{
+						Subgoal:     "Verify the hit",
+						Explanation: "Equal hashes only mean the strings are probably equal. Compare the real substring before believing it; with a small modulus collisions are easy to hit, and here the very first window collides.",
+						Code:        "for start in range(n - L + 1):\n    if window == target and haystack[start:start + L] == needle:\n        return start",
+						State:       "start = 0: window 40 == target 40, but \"acg\" != \"bcd\" (137 and 234 differ by 97): a collision, so keep going",
+					},
+					{
+						Subgoal:     "Slide the window",
+						Explanation: "Drop the leaving character with its place value high, then multiply by the base to shift the remaining characters up one place, and add the entering character in the units place. Python's % keeps the result in [0, M) even if the subtraction went negative.",
+						Code:        "    if start + L < n:\n        window = (window - code(haystack[start]) * high) % mod\n        window = (window * base + code(haystack[start + L])) % mod",
+						State:       "start = 0 -> 1: 40 - a(1)*3 = 37, then 37*10 + b(2) = 372 mod 97 = 81 (\"cgb\"). start = 1 -> 2: 81 - c(3)*3 = 72, then 72*10 + c(3) = 723 mod 97 = 44 (\"gbc\"). start = 2 -> 3: 44 - g(7)*3 = 23, then 23*10 + d(4) = 234 mod 97 = 40 (\"bcd\")",
+					},
+					{
+						Subgoal:     "Record the answer",
+						Explanation: "At each start the loop first checks the current window, so the first verified match is the first occurrence. If the loop finishes without a verified match, the needle does not occur.",
+						Code:        "return -1",
+						State:       "start = 1: 81 != 40; start = 2: 44 != 40; start = 3: 40 == 40 and \"bcd\" == \"bcd\", so return 3",
+					},
+					{
+						Subgoal:     "Check the cost",
+						Explanation: "Building the first windows costs L steps and each slide costs O(1), so hashing is O(n). Each substring comparison costs O(L), but with a large prime only true matches (plus very rare collisions) reach it, so the expected total is O(n + L).",
+						Code:        "# expected O(n + L) time, O(1) extra space",
+						State:       "6 characters hashed once each, 3 slides, 2 substring comparisons (1 collision, 1 real match)",
+					},
+				},
+				Code: `def str_str(haystack, needle, base=29, mod=1_000_000_007):
+    L, n = len(needle), len(haystack)
+    if L > n:
+        return -1
+    code = lambda ch: ord(ch) - ord('a') + 1   # a=1, b=2, ..., z=26
+    high = pow(base, L - 1, mod)               # weight of the leaving char
+    target = window = 0
+    for i in range(L):                         # build the first window
+        target = (target * base + code(needle[i])) % mod
+        window = (window * base + code(haystack[i])) % mod
+    for start in range(n - L + 1):
+        if window == target and haystack[start:start + L] == needle:
+            return start                       # record the answer
+        if start + L < n:                      # slide the window
+            window = (window - code(haystack[start]) * high) % mod
+            window = (window * base + code(haystack[start + L])) % mod
+    return -1`,
+			},
 		},
 		Completions: []CompletionProblem{
 			{
@@ -276,6 +377,31 @@ print(longest_two_distinct("eceba"))  # 3, from "ece"`,
     return count`,
 				Blanks:      []string{"arr[right - k]", "right >= k - 1"},
 				Explanation: "First blank: after arr[right] is added, the window should be the k elements arr[right - k + 1 .. right], so the value that just fell off its left edge is arr[right - k] — one position before the window. Dropping arr[right - k + 1] instead would eject a value that still belongs. The guard right >= k matches: the first time anything must leave is when a (k+1)-th element has been added. Second blank: a window only counts once it is complete, which first happens at right = k - 1 (indices 0..k-1), so counting is gated on right >= k - 1; before that the sum covers fewer than k elements. Comparing window_sum >= threshold * k checks the average without division. For arr = [2,2,2,2,5,5,5,8], k = 3: the qualifying windows are [2,5,5] = 12, [5,5,5] = 15 and [5,5,8] = 18, all >= 4 * 3 -> count 3.",
+			},
+			{
+				Title:  "Repeated DNA sequences (rolling hash)",
+				Prompt: "A DNA string s uses only the letters A, C, G and T. Return every 10-letter substring that occurs more than once in s, in sorted order. Example: s = \"AAAAACCCCCAAAAACCCCCCAAAAAGGGTTT\" returns [\"AAAAACCCCC\", \"CCCCCAAAAA\"]. Every candidate has length 10, so slide a fixed window and keep a rolling hash of it (base 4, since there are four letters). seen maps each hash to the windows that produced it. Fill in the blanks.",
+				Code: `def findRepeatedDnaSequences(s):
+    L, base, mod = 10, 4, 1_000_000_007
+    code = {"A": 0, "C": 1, "G": 2, "T": 3}
+    if len(s) < L:
+        return []
+    high = pow(base, L - 1, mod)
+    h = 0
+    for ch in s[:L]:                            # Build the first window
+        h = (h * base + code[ch]) % mod
+    seen = {h: {s[:L]}}                         # hash -> windows with that hash
+    repeated = set()
+    for right in range(L, len(s)):
+        h = (h - ____) % mod                    # Slide: drop the leaving char
+        h = ____                                # Slide: add the entering char
+        window = s[right - L + 1:right + 1]
+        if window in ____:                      # Verify the hit
+            repeated.add(window)                # Record the answer
+        seen.setdefault(h, set()).add(window)
+    return sorted(repeated)`,
+				Blanks:      []string{"code[s[right - L]] * high", "(h * base + code[s[right]]) % mod", "seen.get(h, set())"},
+				Explanation: "First blank: the character leaving is s[right - L], ten places behind the one entering, and it sits in the leftmost place, so its contribution is code[s[right - L]] * high with high = 4^9 mod M. Subtracting it leaves the hash of the 9 characters that stay. Second blank: (h * base + code[s[right]]) % mod shifts those 9 characters up one place and puts the new character in the units place, giving exactly the hash of s[right - 9 .. right]. Third blank: a hash hit alone isn't proof, so look up the windows already stored under this hash with seen.get(h, set()) and only count the window as repeated if the same string is really there; .get avoids a KeyError when the hash is new. Trace on the example: the window \"AAAAACCCCC\" first appears at start 0 and again at start 10; the second time its hash is found in seen and the string matches, so it is recorded. Same for \"CCCCCAAAAA\" at starts 5 and 11.",
 			},
 		},
 		Animations: []Storyboard{
@@ -356,6 +482,21 @@ print(longest_two_distinct("eceba"))  # 3, from "ece"`,
 				},
 				Answer:      2,
 				Explanation: "A rearrangement of s1 has exactly len(s1) characters, so every candidate window has that length and the window just slides (Permutation in String). The other three ask for the longest or shortest window, so the length is the unknown and the window must grow and shrink.",
+			},
+			{
+				Prompt: "A Rabin-Karp search finds that the current window's hash equals the pattern's hash. Why does correct code still compare the two substrings before reporting a match?",
+				Choices: []string{
+					"Because the hash only covers the first and last characters of the window",
+					"Because different strings can have the same hash mod M (a collision), so equal hashes only mean 'probably equal'",
+					"Because the rolling update drifts away from the true hash after many slides",
+					"It doesn't need to: equal hashes prove the strings are equal",
+				},
+				Answer:      1,
+				Explanation: "There are far more possible strings than values mod M, so some different strings must share a hash: in base 10 mod 97, \"acg\" (137) and \"bcd\" (234) both hash to 40. The hash does use every character, and the rolling update is exact (each slid hash equals the hash computed from scratch), so neither of those is the problem. Equal strings always have equal hashes, but not the other way round, so a hit is a candidate that the substring comparison confirms.",
+			},
+			{
+				Prompt:      "Trace one slide. Using base 10 and modulus 97 over the digit string \"31415\" with L = 3, the first window \"314\" has hash 23 and high = 10^2 mod 97 = 3. What is the hash after sliding one step, to the window \"141\"? Show the update.",
+				Explanation: "Drop the leaving digit 3 with its place value: (23 - 3 * 3) mod 97 = 14. Shift and add the entering digit 1: (14 * 10 + 1) mod 97 = 141 mod 97 = 44. Check from scratch: \"141\" read as a number is 141, and 141 mod 97 = 44. Common wrong answers: forgetting the removal gives (23 * 10 + 1) mod 97 = 37, and removing with 10^3 mod 97 = 30 instead of 3 gives 10.",
 			},
 		},
 	}

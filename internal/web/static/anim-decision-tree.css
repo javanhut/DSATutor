@@ -1,0 +1,128 @@
+/* Decision tree animation (chapter 12, storyboard "decision-tree"). */
+.dt-viz {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.dt-tree {
+  width: 100%;
+  max-width: 520px;
+  height: auto;
+  overflow: visible;
+}
+
+.dt-edge {
+  stroke: var(--border-light);
+  stroke-width: 2;
+}
+.dt-edge.dt-on-path { stroke: var(--accent); stroke-width: 3; }
+.dt-edge.dt-done { stroke: var(--border); }
+.dt-edge.dt-found { stroke: var(--accent-2); }
+.dt-edge.dt-pruned { stroke: var(--mark); stroke-dasharray: 4 4; }
+
+.dt-node circle {
+  fill: var(--panel);
+  stroke: var(--border-light);
+  stroke-width: 2;
+}
+.dt-label {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 500;
+  fill: var(--text);
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+.dt-sub {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  text-anchor: middle;
+}
+.dt-sub-found { fill: var(--accent-2); }
+.dt-sub-pruned { fill: var(--mark); }
+
+.dt-node.dt-on-path circle { stroke: var(--accent); fill: rgba(var(--accent-rgb), 0.14); }
+.dt-node.dt-current circle { fill: var(--accent); stroke: var(--accent); stroke-width: 3; }
+.dt-node.dt-current .dt-label { fill: var(--on-accent); }
+
+.dt-node.dt-done circle { fill: var(--panel-alt); stroke: var(--border); }
+.dt-node.dt-done .dt-label { fill: var(--muted); }
+
+.dt-node.dt-found circle { fill: rgba(var(--accent-2-rgb), 0.16); stroke: var(--accent-2); }
+.dt-node.dt-found.dt-current circle { fill: var(--accent-2); stroke: var(--accent-2); }
+.dt-node.dt-found.dt-current .dt-label { fill: var(--on-accent); }
+
+.dt-node.dt-pruned circle { fill: rgba(var(--mark-rgb), 0.08); stroke: var(--mark); stroke-dasharray: 4 3; }
+.dt-node.dt-pruned .dt-label { fill: var(--mark); font-weight: 600; paint-order: stroke; stroke: var(--panel); stroke-width: 4px; }
+.dt-cross { stroke: var(--mark); stroke-width: 2; stroke-linecap: round; fill: none; opacity: 0.6; }
+
+.dt-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 14px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.dt-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.dt-key {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid;
+}
+.dt-key-path { border-color: var(--accent); background: var(--accent); }
+.dt-key-done { border-color: var(--border); background: var(--panel-alt); }
+.dt-key-found { border-color: var(--accent-2); background: rgba(var(--accent-2-rgb), 0.16); }
+.dt-key-pruned { border-color: var(--mark); border-style: dashed; }
+
+.dt-path, .dt-results {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 12px;
+}
+.dt-results {
+  flex-direction: column;
+  background: var(--panel-alt);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  min-width: 60%;
+}
+.dt-caption { color: var(--text-dim); margin-right: 4px; }
+.dt-chip {
+  font-family: var(--mono);
+  min-width: 26px;
+  padding: 3px 6px;
+  text-align: center;
+  border: 2px solid var(--accent);
+  border-radius: var(--radius);
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.08);
+}
+.dt-result-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.dt-result {
+  font-family: var(--mono);
+  padding: 3px 8px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--accent-2);
+}
+.dt-empty { color: var(--text-dim); font-style: italic; }
+
+/* The node, edge or result that just appeared pops in. */
+.dt-node.dt-new { animation: dt-pop 0.35s ease-out; transform-box: fill-box; transform-origin: center; }
+.dt-edge.dt-new { animation: dt-fade 0.35s ease-out; }
+.dt-result.dt-new { animation: dt-fade 0.35s ease-out; outline: 2px solid var(--accent-2); }
+
+@keyframes dt-pop { from { opacity: 0; transform: scale(0.4); } to { opacity: 1; transform: scale(1); } }
+@keyframes dt-fade { from { opacity: 0; } to { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .dt-node.dt-new, .dt-edge.dt-new, .dt-result.dt-new { animation: none; }
+}

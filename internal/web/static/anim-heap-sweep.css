@@ -1,0 +1,292 @@
+/* Sweep line with a heap (storyboard "heap-sweep"). Theme colours only. */
+
+.hs-viz {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  width: 100%;
+  align-items: stretch;
+}
+
+.hs-panel {
+  flex: 1 1 300px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 10px 12px;
+}
+
+.hs-panel-timeline,
+.hs-panel-heap {
+  flex-basis: 100%;
+}
+
+.hs-heap-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+}
+
+.hs-heap-side {
+  flex: 1 1 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hs-panel-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+
+.hs-timeline,
+.hs-tree {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.hs-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+
+.hs-axis {
+  stroke: var(--border-light);
+  stroke-width: 1.5;
+}
+
+.hs-tick,
+.hs-trip-name,
+.hs-bar-label,
+.hs-sweep-label,
+.hs-node-key,
+.hs-node-trip {
+  font-family: var(--mono);
+  text-anchor: middle;
+}
+
+.hs-tick {
+  font-size: 11px;
+  fill: var(--text-dim);
+}
+
+.hs-trip-name {
+  font-size: 13px;
+  font-weight: 600;
+  fill: var(--text-dim);
+}
+
+.hs-bar {
+  stroke-width: 1.5;
+  transition: fill 0.3s ease, stroke 0.3s ease, opacity 0.3s ease;
+}
+
+.hs-bar-label {
+  font-size: 11px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+/* Waiting: not boarded yet. */
+.hs-trip.waiting .hs-bar {
+  fill: transparent;
+  stroke: var(--border-light);
+  stroke-dasharray: 4 3;
+}
+.hs-trip.waiting .hs-bar-label { fill: var(--text-dim); }
+
+/* Riding: in the car, so in the heap. */
+.hs-trip.riding .hs-bar {
+  fill: rgba(var(--accent-rgb), 0.22);
+  stroke: var(--accent);
+}
+.hs-trip.riding .hs-bar-label,
+.hs-trip.riding .hs-trip-name { fill: var(--text); }
+
+/* Done: dropped off and popped. */
+.hs-trip.done .hs-bar {
+  fill: rgba(var(--ink-rgb), 0.06);
+  stroke: var(--border);
+}
+.hs-trip.done .hs-bar-label { fill: var(--muted); text-decoration: line-through; }
+
+.hs-trip.current .hs-trip-name { fill: var(--mark); }
+.hs-trip.focus .hs-bar,
+.hs-trip.current.waiting .hs-bar {
+  stroke: var(--mark);
+  stroke-width: 2.5;
+}
+
+.hs-sweep {
+  transition: transform 0.45s ease;
+}
+.hs-sweep.hs-hidden { opacity: 0; }
+
+.hs-sweep-line {
+  stroke: var(--mark);
+  stroke-width: 2;
+}
+
+.hs-sweep-label {
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--mark);
+}
+
+/* Load meter */
+.hs-load {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.hs-load-label { color: var(--text-dim); }
+
+.hs-load-track {
+  position: relative;
+  flex: 1;
+  height: 12px;
+  border-radius: 6px;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  overflow: visible;
+}
+
+.hs-load-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 6px;
+  background: var(--accent);
+  transition: width 0.35s ease, background-color 0.3s ease;
+}
+.hs-load-fill.full { background: var(--warning); }
+.hs-load-fill.over { background: var(--error); }
+
+.hs-load-cap {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  background: var(--text);
+}
+
+.hs-load-value {
+  min-width: 3.5em;
+  text-align: right;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Heap tree */
+.hs-heap {
+  flex: 1 1 260px;
+  max-width: 320px;
+  margin: 0 auto;
+  min-height: 130px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.hs-heap-empty {
+  align-self: center;
+  color: var(--muted);
+  font-style: italic;
+  font-size: 13px;
+}
+
+.hs-edge {
+  stroke: var(--border-light);
+  stroke-width: 2;
+}
+
+.hs-node .hs-node-base {
+  fill: var(--panel);
+  stroke: none;
+}
+
+.hs-node .hs-node-box {
+  fill: var(--panel-alt);
+  stroke: var(--border-light);
+  stroke-width: 2;
+}
+
+.hs-node-key {
+  font-size: 13px;
+  font-weight: 600;
+  fill: var(--text);
+}
+
+.hs-node-trip {
+  font-size: 10px;
+  fill: var(--text-dim);
+}
+
+.hs-node.top .hs-node-box {
+  fill: rgba(var(--accent-rgb), 0.18);
+  stroke: var(--accent);
+}
+.hs-node.top .hs-node-trip { fill: var(--accent); font-weight: 600; }
+
+.hs-node.active .hs-node-box { stroke-width: 3; }
+
+.hs-node.expired .hs-node-box {
+  fill: rgba(var(--mark-rgb), 0.18);
+  stroke: var(--mark);
+  stroke-width: 3;
+  stroke-dasharray: 5 3;
+}
+
+.hs-node.pushed .hs-node-box {
+  fill: rgba(var(--accent-2-rgb), 0.2);
+  stroke: var(--accent-2);
+  stroke-width: 3;
+}
+.hs-node.pushed { animation: hs-pop-in 0.35s ease-out; transform-box: fill-box; transform-origin: center; }
+
+@keyframes hs-pop-in {
+  from { opacity: 0; transform: scale(0.6); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.hs-heap-array {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  overflow-wrap: anywhere;
+}
+
+.hs-event {
+  font-size: 13px;
+  color: var(--text-dim);
+  border-left: 3px solid var(--border-light);
+  padding-left: 8px;
+}
+.hs-event.expired,
+.hs-event.popped { border-left-color: var(--mark); color: var(--text); }
+.hs-event.pushed { border-left-color: var(--accent-2); color: var(--text); }
+.hs-event.fail { border-left-color: var(--error); color: var(--error); }
+.hs-event.done { border-left-color: var(--accent-2); color: var(--accent-2); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hs-sweep,
+  .hs-bar,
+  .hs-load-fill { transition: none; }
+  .hs-node.pushed { animation: none; }
+}

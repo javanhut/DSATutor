@@ -2,7 +2,7 @@ package chapter
 
 import "time"
 
-// chapter11 teaches heaps and priority queues. Storyboards: heap, kth-largest.
+// chapter11 teaches heaps and priority queues. Storyboards: heap, kth-largest, heap-sweep.
 func chapter11() Chapter {
 	return Chapter{
 		Number:        11,
@@ -20,6 +20,7 @@ A heap is the compromise that wins both ways. It doesn't keep the patients fully
 			"Use Python's heapq as a min-heap, negate values to get a max-heap, and order entries with tuples",
 			"Apply the 'keep a heap of size k' pattern and say whether it needs a min-heap or a max-heap",
 			"Explain why heapify is O(n) while n pushes are O(n log n)",
+			"Sweep a sorted list of events with a heap of the active items, and explain why lazy deletion of expired items is safe",
 		},
 		WhenToUse: []string{
 			"The problem repeatedly asks for the smallest, largest, earliest or most urgent item while items keep being added or removed",
@@ -27,6 +28,7 @@ A heap is the compromise that wins both ways. It doesn't keep the patients fully
 			"Merging several sorted lists or streams into one sorted output (one entry per list in the heap)",
 			"A running median or any 'middle of a stream' question (two heaps)",
 			"A simulation where the next event is the one with the smallest time or the biggest count",
+			"Items that start and end on a timeline (meetings, buildings, trips) and, at each event, you need the max or min among the ones active right now (sweep line with a heap)",
 		},
 		Concepts: []Concept{
 			{
@@ -89,6 +91,26 @@ A heap is the compromise that wins both ways. It doesn't keep the patients fully
 					{ID: "top-k", Title: "The k largest values of a list", Language: "python", Snippet: "import heapq\n\ndef k_largest(nums, k):\n    heap = []\n    for num in nums:\n        heapq.heappush(heap, num)     # push the new item\n        if len(heap) > k:             # trim to size k\n            heapq.heappop(heap)       # evict the smallest kept value\n    return sorted(heap, reverse=True) # heap[0] alone is the k-th largest\n\nprint(k_largest([3, 2, 1, 5, 6, 4], 2))   # [6, 5]", Notes: "O(n log k). heapq.nlargest(k, nums) uses the same idea."},
 				},
 			},
+			{
+				Name:        "Sweep line with a heap of active items",
+				Description: "Many problems give you items that live on a timeline: meetings with a start and an end, buildings with a left and a right wall, trips with a pick-up and a drop-off. A sweep line sorts the start (and end) points and walks over them from left to right, like a vertical line moving across the timeline. At each event it updates the set of items that are active at that position, and a heap keyed by what you need next (the tallest building, the earliest-ending meeting, the lowest free room number) answers the question for that position from its top.",
+				WhyItWorks:  "Between two consecutive events no item starts or ends, so whatever you are measuring (the tallest active height, the number of riders, which rooms are busy) is constant there; checking only at the event points loses nothing. At each event you first push the items that have started, then pop expired items from the top until the top is still active. After that the top is the best of the active items: every active item is in the heap, and any expired item left behind is buried below an active one, where it cannot affect the answer. This is lazy deletion, and it is needed because a heap can only remove its top cheaply; finding an arbitrary item inside it is O(n). Each item is pushed once and popped at most once, so after the O(n log n) sort the whole sweep is O(n log n).",
+				Intuition:   "Picture a receptionist walking along a day's schedule with a stack of name cards, ordered so the person she cares about most is always on top. When the clock reaches someone's arrival she adds their card (push). She never digs through the stack to remove people who have left; only when she glances at the top card does she check whether that person is still in the building, and if not she throws the card away and looks again (lazy deletion). The clock times are the sorted events, the stack is the heap, and the top card after cleaning is the answer at that moment.",
+				CoreIdeas: []string{
+					"Sort the events by time (or x). Process them in order; the answer can only change at an event.",
+					"Key the heap by what you must read at each event: (-height, end) for the tallest active item, (end, ...) for the next one to finish, (room_number) for the lowest free room.",
+					"Release what has ended before reading the top: while heap[0] has expired, pop it. Expired items below the top can stay until they surface.",
+					"If the heap is keyed by end time, the top is always the next to expire, so the release step pops exactly the expired items (no lazy deletion needed). Lazy deletion matters when the heap is keyed by something else, like height.",
+				},
+				CommonMistakes: []string{
+					"Reading heap[0] before popping expired tops. The top may be a building that ended long ago; always run the 'while the top has expired, pop' loop first, then read.",
+					"Getting ties at equal times wrong. Decide from the problem whether an item ending at t and one starting at t overlap: with half-open ranges [start, end), test end <= t so the old item is released before the new one counts.",
+					"Trying to remove an ended item from the middle of the heap with list.remove or a search. That is O(n) per removal and breaks the heap order unless you re-heapify. Leave it in and drop it when it reaches the top.",
+				},
+				Examples: []CodeExample{
+					{ID: "sweep-heap", Title: "The tallest active interval at each query time", Language: "python", Snippet: "import heapq\n\ndef tallest_active(intervals, times):\n    # intervals: [start, end, value], active while start <= t < end\n    # times: query times, sorted ascending\n    intervals = sorted(intervals)                 # sort the events\n    active = []                                   # max-heap of (-value, end)\n    answers = []\n    i = 0\n    for t in times:\n        while i < len(intervals) and intervals[i][0] <= t:\n            start, end, value = intervals[i]\n            heapq.heappush(active, (-value, end)) # add what has started\n            i += 1\n        while active and active[0][1] <= t:       # release what has ended (lazily)\n            heapq.heappop(active)\n        answers.append(-active[0][0] if active else 0)   # take the best active item\n    return answers\n\nprint(tallest_active([[1, 6, 5], [2, 4, 8], [3, 9, 6]], [2, 3, 4, 7, 9]))\n# [8, 8, 6, 6, 0]: at t = 7 the 5 (ended at 6) is still buried in the heap, harmlessly", Notes: "Times 2 and 3: the 8 is on top. Time 4: the 8 has ended (end 4 <= 4) and is popped, so the 6 shows. Time 9: the 6 and the buried 5 both surface and are popped in turn, leaving nothing active."},
+				},
+			},
 		},
 		WorkedExamples: []WorkedExample{
 			{
@@ -102,6 +124,33 @@ A heap is the compromise that wins both ways. It doesn't keep the patients fully
 				},
 				Code: "import heapq\n\ndef findKthLargest(nums, k):\n    heap = []                          # build the heap\n    for num in nums:\n        heapq.heappush(heap, num)      # push the new item\n        if len(heap) > k:              # trim to size k\n            heapq.heappop(heap)\n    return heap[0]                     # read the top",
 			},
+			{
+				Title:   "Car Pooling with a drop-off heap",
+				Problem: "A car with `capacity` empty seats drives east and never turns back. trips[i] = [passengers, pick_up, drop_off] means that many people board at kilometre pick_up and leave at kilometre drop_off (they are out of the car by then, so their seats are free for anyone boarding at drop_off). Return True if every trip fits without ever exceeding capacity. Example: trips = [[3,3,7],[2,1,5],[2,5,8]], capacity = 5 -> True (the car never holds more than 5); with capacity = 4 -> False (5 people are aboard from kilometre 3 to 5).",
+				Steps: []WorkedStep{
+					{Subgoal: "Sort the events", Explanation: "The load can only change where someone boards or leaves, so sweep over the pick-ups in order. Sort the trips by pick-up; the drop-offs will be handled by the heap. riding is a min-heap of (drop_off, passengers): the trips currently in the car, with the next one to leave on top.", Code: "trips = sorted(trips, key=lambda trip: trip[1])\nriding = []\nload = 0", State: "trips = [[2,1,5],[3,3,7],[2,5,8]], riding = [], load = 0"},
+					{Subgoal: "Release what has ended", Explanation: "Before anyone boards at pick_up, everyone whose drop_off <= pick_up has left. The heap is keyed by drop_off, so they are exactly the items at the top: pop until the top's drop_off is later than pick_up, subtracting their passengers. Using <= rather than < frees seats at the same kilometre where someone else boards.", Code: "for passengers, pick_up, drop_off in trips:\n    while riding and riding[0][0] <= pick_up:\n        load -= heapq.heappop(riding)[1]", State: "pick-up 1: heap empty, nothing to release. pick-up 3: top (5,2), 5 > 3, nothing released. pick-up 5: top (5,2), 5 <= 5 -> pop, load 5 -> 3, riding = [(7,3)]"},
+					{Subgoal: "Add the new item", Explanation: "The new trip is now active: push it with its drop-off as the key so the release step can find it later, and add its passengers to the running load.", Code: "    heapq.heappush(riding, (drop_off, passengers))\n    load += passengers", State: "pick-up 1: riding = [(5,2)], load 2. pick-up 3: riding = [(5,2),(7,3)], load 5. pick-up 5: riding = [(7,3),(8,2)], load 5"},
+					{Subgoal: "Check the answer", Explanation: "The load only grows at a pick-up, so a pick-up is the only place it can exceed capacity. Check right after boarding; one overload is enough to answer False.", Code: "    if load > capacity:\n        return False", State: "capacity 5: load 2, 5, 5 never exceeds 5, keep going. capacity 4: at pick-up 3 load 5 > 4 -> return False"},
+					{Subgoal: "Return the result", Explanation: "If every pick-up passed the check, the car was never over capacity at any kilometre, because between pick-ups the load can only drop. Each trip is pushed and popped at most once: O(n log n) including the sort.", Code: "return True", State: "capacity 5: all three pick-ups pass -> return True"},
+				},
+				Code: "import heapq\n\ndef carPooling(trips, capacity):\n    trips = sorted(trips, key=lambda trip: trip[1])     # sort the events\n    riding = []                                         # min-heap of (drop_off, passengers)\n    load = 0\n    for passengers, pick_up, drop_off in trips:\n        while riding and riding[0][0] <= pick_up:       # release what has ended\n            load -= heapq.heappop(riding)[1]\n        heapq.heappush(riding, (drop_off, passengers))  # add the new item\n        load += passengers\n        if load > capacity:                             # check the answer\n            return False\n    return True",
+			},
+			{
+				Title:   "Reorganize String with a cooldown slot",
+				Problem: "Rearrange the letters of a string s so that no two equal letters are next to each other, and return any such arrangement, or \"\" if none exists. Example: s = \"aaabbc\" -> \"ababac\" (\"abacab\" is also fine); s = \"aaab\" -> \"\", because three a's need two separators and there is only one b. The greedy rule: always write the letter with the most copies left, except the letter you just wrote.",
+				Steps: []WorkedStep{
+					{Subgoal: "Count the letters", Explanation: "Which letter goes next depends only on how many copies of each letter are left, so count them first. A letter with many copies is the hardest to place, which is why the greedy rule picks it as early as possible.", Code: "counts = Counter(s)", State: "s = \"aaabbc\": counts = {a: 3, b: 2, c: 1}"},
+					{Subgoal: "Build the heap", Explanation: "Put one (-count, letter) entry per distinct letter into a heap. heapq is a min-heap, so negating the count puts the letter with the most copies left on top; equal counts fall back to alphabetical order, which makes the output predictable. heapify does this in O(n).", Code: "heap = [(-count, ch) for ch, count in counts.items()]\nheapq.heapify(heap)\nresult = []\nheld = None", State: "heap = [(-3,'a'), (-2,'b'), (-1,'c')], held = None, result = \"\""},
+					{Subgoal: "Read the top", Explanation: "Pop the letter with the most copies left and write one copy of it. It cannot equal the last letter written, because that letter is not in the heap at all: it is sitting in the cooldown slot held.", Code: "while heap:\n    count, ch = heapq.heappop(heap)\n    result.append(ch)", State: "round 1: pop (-3,'a') -> result \"a\", heap = [(-2,'b'), (-1,'c')]. round 2: pop (-2,'b') -> result \"ab\", heap = [(-1,'c')]"},
+					{Subgoal: "Release the cooled item", Explanation: "Now that a different letter has been written, the letter in the cooldown slot may appear again, so push it back and let it compete for the next round. Releasing after the pop, not before, is what keeps it from being picked twice in a row.", Code: "    if held:\n        heapq.heappush(heap, held)", State: "round 1: held is None, nothing to release. round 2: push (-2,'a') -> heap = [(-2,'a'), (-1,'c')]"},
+					{Subgoal: "Park it while it cools", Explanation: "The letter just written has one copy fewer: count + 1, since counts are negative. If copies remain, park it in held for one round instead of pushing it back; if none remain (count + 1 == 0) it is finished and held becomes None.", Code: "    held = (count + 1, ch) if count + 1 < 0 else None", State: "round 1: held = (-2,'a'). round 2: held = (-1,'b'). round 3: pop (-2,'a'), result \"aba\", release b -> heap = [(-1,'b'), (-1,'c')], held = (-1,'a')"},
+					{Subgoal: "Repeat until the heap is empty", Explanation: "Each round writes one letter and moves at most one entry into and out of the heap, so a round costs O(log k) for k distinct letters. The loop stops when nothing is left to choose from.", Code: "while heap:  # rounds 4-6", State: "round 4: pop (-1,'b') -> \"abab\", release a -> heap = [(-1,'a'), (-1,'c')], held = None. round 5: pop (-1,'a') -> \"ababa\", heap = [(-1,'c')]. round 6: pop (-1,'c') -> \"ababac\", heap = [], held = None"},
+					{Subgoal: "Check the answer", Explanation: "If the heap ran dry while a letter still had copies in the cooldown slot, there is no other letter left to separate them, so no valid arrangement exists. Picking the most frequent letter first never causes this when an answer exists, so this check is exact.", Code: "if held:\n    return \"\"", State: "\"aaabbc\": held = None, keep going. \"aaab\": pop a -> \"a\", held (-2,'a'); pop b -> \"ab\", release a, held None; pop a -> \"aba\", heap = [], held = (-1,'a') -> return \"\""},
+					{Subgoal: "Return the result", Explanation: "Every letter was written and no round wrote the letter that was cooling down, so no two neighbours are equal. Total cost O(n log k), and k is at most 26 for lowercase letters.", Code: "return \"\".join(result)", State: "return \"ababac\""},
+				},
+				Code: "import heapq\nfrom collections import Counter\n\ndef reorganizeString(s):\n    counts = Counter(s)                                    # count the letters\n    heap = [(-count, ch) for ch, count in counts.items()]  # build the heap\n    heapq.heapify(heap)\n    result = []\n    held = None                       # the letter just written, cooling down\n    while heap:\n        count, ch = heapq.heappop(heap)                    # read the top\n        result.append(ch)\n        if held:                                           # release the cooled item\n            heapq.heappush(heap, held)\n        held = (count + 1, ch) if count + 1 < 0 else None  # park it while it cools\n    if held:                                               # check the answer\n        return \"\"\n    return \"\".join(result)                                # return the result",
+			},
 		},
 		Completions: []CompletionProblem{
 			{
@@ -110,6 +159,13 @@ A heap is the compromise that wins both ways. It doesn't keep the patients fully
 				Code:        "import heapq\n\ndef k_smallest(nums, k):\n    heap = []                                # max-heap of negated values\n    for num in nums:\n        heapq.heappush(heap, ____)           # push the new item\n        if ____:                             # trim to size k\n            heapq.heappop(heap)              # evicts the largest kept value\n    return sorted(____ for x in heap)        # read the heap",
 				Blanks:      []string{"-num", "len(heap) > k", "-x"},
 				Explanation: "Blank by blank. heapq only builds min-heaps, so pushing -num stores every value negated: the smallest stored negative is the largest original number, which puts exactly the value to evict on top. len(heap) > k is the trim test: push first, then pop once the heap holds k + 1 (popping before pushing could discard a value that deserved to stay). That pop removes the most negative entry, i.e. the largest kept number. What remains are the k smallest, stored as negatives, so the read-out undoes the trick with -x before sorting. For [5, 1, 8, 3] with k = 2: push -5, -1; -8 arrives and the trim pops it right back out (8 is the largest so far); -3 arrives and the trim evicts 5; sorted(-x) over {-3, -1} returns [1, 3].",
+			},
+			{
+				Title:       "The busiest moment of the day",
+				Prompt:      "Meetings are [start, end] and are in progress while start <= t < end (a meeting ending at 5 is over for one starting at 5). Return (count, time): the largest number of meetings in progress at once and the earliest time that count is reached, or (0, None) for no meetings. Sweep the meetings by start with a min-heap of the end times of the ones still running. Fill in the blanks.",
+				Code:        "import heapq\n\ndef busiest_moment(meetings):\n    # meetings: [start, end], in progress while start <= t < end\n    meetings = sorted(meetings)                         # sort the events\n    running = []                                        # min-heap of end times\n    best_count, best_time = 0, None\n    for start, end in meetings:\n        while ____:                                     # release what has ended\n            heapq.heappop(running)\n        heapq.heappush(running, ____)                   # add the new item\n        if ____:                                        # record the answer\n            best_count, best_time = len(running), start\n    return best_count, best_time",
+				Blanks:      []string{"running and running[0] <= start", "end", "len(running) > best_count"},
+				Explanation: "Blank by blank. Before a meeting starts, release every meeting that has already ended: the heap holds end times, so the earliest end is on top, and we pop while it is <= start (<= because a meeting ending exactly at start no longer overlaps). The new meeting is now running, so push its end, the key the release step will need later. The heap now holds exactly the meetings in progress at start, so len(running) is the overlap there; the overlap only rises at a start, so checking at starts is enough. Using > rather than >= keeps the first (earliest) time the record count is reached. For [[6,9],[1,5],[3,8],[2,4]], sorted by start: t = 1 -> running [5], best (1, 1); t = 2 -> [4, 5], best (2, 2); t = 3 -> [4, 5, 8], best (3, 3); t = 6 pops 4 and 5, pushes 9 -> [8, 9], 2 is not > 3. Returns (3, 3).",
 			},
 		},
 		Animations: []Storyboard{
@@ -146,6 +202,25 @@ A heap is the compromise that wins both ways. It doesn't keep the patients fully
 					{Cue: "answer", Narration: "The heap holds exactly the k largest numbers, and its root is the smallest of those: the k-th largest overall. Each step cost O(log k).", VisualHint: "Root = answer", Duration: Duration(2 * time.Second), CodeRef: "heap[0]"},
 				},
 			},
+			{
+				ID:    "heap-sweep",
+				Title: "Sweep Line with a Drop-off Heap",
+				Goal:  "Sweep the pick-ups of Car Pooling from left to right, keeping the trips in the car in a min-heap keyed by drop-off.",
+				MemoryTips: []string{
+					"Sort the events: walk the pick-ups from left to right",
+					"Release what has ended: pop while the top's drop-off <= pick-up",
+					"Add the new item: push (drop_off, passengers) and add to the load",
+					"Check the answer right after boarding: that's the only place the load rises",
+				},
+				Steps: []StoryboardStep{
+					{Cue: "sort", Narration: "Sort the trips by pick-up kilometre. The load in the car can only change where someone boards or leaves, so the sweep line only has to stop at the pick-ups; the heap will tell it about the drop-offs.", VisualHint: "Trips laid out on a timeline", Duration: Duration(2 * time.Second), CodeRef: "heap-sweep: trips = sorted(trips, key=lambda trip: trip[1])"},
+					{Cue: "sweep", Narration: "Move the sweep line to the next pick-up. Everything to its left has already happened; the heap holds exactly the trips that boarded earlier and may still be in the car.", VisualHint: "Sweep line jumps to the pick-up", Duration: Duration(2 * time.Second), CodeRef: "heap-sweep: for passengers, pick_up, drop_off in trips"},
+					{Cue: "release", Narration: "Look at the top of the heap: the trip in the car with the earliest drop-off. If it gets off at or before this kilometre, pop it and free its seats, then look again. Stop at the first top that is still riding; every trip below it gets off even later.", VisualHint: "Expired top pops off the tree", Duration: Duration(3 * time.Second), CodeRef: "heap-sweep: while riding and riding[0][0] <= pick_up"},
+					{Cue: "push", Narration: "The new trip boards: push (drop_off, passengers) so the release step can find it when the sweep passes its drop-off, and add its passengers to the load. The new entry sifts up if it gets off sooner than its parent.", VisualHint: "New node joins the heap", Duration: Duration(2 * time.Second), CodeRef: "heap-sweep: heapq.heappush(riding, (drop_off, passengers))"},
+					{Cue: "check", Narration: "Compare the load with the capacity right after boarding. Between pick-ups the load can only fall, so if it fits at every pick-up it fits everywhere.", VisualHint: "Load meter against the capacity mark", Duration: Duration(2 * time.Second), CodeRef: "heap-sweep: if load > capacity"},
+					{Cue: "done", Narration: "Every pick-up passed the check, so the car never overflowed. Each trip was pushed once and popped at most once: O(n log n) with the sort.", VisualHint: "All trips done", Duration: Duration(2 * time.Second), CodeRef: "heap-sweep: return True"},
+				},
+			},
 		},
 		CheckQuestions: []CheckQuestion{
 			{
@@ -179,6 +254,18 @@ A heap is the compromise that wins both ways. It doesn't keep the patients fully
 				Choices:     []string{"[7, 9]", "[1, 4]", "[4, 9]", "[1, 7]"},
 				Answer:      1,
 				Explanation: "Pushing -x makes it a max-heap, and popping when size > 2 evicts the largest kept value. So the heap keeps the 2 smallest: after 4, 9 -> {4, 9}; push 1, evict 9 -> {1, 4}; push 7, evict 7 -> {1, 4}. It prints [1, 4].",
+			},
+			{
+				Prompt:      "In tallest_active (the sweep-line concept example, a max-heap of (-value, end)), the heap at t = 7 holds (-6, 9) on top and (-5, 6) below it, although the interval with value 5 ended at t = 6. Why is it fine to leave it there?",
+				Choices:     []string{"It isn't fine: every ended interval must be removed as soon as the sweep passes its end, or the answer is wrong", "Only the top is ever read, and the release loop checks the top before each read, so a buried ended interval is popped the moment it would surface", "Heaps automatically drop items whose end has passed", "It is fine only because 5 < 6; if the ended interval had a larger value, the answer would be wrong"},
+				Answer:      1,
+				Explanation: "Lazy deletion relies on the fact that the answer comes only from heap[0], and the release loop ('while the top has ended, pop') runs before every read. A buried ended item never influences a read; when it reaches the top it is popped. Option 1 would need an O(n) search per removal. Heaps know nothing about time (option 3). Option 4 misses that a larger ended interval would be on top and popped by the release loop first, so it can't be read either.",
+			},
+			{
+				Prompt:      "Trace: tallest_active from the sweep-line concept (push what has started, pop ended tops while end <= t, read -top or 0). What does tallest_active([[0, 4, 3], [1, 3, 7], [2, 6, 5]], [1, 3, 4, 6]) return?",
+				Choices:     []string{"[7, 5, 5, 0]", "[7, 7, 5, 0]", "[7, 5, 3, 0]", "[7, 5, 5, 3]"},
+				Answer:      0,
+				Explanation: "t = 1: push (-3, end 4) and (-7, end 3); top is 7 -> 7. t = 3: push (-5, end 6); the top 7 has end 3 <= 3, pop it; the top 5 is active -> 5. t = 4: the top 5 (end 6) is active -> 5; the 3 ended at 4 but is buried, so it stays. t = 6: the top 5 has end 6 <= 6, pop; the 3 surfaces with end 4 <= 6, pop; the heap is empty -> 0. [7, 7, 5, 0] reads the top before popping (or treats the end as inclusive), and [7, 5, 5, 3] forgets that buried ended items must be popped when they surface.",
 			},
 		},
 	}

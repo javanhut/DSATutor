@@ -129,3 +129,34 @@ func TestTutorChatRunsToolLoop(t *testing.T) {
 		t.Errorf("tool results = %q", results)
 	}
 }
+
+// A model that calls a tool on every turn, even when no tools are offered,
+// must not keep the request running forever.
+func TestTutorChatToolLoopIsBounded(t *testing.T) {
+	rounds := 0
+	ollama := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/tags":
+			w.Write([]byte(`{"models":[{"name":"m:latest"}]}`))
+		case "/api/show":
+			w.Write([]byte(`{"capabilities":["completion","tools"]}`))
+		case "/api/chat":
+			rounds++
+			w.Write([]byte(`{"message":{"content":"","tool_calls":[{"function":{"name":"ask_learner","arguments":{"question":"q","choices":"not a list"}}}]},"done":true}` + "\n"))
+		}
+	}))
+	defer ollama.Close()
+	t.Setenv("DSATUTOR_OLLAMA_URL", ollama.URL)
+	t.Setenv("DSATUTOR_TUTOR_MODEL", "")
+	s := NewServer(nil)
+
+	rec := httptest.NewRecorder()
+	s.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/tutor/chat",
+		strings.NewReader(`{"messages":[{"role":"user","content":"teach me"}],"context":{"view":"home"}}`)))
+	if rounds != maxToolRounds+1 {
+		t.Errorf("model called %d times, want %d", rounds, maxToolRounds+1)
+	}
+	if !strings.Contains(rec.Body.String(), `"type":"done"`) {
+		t.Errorf("reply never finished: %s", rec.Body.String())
+	}
+}

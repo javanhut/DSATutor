@@ -206,7 +206,7 @@ func (w *Workspace) Execute(call ToolCall) (string, Action) {
 		}
 		return fmt.Sprintf("Done; the learner can undo it. The editor now holds:\n```\n%s\n```", numberLines(code)), act
 
-	case "scratchpad_run_code", "scratchpad_visualize", "ask_learner":
+	case "scratchpad_run_code", "scratchpad_visualize", "scratchpad_sketch", "ask_learner":
 		return executeScratchpad(call)
 
 	case "open_tab":
@@ -331,4 +331,19 @@ func intArg(args map[string]any, key string) int {
 		return n
 	}
 	return 0
+}
+
+// listArg reads a list argument. Small models sometimes send a list as a
+// JSON-encoded string ("[\"a\", \"b\"]"), so that is accepted too.
+func listArg(args map[string]any, key string) []any {
+	switch v := args[key].(type) {
+	case []any:
+		return v
+	case string:
+		var out []any
+		if json.Unmarshal([]byte(strings.TrimSpace(v)), &out) == nil {
+			return out
+		}
+	}
+	return nil
 }

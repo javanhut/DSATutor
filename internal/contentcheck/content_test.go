@@ -455,7 +455,7 @@ func checkChapter(t *testing.T, ch chapter.Chapter, animations map[string]bool) 
 	}
 	for _, sb := range ch.Animations {
 		if !animations[sb.ID] {
-			t.Errorf("storyboard %q has no animator registered in app.js", sb.ID)
+			t.Errorf("storyboard %q has no animator registered in internal/web/static", sb.ID)
 		}
 		if len(sb.MemoryTips) < 3 {
 			t.Errorf("storyboard %q needs 3+ MemoryTips", sb.ID)
@@ -475,10 +475,21 @@ var fullPageRe = regexp.MustCompile(`const fullPageTopics = \[([^\]]*)\]`)
 
 func registeredAnimations(t *testing.T) map[string]bool {
 	_, file, _, _ := runtime.Caller(0)
-	src, err := os.ReadFile(filepath.Join(filepath.Dir(file), "..", "web", "static", "app.js"))
-	if err != nil {
-		t.Fatalf("reading app.js: %v", err)
+	// Animators live in app.js and in separate static/anim-*.js files.
+	static := filepath.Join(filepath.Dir(file), "..", "web", "static")
+	paths, _ := filepath.Glob(filepath.Join(static, "*.js"))
+	var all []byte
+	for _, p := range paths {
+		b, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatalf("reading %s: %v", p, err)
+		}
+		all = append(all, b...)
 	}
+	if len(all) == 0 {
+		t.Fatalf("no JavaScript found in %s", static)
+	}
+	src := all
 	out := map[string]bool{}
 	for _, m := range registryRe.FindAllStringSubmatch(string(src), -1) {
 		out[m[1]] = true

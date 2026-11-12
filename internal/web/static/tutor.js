@@ -438,7 +438,7 @@
 
   // A chip records one thing the tutor did. Highlights and scratchpad work
   // can be shown again; edits can't be replayed from history.
-  const REPLAYABLE = ['highlight', 'scratchpad_code', 'scratchpad_visualize'];
+  const REPLAYABLE = ['highlight', 'scratchpad_code', 'scratchpad_visualize', 'scratchpad_sketch'];
   function chipHtml(a, ref) {
     const replay = REPLAYABLE.includes(a.name) ? ` data-replay="${ref}" title="Show it again"` : '';
     return `<button type="button" class="tutor-action-chip ${a.name}"${replay}>${escapeHtml(actionLabel(a))}</button>`;
@@ -722,6 +722,7 @@
       case 'open_tab': return `Opened the ${a.tab} tab`;
       case 'scratchpad_code': return `Ran code in the scratchpad${a.explanation ? `: ${a.explanation}` : ''}`;
       case 'scratchpad_visualize': return `Drew “${a.title || 'a diagram'}” in the scratchpad`;
+      case 'scratchpad_sketch': return `Sketched “${a.title || 'a drawing'}” on the whiteboard`;
       case 'select_test': return `Selected test case ${a.case}`;
     }
     return a.name;
@@ -808,6 +809,11 @@
         if (!window.dsaScratchpad) return null;
         window.dsaScratchpad.showFrames(a);
         return { name: 'scratchpad_visualize', title: a.title, frames: a.frames };
+      }
+      case 'scratchpad_sketch': {
+        if (!window.dsaScratchpad) return null;
+        window.dsaScratchpad.showSketch(a);
+        return { name: 'scratchpad_sketch', title: a.title, elements: a.elements, captions: a.captions };
       }
       case 'ask_learner':
         return { name: 'ask_learner', question: a.question, choices: a.choices };

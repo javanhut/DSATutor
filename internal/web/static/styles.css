@@ -7663,3 +7663,44 @@ body.interview-active #practice-mode :is(
 .sp-scalar code { font-family: var(--mono); font-size: var(--fs-md); padding: 4px 12px; border: 1px solid var(--border-light); border-radius: var(--radius); background: var(--bg-elevated); }
 .sp-items { display: inline-flex; align-items: center; gap: 2px; margin-right: 6px; font-family: var(--mono); font-size: var(--fs-xs); color: var(--text-dim); }
 .sp-items button { padding: 2px 8px; }
+
+/* Whiteboard sketches and the handwritten style (scratchpad.js) */
+.sp-sketch {
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+  background-color: var(--bg-elevated);
+  background-image:
+    linear-gradient(rgba(var(--accent-rgb), 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(var(--accent-rgb), 0.08) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+.sp-hand-text { font-family: 'Caveat', 'Segoe Print', 'Comic Sans MS', cursive; font-weight: 600; }
+#sp-hand.active { color: var(--mark); border-color: var(--mark); }
+.scratchpad.sketchy .sp-viz,
+.scratchpad.sketchy .sp-caption,
+.scratchpad.sketchy .sp-vars { font-family: 'Caveat', 'Segoe Print', cursive; }
+.scratchpad.sketchy .sp-viz *:not(svg):not(path) { font-family: 'Caveat', 'Segoe Print', cursive !important; }
+.scratchpad.sketchy .sp-caption { font-size: 1.35em; }
+/* Caveat is a smaller face: match the x-height of the font it replaces. */
+.scratchpad.sketchy :is(.sp-viz, .sp-vars) *:not(svg):not(path) { font-size-adjust: 0.6; }
+.scratchpad.sketchy .sp-viz > :not(.sp-sketch) { filter: url(#sp-wobble); }
+.scratchpad.sketchy .sp-body {
+  background-image:
+    linear-gradient(rgba(var(--accent-rgb), 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(var(--accent-rgb), 0.06) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+.sp-head { flex-wrap: nowrap; }
+.sp-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sp-head-actions { flex-shrink: 0; align-items: center; white-space: nowrap; }
+.sp-items { white-space: nowrap; }
+#sp-hand { font-size: 15px; padding: 2px 8px; }
+
+/* The problem header holds the voice pickers, Interview mode, Ask tutor,
+   Run and Submit. It grows instead of clipping when they wrap, so Run and
+   Submit are always reachable. */
+.practice-header { height: auto; min-height: var(--header-height); row-gap: 10px; }
+.practice-header .header-controls { margin-left: auto; justify-content: flex-end; }
+.practice-header .control-group { flex-wrap: wrap; justify-content: flex-end; row-gap: 8px; }
+.practice-header .tts-voice { max-width: 150px; text-overflow: ellipsis; }

@@ -30,6 +30,7 @@ func chapter09() Chapter {
 			"Explain why snapshotting len(queue) separates BFS into levels",
 			"Explain why a valid BST needs bounds passed down from all ancestors, not just a parent-child comparison",
 			"Implement tree solutions in O(n) time and O(h) extra space, and say when h is log n and when it is n",
+			"Apply rerooting to get an answer for every node as the root in O(n): one bottom-up pass for subtree facts, one top-down pass that moves the root across each edge",
 		},
 		WhenToUse: []string{
 			"The input is a TreeNode root, or the data is hierarchical (parent/child, folders, nested structure)",
@@ -37,6 +38,7 @@ func chapter09() Chapter {
 			"The problem says level, depth, row, layer, \"closest to the root\" or \"view from the side\": use BFS by levels",
 			"The tree is a binary search tree, or you need sorted order, the kth smallest, or a range: use the BST ordering and inorder traversal",
 			"You must rebuild or encode a tree: use a traversal order plus a rule that pins down the structure (null markers or a second traversal)",
+			"An unrooted tree (n nodes, n - 1 undirected edges) asks for an answer \"for every node\" or \"if each node were the root\": use rerooting instead of one search per node",
 		},
 		Concepts: []Concept{
 			{
@@ -205,6 +207,69 @@ def insert(node, val):
 					},
 				},
 			},
+			{
+				Name:        "Rerooting: an answer for every root in two passes",
+				Description: "Some problems give an unrooted tree as n and an undirected edge list and ask for a value for every node as if that node were the root (total distance to everyone, edges to flip, guesses that hold). Rerooting computes the answer for one root, then slides the root across each edge, fixing the answer in O(1) per move.",
+				WhyItWorks: "Pick any root, say node 0, and compute its answer plus a few facts about each subtree (usually its size) in one " +
+					"bottom-up pass. Now move the root from p to its child c. Every path that does not cross the edge p-c looks exactly the " +
+					"same as before; only the relationship across that one edge changes. For a sum of distances, the size[c] nodes in c's " +
+					"subtree each get one step closer and the n - size[c] other nodes each get one step farther, so answer[c] = answer[p] - " +
+					"size[c] + (n - size[c]). That is O(1) work per edge instead of an O(n) recomputation, and walking the edges top-down " +
+					"(parents before children) fills in all n answers in O(n) total instead of O(n^2).",
+				Intuition: "Picture a group of friends spread over a street map that is a tree, choosing a meeting corner. The total walking " +
+					"distance at corner p is the old answer. Moving the meeting point one street over to corner c (moving the root across " +
+					"one edge) shortens the walk by one block for everyone who lives on c's side of that street (the size[c] nodes in c's " +
+					"subtree) and lengthens it by one block for everyone on p's side (the other n - size[c] nodes). Nobody has to re-walk " +
+					"the whole map to price the new corner: you just count heads on each side of the street.",
+				CoreIdeas: []string{
+					"Root it anywhere: build an undirected adjacency list, then a BFS from node 0 gives a parent array and an order where every parent comes before its children",
+					"Collect subtree facts bottom-up: walk that order in reverse (children before parents, a postorder) and add each node's size or sum into its parent",
+					"Get the answer for the first root from those facts, then walk the order forward and set answer[child] from answer[parent] with an O(1) formula",
+					"Find the formula by asking what changes across the single edge parent-child when the root moves over it; everything else stays put",
+					"Two linear passes over n nodes: O(n) time and O(n) space, with no recursion at all",
+				},
+				CommonMistakes: []string{
+					"Running a fresh BFS or DFS from every node, which is O(n^2) and times out for n = 30,000: compute one root's answer, then derive the others with the O(1) move",
+					"Writing the passes as recursion, which hits Python's recursion limit of about 1,000 on a path-shaped tree: use the BFS order and loop over it backward, then forward",
+					"Adding each edge in one direction only (graph[a].append(b) without graph[b].append(a)), so a BFS from node 0 cannot leave a node through an edge that was listed the other way round and misses part of the tree: an undirected edge goes into both lists",
+					"Running the forward pass in reversed order, so answer[parent] is still 0 when a child reads it: walk the BFS order forward so every parent is final before its children",
+				},
+				Examples: []CodeExample{
+					{
+						ID:       "tree_rerooting_reversals",
+						Title:    "Rerooting: one-way roads to reverse for every capital",
+						Language: "python",
+						Snippet: `def minReversals(n, edges):
+    # edges[i] = [u, v] is a one-way road u -> v; the roads form a tree.
+    # answer[r] = roads to reverse so every city can be reached from r.
+    graph = [[] for _ in range(n)]
+    for u, v in edges:
+        graph[u].append((v, 0))   # walking u -> v follows the arrow
+        graph[v].append((u, 1))   # walking v -> u needs one reversal
+    parent = [-1] * n
+    down_cost = [0] * n           # cost of walking parent -> node
+    seen = [False] * n
+    seen[0] = True
+    order = [0]                   # Root it anywhere: BFS order from 0
+    for node in order:
+        for nxt, cost in graph[node]:
+            if not seen[nxt]:
+                seen[nxt] = True
+                parent[nxt] = node
+                down_cost[nxt] = cost
+                order.append(nxt)
+    answer = [0] * n
+    answer[0] = sum(down_cost)    # every road must point away from 0
+    for node in order[1:]:        # Move the root across an edge
+        # only the road parent-node is now walked the other way
+        answer[node] = answer[parent[node]] + (1 if down_cost[node] == 0 else -1)
+    return answer
+
+# minReversals(4, [[2, 0], [2, 1], [1, 3]]) -> [1, 1, 0, 2]`,
+						Notes: "Here the root's answer needs no subtree facts, so the bottom-up pass shrinks to a sum. When it does need them (sizes, weights), add a reversed(order) pass, as in the worked example.",
+					},
+				},
+			},
 		},
 		WorkedExamples: []WorkedExample{
 			{
@@ -323,6 +388,108 @@ def rightSideView(root):
                 queue.append(node.right)
     return view`,
 			},
+
+			{
+				Title: "Total walking distance to every meeting point (rerooting)",
+				Problem: "A town has n houses numbered 0 to n - 1 joined by n - 1 two-way streets that form a tree: edges[i] = [a, b] is " +
+					"an undirected street of length 1, and every house can reach every other. people[i] people live in house i. For " +
+					"every house h, if everyone walks to h along the tree, the total walking distance is the sum over all houses v of " +
+					"people[v] * dist(h, v). Return a list answer where answer[h] is that total. Example: n = 6, edges = " +
+					"[[0,1],[0,2],[2,3],[2,4],[4,5]], people = [1,2,1,3,1,2] gives [17, 23, 13, 17, 17, 23], so house 2 is the cheapest meeting point.",
+				Steps: []WorkedStep{
+					{
+						Subgoal: "Build the undirected adjacency",
+						Explanation: "A street can be walked both ways, so each edge goes into both endpoints' lists. Any node can then become " +
+							"the root later, because the BFS can leave every node in every direction.",
+						Code: `graph = [[] for _ in range(n)]
+for a, b in edges:
+    graph[a].append(b)
+    graph[b].append(a)`,
+						State: "graph = [[1, 2], [0], [0, 3, 4], [2], [2, 5], [4]]",
+					},
+					{
+						Subgoal: "Root it anywhere",
+						Explanation: "Choose node 0 as the first root and run a BFS that records each node's parent. Iterating over order while " +
+							"appending to it is a queue without popping, and it gives an order where every parent comes before its children. " +
+							"No recursion, so a 100,000-node path is fine.",
+						Code: `parent = [-1] * n
+seen = [False] * n
+seen[0] = True
+order = [0]
+for node in order:
+    for nxt in graph[node]:
+        if not seen[nxt]:
+            seen[nxt] = True
+            parent[nxt] = node
+            order.append(nxt)`,
+						State: "order = [0, 1, 2, 3, 4, 5], parent = [-1, 0, 0, 2, 2, 4]",
+					},
+					{
+						Subgoal: "Collect subtree facts bottom-up",
+						Explanation: "Walk the order backward, so every child is finished before its parent (a postorder, as in the DFS template). " +
+							"weight[v] becomes the number of people in v's subtree. cost[v] is the walking total for v's subtree to reach v: " +
+							"the child's own total plus one extra step for each of the weight[child] people crossing the edge up to v.",
+						Code: `weight = people[:]
+cost = [0] * n
+for node in reversed(order):
+    p = parent[node]
+    if p != -1:
+        weight[p] += weight[node]
+        cost[p] += cost[node] + weight[node]`,
+						State: "node 5: weight[4] = 3, cost[4] = 2; node 4: weight[2] = 4, cost[2] = 5; node 3: weight[2] = 7, cost[2] = 8; " +
+							"node 2: weight[0] = 8, cost[0] = 15; node 1: weight[0] = 10, cost[0] = 17. Final weight = [10, 2, 7, 3, 3, 2]",
+					},
+					{
+						Subgoal: "Answer for the first root",
+						Explanation: "The root's subtree is the whole tree, so cost[0] is already the full answer for house 0, and weight[0] is " +
+							"the total number of people. These two numbers seed the top-down pass.",
+						Code: `total = weight[0]
+answer = [0] * n
+answer[0] = cost[0]`,
+						State: "total = 10, answer[0] = 17 (2*1 + 1*1 + 3*2 + 1*2 + 2*3)",
+					},
+					{
+						Subgoal: "Move the root across an edge",
+						Explanation: "Walk the order forward so answer[p] is final before its child reads it. Moving from p to child c, the " +
+							"weight[c] people on c's side each walk one step less and the total - weight[c] people on p's side each walk one " +
+							"step more. Nothing else changes, so the update is O(1).",
+						Code: `for node in order[1:]:
+    p = parent[node]
+    answer[node] = answer[p] - weight[node] + (total - weight[node])`,
+						State: "node 1: 17 - 2 + 8 = 23; node 2: 17 - 7 + 3 = 13; node 3: 13 - 3 + 7 = 17; node 4: 13 - 3 + 7 = 17; " +
+							"node 5: 17 - 2 + 8 = 23. answer = [17, 23, 13, 17, 17, 23]",
+					},
+				},
+				Code: `def meetingCosts(n, edges, people):
+    graph = [[] for _ in range(n)]
+    for a, b in edges:
+        graph[a].append(b)
+        graph[b].append(a)
+    parent = [-1] * n
+    seen = [False] * n
+    seen[0] = True
+    order = [0]
+    for node in order:
+        for nxt in graph[node]:
+            if not seen[nxt]:
+                seen[nxt] = True
+                parent[nxt] = node
+                order.append(nxt)
+    weight = people[:]
+    cost = [0] * n
+    for node in reversed(order):
+        p = parent[node]
+        if p != -1:
+            weight[p] += weight[node]
+            cost[p] += cost[node] + weight[node]
+    total = weight[0]
+    answer = [0] * n
+    answer[0] = cost[0]
+    for node in order[1:]:
+        p = parent[node]
+        answer[node] = answer[p] - weight[node] + (total - weight[node])
+    return answer`,
+			},
 		},
 		Completions: []CompletionProblem{
 			{
@@ -362,6 +529,45 @@ def rightSideView(root):
     return node`,
 				Blanks:      []string{"node.left", "node.right"},
 				Explanation: "Everything smaller than node.val lives in the left subtree and everything larger in the right. So when val < node.val, the target can only be on the left: node = node.left; otherwise val is larger (the loop condition already rules out equal) and node = node.right. Each comparison discards a whole subtree, and the loop walks one root-to-leaf path: O(h) time, O(1) space. Searching 5 under root 4 with right child 7 and 7's left child 5: 5 > 4 goes right, 5 < 7 goes left, found.",
+			},
+			{
+				Title: "Roots that make enough guesses true (rerooting)",
+				Prompt: "A tree has n = len(edges) + 1 nodes and undirected edges. Each guess [u, v] (no duplicates) claims \"u is the parent " +
+					"of v\". For a chosen root, a guess is true when u really is v's parent. Return how many roots make at least k guesses " +
+					"true. The tree is rooted at 0 with a BFS order and parent array. Fill in the count for root 0 and the two O(1) " +
+					"corrections when the root moves from p to its child node.",
+				Code: `def rootCount(edges, guesses, k):
+    n = len(edges) + 1
+    graph = [[] for _ in range(n)]
+    for a, b in edges:
+        graph[a].append(b)
+        graph[b].append(a)
+    guessed = set(map(tuple, guesses))
+    parent = [-1] * n
+    seen = [False] * n
+    seen[0] = True
+    order = [0]
+    for node in order:
+        for nxt in graph[node]:
+            if not seen[nxt]:
+                seen[nxt] = True
+                parent[nxt] = node
+                order.append(nxt)
+    correct = [0] * n
+    correct[0] = sum(____ for v in order[1:])
+    for node in order[1:]:
+        p = parent[node]
+        lose = ____
+        gain = ____
+        correct[node] = correct[p] - lose + gain
+    return sum(c >= k for c in correct)`,
+				Blanks: []string{"(parent[v], v) in guessed", "(p, node) in guessed", "(node, p) in guessed"},
+				Explanation: "Blank by blank. With root 0, every non-root v has parent[v], so the true guesses are exactly the pairs " +
+					"(parent[v], v) found in guessed; True counts as 1 in sum. Moving the root from p to its child node flips only the " +
+					"edge p-node: p stops being node's parent, so a guess (p, node) that was true becomes false (lose), and node becomes " +
+					"p's parent, so a guess (node, p) becomes true (gain). Every other parent link is unchanged, so each move is O(1) and " +
+					"the whole thing is O(n + g). For edges [[0,1],[1,2],[1,3],[3,4]] and guesses [[1,3],[0,1],[1,0],[4,3]]: correct[0] = 2; " +
+					"node 1 loses (0,1) and gains (1,0): 2; node 2: 2; node 3 loses (1,3): 1; node 4 gains (4,3): 2. With k = 2 the answer is 4.",
 			},
 		},
 		Animations: []Storyboard{
@@ -447,6 +653,28 @@ def rightSideView(root):
 				Explanation: "The queue does keep nodes in level order, but it holds the tail of the current level and the start of the next " +
 					"one at the same time. Only the count taken before the level starts tells you how many pops belong to it. The order is " +
 					"still breadth-first and the time is still O(n).",
+			},
+			{
+				Prompt: "A tree is rooted at node 0 and answer[p] is the sum of distances from p to every node. You move the root from p to its child c. Which nodes become exactly one step closer to the root?",
+				Choices: []string{
+					"Only c itself, because it is the only node whose distance drops to 0",
+					"The size[c] nodes in c's subtree, c included",
+					"The n - size[c] nodes outside c's subtree, because they are now below the new root",
+					"Every node except p, because the root moved downward",
+				},
+				Answer: 1,
+				Explanation: "Every path from c's subtree to p went through c, so starting at c instead saves exactly one step for all " +
+					"size[c] of them (c drops from 1 to 0). Every node outside that subtree must now cross the edge p-c to reach c, so those " +
+					"n - size[c] nodes are one step farther. That is why answer[c] = answer[p] - size[c] + (n - size[c]). Choice 3 has the " +
+					"two groups reversed, and choice 1 forgets that c's descendants also gain.",
+			},
+			{
+				Prompt: "Trace it: four houses on a line, edges [[0,1],[1,2],[2,3]], with people = [3,1,1,1]. Rooted at 0, compute weight[] " +
+					"(people in each subtree) and answer[0], then use the rerooting update to get answer[1], answer[2] and answer[3].",
+				Explanation: "Bottom-up from 0: weight = [6, 3, 2, 1] (total 6). answer[0] = 1*1 + 1*2 + 1*3 = 6. Moving the root forward with " +
+					"answer[c] = answer[p] - weight[c] + (total - weight[c]): answer[1] = 6 - 3 + 3 = 6, answer[2] = 6 - 2 + 4 = 8, " +
+					"answer[3] = 8 - 1 + 5 = 12. Check one directly: at house 2 the walks are 3*2 + 1*1 + 0 + 1*1 = 8. So answer = [6, 6, 8, 12], " +
+					"and houses 0 and 1 tie as the cheapest meeting point because the 3 people at house 0 pull it left.",
 			},
 		},
 	}

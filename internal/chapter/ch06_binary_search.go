@@ -25,12 +25,14 @@ The same halving works even when there's no array to search. Koko must eat 1,000
 			"Choose between the two templates from the wording of a problem: 'find this value' versus 'find the first/smallest/last position that ...'.",
 			"Turn a 'minimum value that satisfies a condition' problem into binary search on the answer by writing a monotonic yes/no predicate.",
 			"Trace lo, hi and mid on a small input, including rotated arrays where only one half is sorted.",
+			"Compute the length of the longest increasing subsequence in O(n log n) with patience sorting, and explain why the tails list stays sorted enough to binary-search.",
 		},
 		WhenToUse: []string{
 			"The input is sorted (or sorted by rows, or sorted and then rotated) and the problem asks you to find something in it.",
 			"The problem demands O(log n) time, or the input is so large that O(n) per query is too slow.",
 			"You're asked for the minimum (or maximum) value such that some condition holds, and if a value works then every larger (or smaller) value also works: 'smallest speed', 'least capacity', 'minimum days'.",
 			"You need the first or last position where something becomes true: first element >= x, last timestamp <= t, first bad version.",
+			"The problem asks for the longest increasing subsequence or the longest chain of items that nest inside each other, and n is too large (10^5) for the O(n^2) DP: keep sorted tails and binary-search them.",
 		},
 		Concepts: []Concept{
 			{
@@ -182,6 +184,46 @@ print(smallest_feasible(1, max(piles), lambda k: hours(k) <= h))  # 4`,
 					},
 				},
 			},
+			{
+				Name:        "Patience sorting: binary search over tails",
+				Description: "The longest strictly increasing subsequence (LIS) of [10,9,2,5,3,7,101,18] has length 4, for example 2,3,7,18. The DP in chapter 15 finds it by comparing every pair, which is O(n^2): 5 * 10^9 steps for n = 10^5. Patience sorting gets the length in O(n log n). Keep a list tails, where tails[k] is the smallest value that can end an increasing subsequence of length k + 1 among the elements seen so far. For each new value x, binary-search the first tail >= x (a lower bound, exactly template 2). If there is none, x extends the longest subsequence, so append it; otherwise replace that tail with x. The answer is len(tails).",
+				WhyItWorks:  "Invariant 1: tails is strictly increasing. A subsequence of length k + 2 contains one of length k + 1 that ends on a smaller value, so the best tail for length k + 1 is smaller than the best tail for length k + 2. That sortedness is what makes the binary search legal. Invariant 2: tails[k] really is the smallest possible end of an increasing run of length k + 1. When x arrives, the first tail >= x sits at k: everything before it is < x, so x can follow the run of length k (ending at tails[k - 1] < x) and form a run of length k + 1 ending at x, which is no bigger than the old tails[k]. Swapping in the smaller value keeps every length achievable and makes later extensions easier; x can't improve any other entry, since it can't follow tails[k] or anything after it. If no tail is >= x, x follows the longest run and the length grows by one. So len(tails) is always the LIS length. tails itself, though, mixes ends of different runs and is usually not a subsequence of the input at all.",
+				Intuition:   "Deal the numbers like cards into piles from left to right. Each card goes on the leftmost pile whose top card is >= it; if every top is smaller, start a new pile on the right. The pile tops, read left to right, are the tails list, and 'leftmost pile whose top is >= the card' is the first tail >= x. Putting a card on a pile is replacing a tail; opening a new pile is appending. The number of piles at the end is the length of the longest increasing subsequence, because one card from each pile can always be chained into an increasing run.",
+				CoreIdeas: []string{
+					"tails[k] holds the smallest value that can end an increasing subsequence of length k + 1; smaller is better because more future values can follow it.",
+					"tails is always sorted, so finding where x belongs is a first-true search: the first index with tails[i] >= x, which is bisect.bisect_left(tails, x) or template 2 by hand.",
+					"Each value does exactly one thing: replace the tail at that index, or append when the index is len(tails). Nothing is ever removed, so len(tails) only grows.",
+					"n values times one O(log n) search gives O(n log n) time and O(n) space, against O(n^2) for the pairwise DP of chapter 15.",
+					"For two-dimensional chains such as nesting envelopes, sort by the first dimension, then run the same LIS on the second dimension.",
+				},
+				CommonMistakes: []string{
+					"Using bisect_right (first tail > x) for a strictly increasing subsequence: an equal value then gets appended, so [7,7,7] gives 3 instead of 1. Strictly increasing needs the first tail >= x (bisect_left); bisect_right is the right choice only for non-decreasing subsequences.",
+					"Returning tails as the subsequence itself: for [2,5,3,4,1] tails ends as [1,3,4], but 1 comes last in the input, so that's not a subsequence. Only its length is guaranteed; to rebuild an actual subsequence, store the index of each tail and a parent pointer for every element.",
+					"In a 2D version, sorting the pairs only by the first dimension, or with ties in ascending order of the second: envelopes [3,4] and [3,5] then look like a chain of 2 even though equal widths can't nest. Sort by width ascending and, for equal widths, by height descending, so two items with the same width can never both be picked.",
+				},
+				Examples: []CodeExample{
+					{
+						ID:       "patience-sorting",
+						Title:    "Length of the longest increasing subsequence with bisect",
+						Language: "python",
+						Snippet: `import bisect
+
+def lis_length(nums):
+    tails = []                            # tails[k]: smallest end of a run of length k + 1
+    for x in nums:
+        k = bisect.bisect_left(tails, x)  # first tail >= x
+        if k == len(tails):
+            tails.append(x)               # x beats every tail: a longer run
+        else:
+            tails[k] = x                  # same length, smaller end
+    return len(tails)
+
+print(lis_length([10, 9, 2, 5, 3, 7, 101, 18]))  # 4
+print(lis_length([7, 7, 7]))                     # 1`,
+						Notes: "tails after each value of [10,9,2,5,3,7,101,18]: [10], [9], [2], [2,5], [2,3], [2,3,7], [2,3,7,101], [2,3,7,18]. Its length, 4, is the answer.",
+					},
+				},
+			},
 		},
 		WorkedExamples: []WorkedExample{
 			{
@@ -290,6 +332,57 @@ print(smallest_feasible(1, max(piles), lambda k: hours(k) <= h))  # 4`,
             lo = mid + 1
     return lo`,
 			},
+			{
+				Title:   "Longest increasing subsequence in O(n log n)",
+				Problem: "Given an integer array nums, return the length of its longest strictly increasing subsequence: elements taken in their original order, not necessarily next to each other, each larger than the one before. For nums = [10,9,2,5,3,7,101,18] the answer is 4 (for example 2,3,7,101). n can be large, so do it with patience sorting rather than the O(n^2) DP. (LeetCode 300.)",
+				Steps: []WorkedStep{
+					{
+						Subgoal:     "Keep the smallest tails",
+						Explanation: "Instead of remembering every subsequence, remember one number per length: tails[k] is the smallest value that ends an increasing subsequence of length k + 1 so far. A smaller end is always at least as good, since anything that can follow a bigger end can follow it too. tails stays strictly increasing, which is what we'll binary-search.",
+						Code:        "tails = []\nfor x in nums:",
+						State:       "nums = [10,9,2,5,3,7,101,18], tails = []",
+					},
+					{
+						Subgoal:     "Define the search space",
+						Explanation: "For each x we want an index from 0 to len(tails), where len(tails) means 'every tail is smaller than x'. As in the lower bound, the extra slot lets the search report 'none' without a special case.",
+						Code:        "    lo, hi = 0, len(tails)",
+						State:       "x = 3 with tails = [2,5]: lo = 0, hi = 2",
+					},
+					{
+						Subgoal:     "Find the first tail >= x",
+						Explanation: "The test 'tails[i] >= x' is false and then true because tails is sorted, so this is template 2 unchanged: hi = mid on yes, lo = mid + 1 on no. Using >= (not >) keeps the subsequence strictly increasing: an equal value lands on the equal tail instead of extending past it.",
+						Code:        "    while lo < hi:\n        mid = (lo + hi) // 2\n        if tails[mid] >= x:\n            hi = mid\n        else:\n            lo = mid + 1",
+						State:       "x = 3, tails = [2,5]: mid 1 (5 >= 3 yes, hi = 1), mid 0 (2 >= 3 no, lo = 1). lo = 1.",
+					},
+					{
+						Subgoal:     "Replace or extend",
+						Explanation: "If lo == len(tails), x is bigger than every tail and extends the longest run, so append it. Otherwise x can follow the run of length lo (whose end tails[lo - 1] < x) and end a run of length lo + 1 more cheaply than tails[lo] did, so overwrite it.",
+						Code:        "    if lo == len(tails):\n        tails.append(x)\n    else:\n        tails[lo] = x",
+						State:       "10: [10]; 9: [9]; 2: [2]; 5: [2,5]; 3: [2,3]; 7: [2,3,7]; 101: [2,3,7,101]; 18: [2,3,7,18]",
+					},
+					{
+						Subgoal:     "Read the answer",
+						Explanation: "len(tails) is the LIS length. The final list [2,3,7,18] happens to be a real subsequence here, but that is luck: only its length is guaranteed. Eight values, each with an O(log n) search, instead of 28 pairwise comparisons.",
+						Code:        "return len(tails)",
+						State:       "tails = [2,3,7,18], returns 4",
+					},
+				},
+				Code: `def lengthOfLIS(nums):
+    tails = []
+    for x in nums:
+        lo, hi = 0, len(tails)
+        while lo < hi:
+            mid = (lo + hi) // 2
+            if tails[mid] >= x:
+                hi = mid
+            else:
+                lo = mid + 1
+        if lo == len(tails):
+            tails.append(x)
+        else:
+            tails[lo] = x
+    return len(tails)`,
+			},
 		},
 		Completions: []CompletionProblem{
 			{
@@ -306,6 +399,27 @@ print(smallest_feasible(1, max(piles), lambda k: hours(k) <= h))  # 4`,
     return ____                # Read the answer`,
 				Blanks:      []string{"lo < hi", "mid * mid > x", "hi = mid", "lo = mid + 1", "lo - 1"},
 				Explanation: "'mid * mid > x' is false for small k and true from some k on, so it's a first-true search: while lo < hi, hi = mid when true, lo = mid + 1 when false. hi starts at x + 1 because (x + 1)^2 > x always holds, so a true is guaranteed in range. The loop finds the first k that's too big; the answer is the one before it, lo - 1. For x = 8: (lo, hi, mid) goes (0,9,4) too big, (0,4,2) fine so lo = 3, (3,4,3) too big so hi = 3, giving lo - 1 = 2.",
+			},
+			{
+				Title:  "Longest non-decreasing subsequence",
+				Prompt: "Return the length of the longest subsequence of nums in which each element is >= the one before (equal neighbours are allowed). For [3,1,2,2,1,3] the answer is 4 (1,2,2,3). Use the same subgoals as the LIS worked example, but think about which tails an equal value should skip past. Fill in the blanks.",
+				Code: `def longestNonDecreasing(nums):
+    tails = []                         # Keep the smallest tails
+    for x in nums:
+        lo, hi = 0, len(tails)         # Define the search space
+        while lo < hi:
+            mid = (lo + hi) // 2
+            if ____:                   # Find the first tail > x
+                hi = mid
+            else:
+                lo = mid + 1
+        if ____:                       # Replace or extend
+            ____
+        else:
+            ____
+    return ____                        # Read the answer`,
+				Blanks:      []string{"tails[mid] > x", "lo == len(tails)", "tails.append(x)", "tails[lo] = x", "len(tails)"},
+				Explanation: "Only the test changes. With equal values allowed, x may follow a run that ends in x itself, so it should land on the first tail strictly greater than x (bisect_right), not the first tail >= x. The rest is identical: append when lo reaches len(tails), otherwise overwrite tails[lo], and return len(tails). On [3,1,2,2,1,3] tails goes [3], [1], [1,2], [1,2,2], [1,1,2], [1,1,2,3], giving 4. With >= instead, the second 2 would overwrite the first and the answer would wrongly be 3.",
 			},
 		},
 		Animations: []Storyboard{
@@ -419,6 +533,21 @@ print(smallest_feasible(1, max(piles), lambda k: hours(k) <= h))  # 4`,
 			{
 				Prompt:      "Which pattern: 'Given a sorted array and a target, find two numbers that add up to target.' Binary search for target - nums[i] for each i works. Is it the best choice?",
 				Explanation: "It works in O(n log n), but two pointers from chapter 3 do it in O(n): start at both ends and move the left pointer up when the sum is too small, the right one down when it's too big. Binary search shines when you need a single lookup or boundary in sorted data, or to search an answer range; for pairs in a sorted array, two pointers use the order better.",
+			},
+			{
+				Prompt: "Patience sorting on nums = [2,5,3,4,1] (strictly increasing, first tail >= x) ends with tails = [1,3,4]. What does that list tell you?",
+				Choices: []string{
+					"[1,3,4] is a longest increasing subsequence of nums",
+					"The LIS has length 3, but [1,3,4] is not a subsequence: 1 comes after 3 and 4 in nums",
+					"Nothing reliable: the last value 1 overwrote tails[0], so the length is now wrong too",
+					"The LIS has length 3 and ends with 4, starting from the smallest value 1",
+				},
+				Answer:      1,
+				Explanation: "tails[k] is only the smallest end of some run of length k + 1, and different entries can come from different runs. The 1 replaced 2 because a run of length 1 ending in 1 now exists, which doesn't shorten anything: the length 3 run 2,3,4 still exists. So len(tails) = 3 is correct, while the list itself is not a subsequence (1 is the last element of nums). A real LIS here is 2,3,4.",
+			},
+			{
+				Prompt:      "Trace patience sorting (strictly increasing, replace the first tail >= x or append) on nums = [4,10,4,3,8,9]. What is tails after each value, and what does the function return?",
+				Explanation: "4: no tails, append, [4]. 10: every tail is smaller, append, [4,10]. 4: the first tail >= 4 is the 4 at index 0, replace it, still [4,10] (an equal value can't extend a strictly increasing run). 3: first tail >= 3 is index 0, [3,10]. 8: first tail >= 8 is the 10 at index 1, [3,8]. 9: all tails smaller, append, [3,8,9]. It returns 3, for example 4,8,9.",
 			},
 		},
 	}

@@ -2,7 +2,7 @@ package chapter
 
 import "time"
 
-// chapter12 teaches backtracking. Storyboards: permutations, n-queens.
+// chapter12 teaches backtracking. Storyboards: permutations, n-queens, decision-tree.
 func chapter12() Chapter {
 	return Chapter{
 		Number:        12,
@@ -101,6 +101,20 @@ Backtracking places queens row by row and checks each one the moment it's placed
 				},
 				Code: "def combine(n, k):\n    result = []\n    path = []\n\n    def backtrack(start):                 # set up the state\n        if len(path) == k:                # record a complete answer\n            result.append(path[:])\n            return\n        for num in range(start, n + 1):\n            path.append(num)              # choose\n            backtrack(num + 1)            # explore\n            path.pop()                    # un-choose\n\n    backtrack(1)\n    return result",
 			},
+			{
+				Title:   "Restore IP Addresses: pruning by digit count and part validity",
+				Problem: "Given a string s of digits, return every valid IPv4 address you can make by inserting exactly three dots into s, without reordering, adding or dropping digits. An address has four parts; each part is a number from 0 to 255 written without leading zeros (\"0\" is allowed, \"01\" is not). Example: s = \"101023\" -> [\"1.0.10.23\", \"1.0.102.3\", \"10.1.0.23\", \"10.10.2.3\", \"101.0.2.3\"].",
+				Steps: []WorkedStep{
+					{Subgoal: "Set up the state", Explanation: "Each level of the tree picks one part, so the path is the list of parts chosen so far and the state is start, the index of the first unused digit. left and need are computed on entry because both prunes and the base case are written in terms of them.", Code: "result = []\nparts = []\ndef backtrack(start):\n    left = len(s) - start\n    need = 4 - len(parts)", State: "s=\"101023\": backtrack(0), parts=[], left=6, need=4"},
+					{Subgoal: "Record a complete answer", Explanation: "Four parts means the address is complete, but it only counts if every digit was used. Either way return: a fifth part is never allowed, so going deeper is pointless.", Code: "    if need == 0:\n        if left == 0:\n            result.append('.'.join(parts))\n        return", State: "parts=['1','0','10','23'], left=0 -> record \"1.0.10.23\"; parts=['1','0','1','0'], left=2 -> two digits unused, not recorded"},
+					{Subgoal: "Prune: digits can't fit", Explanation: "Every remaining part needs 1 to 3 digits, so the leftover digits must be between need and 3 * need. If not, no way of splitting them works, so return before trying a single part and skip the whole subtree.", Code: "    if left < need or left > 3 * need:\n        return", State: "parts=['10','102'], start=5: left=1, need=2 -> 1 < 2, return at once (the root passes: 4 <= 6 <= 12)"},
+					{Subgoal: "Choose", Explanation: "The choices at each node are the next part's length: 1, 2 or 3 digits starting at start. Slicing gives the candidate part; stop when the slice would run past the end of s.", Code: "    for length in range(1, 4):\n        if start + length > len(s):\n            break\n        part = s[start:start + length]", State: "in backtrack(0): length 1 -> part '1', later length 2 -> '10', length 3 -> '101'"},
+					{Subgoal: "Prune: invalid part", Explanation: "A part with a leading zero or a value above 255 is illegal. Use break, not continue: making the part longer keeps the leading zero and only makes the number bigger, so every longer part fails too.", Code: "        if (part[0] == '0' and length > 1) or int(part) > 255:\n            break", State: "parts=['1'], start=1: part '0' is fine, part '01' has a leading zero -> break, so '010' is never built"},
+					{Subgoal: "Explore", Explanation: "Append the part and recurse from the digit after it. The call returns once it has recorded every address that starts with the current parts, with parts restored.", Code: "        parts.append(part)\n        backtrack(start + length)", State: "parts=['1','0'] -> backtrack(2): left=4, need=2; this subtree records \"1.0.10.23\" and \"1.0.102.3\""},
+					{Subgoal: "Un-choose", Explanation: "Pop the part so parts is exactly as it was at the start of this loop iteration; the next, longer part then starts from the same prefix.", Code: "        parts.pop()", State: "pop '0' -> parts=['1']; '01' pruned; pop '1' -> parts=[]; choose '10' -> records \"10.1.0.23\", \"10.10.2.3\"; choose '101' -> records \"101.0.2.3\"; result has 5 addresses"},
+				},
+				Code: "def restore_ip_addresses(s):\n    result = []\n    parts = []\n\n    def backtrack(start):                     # set up the state\n        left = len(s) - start                 # digits not yet used\n        need = 4 - len(parts)                 # parts still to fill\n        if need == 0:                         # record a complete answer\n            if left == 0:\n                result.append('.'.join(parts))\n            return\n        if left < need or left > 3 * need:    # prune: digits can't fit\n            return\n        for length in range(1, 4):            # choose a 1-3 digit part\n            if start + length > len(s):\n                break\n            part = s[start:start + length]\n            if (part[0] == '0' and length > 1) or int(part) > 255:\n                break                         # prune: longer parts fail too\n            parts.append(part)                # choose\n            backtrack(start + length)         # explore\n            parts.pop()                       # un-choose\n\n    backtrack(0)\n    return result",
+			},
 		},
 		Completions: []CompletionProblem{
 			{
@@ -144,6 +158,25 @@ Backtracking places queens row by row and checks each one the moment it's placed
 					{Cue: "place", Narration: "Work row by row, so two queens can never share a row. In the current row, try each column from left to right.", VisualHint: "Drop queen", Duration: Duration(2 * time.Second), CodeRef: "place"},
 					{Cue: "attack-check", Narration: "Skip a square if its column is taken, or its down-right diagonal (same r - c) or down-left diagonal (same r + c) already has a queen. If it's safe, place the queen, record its three keys and move to the next row. If no column in a row is safe, remove the previous queen and try its next column.", VisualHint: "Mark diagonals/columns", Duration: Duration(3 * time.Second), CodeRef: "is_safe"},
 					{Cue: "solution", Narration: "When every row has a queen, the board is a solution: record it as strings, then keep backtracking to find the others. For n = 4 there are exactly two.", VisualHint: "Board snapshot", Duration: Duration(2 * time.Second), CodeRef: "append solution"},
+				},
+			},
+			{
+				ID:    "decision-tree",
+				Title: "Decision Tree with Pruning",
+				Goal:  "Watch the recursion tree of Combinations (n = 4, k = 3) grow, backtrack and get pruned.",
+				MemoryTips: []string{
+					"Record a complete answer: when the path holds k numbers, save a copy and return",
+					"Prune: if fewer than k - len(path) numbers are left, break; no later number can work either",
+					"Choose: append num, which adds a child node below the current one",
+					"Explore: recurse with num + 1, one level deeper in the tree",
+					"Un-choose: pop num, grey the node out and try the next sibling",
+				},
+				Steps: []StoryboardStep{
+					{Cue: "choose", Narration: "Each node is a call of backtrack and each edge is one chosen number. Choosing appends num to the path and draws a new child; the highlighted root-to-node line is exactly the path list.", VisualHint: "New child node, path highlighted", Duration: Duration(2 * time.Second), CodeRef: "combine: path.append(num)"},
+					{Cue: "explore", Narration: "Explore: recurse with num + 1, so only larger numbers can follow. The search always goes as deep as it can before trying a sibling.", VisualHint: "Move down one level", Duration: Duration(2 * time.Second), CodeRef: "combine: backtrack(num + 1)"},
+					{Cue: "record", Narration: "When the path holds k = 3 numbers, the node is a leaf: record a copy in the results list and return.", VisualHint: "Leaf turns green, answer added to results", Duration: Duration(2 * time.Second), CodeRef: "combine: result.append(path[:])"},
+					{Cue: "un-choose", Narration: "Un-choose: pop the number. The node greys out and the current position moves back up to its parent, which tries its next number.", VisualHint: "Node greys out, path shrinks", Duration: Duration(2 * time.Second), CodeRef: "combine: path.pop()"},
+					{Cue: "prune", Narration: "Prune: with path [1] we still need 2 numbers, but from 4 only one number (4) is left. That branch is crossed out and the loop breaks, since larger numbers leave even fewer. At the root, 3 is cut the same way: 4 leaves are found instead of exploring every branch.", VisualHint: "Branch drawn crossed out", Duration: Duration(3 * time.Second), CodeRef: "combine: if n - num + 1 < need: break"},
 				},
 			},
 		},
