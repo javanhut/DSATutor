@@ -75,6 +75,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("/api/tutor/status", s.handleTutorStatus)
 	s.mux.HandleFunc("/api/tutor/chat", s.handleTutorChat)
 	s.mux.HandleFunc("/api/tutor/transcribe", s.handleTutorTranscribe)
+	s.mux.HandleFunc("/api/tutor/interview/score", s.handleInterviewScore)
 
 	// Register practice routes if practice server is initialized
 	if s.practiceServer != nil {

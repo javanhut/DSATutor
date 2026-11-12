@@ -288,6 +288,11 @@ func (ps *PracticeServer) handleSubmitCode(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	writeJSON(w, http.StatusOK, judgeAll(problem, req.Code, req.Language))
+}
+
+// judgeAll runs code against every test case of problem, as Submit does.
+func judgeAll(problem *practice.Problem, code, language string) *practice.SubmitResponse {
 	response := practice.NewSubmitResponse()
 	response.TotalCount = len(problem.TestCases)
 
@@ -299,7 +304,7 @@ func (ps *PracticeServer) handleSubmitCode(w http.ResponseWriter, r *http.Reques
 			Note:       tc.Note,
 		}
 
-		res, err := judge.Run(problem, req.Code, tc, judge.Options{Language: req.Language})
+		res, err := judge.Run(problem, code, tc, judge.Options{Language: language})
 		if err != nil {
 			result.Error = err.Error()
 		} else {
@@ -321,7 +326,7 @@ func (ps *PracticeServer) handleSubmitCode(w http.ResponseWriter, r *http.Reques
 	}
 
 	response.CalculateStatus()
-	writeJSON(w, http.StatusOK, response)
+	return response
 }
 
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {

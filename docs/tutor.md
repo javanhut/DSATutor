@@ -63,6 +63,78 @@ reliably highlighted lines and wrote fixes, while `gemma4` mostly answered
 in text without using the tools. Pick the model in the panel (it's
 remembered), or set `DSATUTOR_TUTOR_MODEL=ornith`.
 
+## Teacher Mode and the Teacher's Scratchpad
+
+On a chapter page, press **Teacher mode**. Instead of waiting for
+questions, the tutor teaches the chapter one idea at a time. Each turn it:
+
+1. points at the section it's on (`highlight`),
+2. makes the idea visible in the **Teacher's Scratchpad**, either as a
+   step-by-step diagram or as a small program it runs and traces, and
+3. asks you one question, often with clickable answers (`ask_learner`), and
+   waits.
+
+It adapts: a right answer moves on; a wrong one gets the misconception shown
+in the scratchpad and the question asked another way. The quick prompts
+**Next**, **Show me**, **I'm confused**, **Quiz me** and **Let me try** steer
+it. Each chapter keeps its own lesson, so you can leave and resume. The
+teacher works from the whole chapter: concepts with why they work, worked
+examples with their traces, and the check questions.
+
+The **scratchpad** is a floating window that you can drag, resize and minimize:
+
+- **Programs** (`scratchpad_run_code`) run on the server through the same
+  tracer as the Sandbox. You step through them line by line, with the
+  current line highlighted, the variables, the data structures (lists,
+  dicts, sets, linked lists, trees, grids) and the output.
+- **Diagrams** (`scratchpad_visualize`) are frames the tutor describes
+  (array, bar chart, grid, linked list, tree, hash map, set, graph or a
+  single value, with pointers and windows highlighted). They use the same
+  renderer as the visualizer.
+- You can edit the code and press **Run** yourself; **Code** opens the
+  editor over a diagram. The tutor sees the scratchpad's code and output
+  with every message, so "Let me try" exercises get reviewed.
+- Everything shown stays in the scratchpad's history (‹ 2 of 3 ›), and each
+  chip in the chat reopens its diagram or reruns its program.
+
+The scratchpad tools are available to the regular tutor too (on problems,
+chapters and the sandbox); only the interviewer goes without them.
+
+## Mock interviews
+
+**Mock interview** in the problem list picks a Google-reported problem at
+the level you choose (L3, L4 or L5; optionally only unsolved ones), and
+**Interview mode** on a problem runs one on that problem. Interviews are 30,
+45 or 60 minutes.
+
+During the interview the page becomes a shared document. Run, Submit, hints,
+the solution, the visualizer, related chapters and the LeetCode number are
+hidden, and your code starts from the function signature (your draft comes
+back afterwards). The tutor panel is the interviewer. It presents the
+problem, answers clarifying questions, asks for your approach and its
+complexity before you code, stays quiet while you code, asks you to test by
+hand, and asks a follow-up if there's time. It knows the clock and nudges
+you with about 10 minutes left. Use the microphone to think out loud.
+Leaving the problem mid-interview asks first.
+
+**End interview** (or running out of time) runs your final code against
+every test, hidden ones included, and asks the model for a scorecard:
+
+- a verdict from Strong No Hire to Strong Hire,
+- a 1–4 rating with cited evidence for each of Google's coding criteria
+  (algorithms, coding, communication, problem solving),
+- your stated versus actual complexity, hints used, and whether you reached
+  the optimal solution,
+- strengths, what to do differently, the failed tests' notes, your code and
+  the transcript.
+
+The scorecard uses Ollama's structured outputs (a JSON schema), so any chat
+model returns a well-formed card. The server clamps out-of-range values. In
+testing, a clean interview scored Strong Hire and a weak one (no clarifying
+questions, a hint, a bug) No Hire, with the right tests blamed. Past
+interviews are kept in the browser (the last 25) and listed in the interview
+dialogs. Treat the verdict as a practice signal, not a hiring prediction.
+
 ## What the tutor sees
 
 Every message carries what is on screen, and the server fills in the rest
@@ -116,7 +188,8 @@ The microphone needs a secure page: `http://localhost` works, but a plain
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/tutor/status` | GET | `{"available", "default", "models": [{"name", "thinking", "cloud"}], "transcribe", "reason"}` |
-| `/api/tutor/chat` | POST | `{"model", "think", "messages": [{"role", "content"}], "context": {"view", "problemId", "chapterNumber", "language", "code", "lastRun", "hintsRevealed", "solutionUnlocked", "voice", "targets": [{"id", "label", "lines", "writable"}], "testCount"}}` → NDJSON stream of `{"type":"thinking"\|"delta","text"}` and `{"type":"action","name":"highlight"\|"write_code"\|"open_tab"\|"select_test", ...}`, then `{"type":"done","model"}` or `{"type":"error","error"}` |
+| `/api/tutor/chat` | POST | `{"model", "think", "messages": [{"role", "content"}], "context": {"view", "problemId", "chapterNumber", "language", "code", "lastRun", "hintsRevealed", "solutionUnlocked", "voice", "targets": [{"id", "label", "lines", "writable"}], "testCount", "interview": {"elapsedSeconds", "durationSeconds", "level"}, "teach", "scratchpad": {"code", "output"}}}` → NDJSON stream of `{"type":"thinking"\|"delta","text"}` and `{"type":"action","name":"highlight"\|"write_code"\|"open_tab"\|"select_test"\|"scratchpad_code"\|"scratchpad_visualize"\|"ask_learner", ...}`, then `{"type":"done","model"}` or `{"type":"error","error"}` |
+| `/api/tutor/interview/score` | POST | `{"model", "problemId", "language", "code", "messages", "elapsedSeconds", "durationSeconds", "level"}` → `{"scorecard", "tests": {"status", "passed", "total", "failures"}, "model"}` (`error` instead of `scorecard` if the write-up failed) |
 | `/api/tutor/transcribe` | POST | body: a WAV recording, `?model=` names the chat model in use → `{"text"}` |
 
 The server builds the system prompt itself (`internal/tutor/prompt.go`).

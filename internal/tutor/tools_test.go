@@ -3,6 +3,8 @@ package tutor
 import (
 	"strings"
 	"testing"
+
+	"dsatutor/internal/sandbox"
 )
 
 func call(name string, args map[string]any) ToolCall {
@@ -84,13 +86,23 @@ func TestWorkspaceToolsAndTargets(t *testing.T) {
 		t.Errorf("describe = %s", ws.Describe())
 	}
 
-	// A chapter page: only highlight, nothing to edit or switch.
+	// A chapter page: the scratchpad and highlight, nothing to edit or switch.
 	ch := NewWorkspace(Context{View: "chapter", Targets: []Target{{ID: "section-1", Label: "Overview"}}})
-	if tools := ch.Tools(); len(tools) != 1 || tools[0].Function.Name != "highlight" {
-		t.Errorf("chapter tools = %+v", tools)
+	got := map[string]bool{}
+	for _, tool := range ch.Tools() {
+		got[tool.Function.Name] = true
 	}
-	if NewWorkspace(Context{View: "home"}).Tools() != nil {
-		t.Error("a page with no targets gets tools")
+	for _, want := range []string{"highlight", "scratchpad_run_code", "scratchpad_visualize", "ask_learner"} {
+		if !got[want] {
+			t.Errorf("chapter page lacks %s", want)
+		}
+	}
+	if got["write_code"] || got["open_tab"] {
+		t.Errorf("chapter page got problem tools: %v", got)
+	}
+	// With nothing to point at, only the scratchpad remains.
+	if tools := NewWorkspace(Context{View: "home"}).Tools(); len(tools) != 3 {
+		t.Errorf("home page tools = %d, want the 3 scratchpad tools", len(tools))
 	}
 }
 
@@ -126,5 +138,49 @@ func TestExecute(t *testing.T) {
 	}
 	if _, act := ws.Execute(call("select_test", map[string]any{"case": 2.0})); act == nil || act["case"] != 2 {
 		t.Errorf("select_test: %v", act)
+	}
+}
+
+func TestScratchpadTools(t *testing.T) {
+	ws := NewWorkspace(Context{View: "chapter"})
+
+	res, act := ws.Execute(call("scratchpad_visualize", map[string]any{
+		"title": "window",
+		"frames": []any{map[string]any{"caption": "start", "structures": []any{
+			map[string]any{"name": "nums", "type": "array", "data": []any{1.0, 2.0}},
+		}}},
+	}))
+	if act == nil || act["name"] != "scratchpad_visualize" || !strings.Contains(res, "1 frames") {
+		t.Errorf("visualize: %s %v", res, act)
+	}
+	if _, act := ws.Execute(call("scratchpad_visualize", map[string]any{"title": "x", "frames": []any{
+		map[string]any{"caption": "c", "structures": []any{map[string]any{"name": "n", "type": "hologram", "data": 1.0}}},
+	}})); act != nil {
+		t.Error("unknown structure type accepted")
+	}
+
+	_, act = ws.Execute(call("ask_learner", map[string]any{"question": "Which pointer moves?", "choices": []any{"left", "right", ""}}))
+	if act == nil || len(act["choices"].([]string)) != 2 {
+		t.Errorf("ask_learner: %v", act)
+	}
+	if _, act := ws.Execute(call("ask_learner", map[string]any{"question": "Q", "choices": []any{"only one"}})); act != nil {
+		t.Error("a question with one choice accepted")
+	}
+
+	// An interviewer has none of these.
+	iv := NewWorkspace(Context{View: "problem", Interview: &Interview{}})
+	if len(iv.Tools()) != 0 {
+		t.Errorf("interviewer without targets got tools: %v", iv.Tools())
+	}
+}
+
+func TestScratchpadRunsCode(t *testing.T) {
+	if testing.Short() {
+		t.Skip("runs Python")
+	}
+	ws := NewWorkspace(Context{View: "chapter"})
+	res, act := ws.Execute(call("scratchpad_run_code", map[string]any{"code": "nums = [3, 1, 2]\nnums.sort()\nprint(nums)"}))
+	if act == nil || !strings.Contains(res, "[1, 2, 3]") || len(act["steps"].([]sandbox.Step)) == 0 {
+		t.Errorf("run: %s %v", res, act)
 	}
 }

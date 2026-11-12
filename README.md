@@ -39,6 +39,12 @@ The course is built on well-replicated learning research; see
   that sees the lesson or problem, your code and your last run, and coaches
   you toward the bug, the pattern and the complexity instead of handing over
   the answer; replies can be read aloud with the narration voices
+- **Teacher Mode**: on a chapter, the tutor teaches one idea at a time,
+  pointing at the page, drawing diagrams and running traced code in a
+  pop-up Teacher's Scratchpad, and quizzing you with clickable answers
+- **Mock interviews**: a timed Google-style interview with the tutor as
+  interviewer (no Run, no hints), ending with a scorecard on algorithms,
+  coding, communication and problem solving; see [docs/tutor.md](docs/tutor.md)
 - **Google interview prep**: 74 problems tagged with the Google level (L3–L5)
   and round they were reported in from 2024–2026; filter by **Topic → Google**
 - **Practice judge**: Python or [Oxigen](docs/oxigen.md) solutions run against

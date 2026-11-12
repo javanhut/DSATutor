@@ -58,11 +58,12 @@ type Workspace struct {
 	codeID    string // the target holding Code
 	tests     int    // test cases on screen; 0 when no problem is open
 	isProblem bool
+	interview bool // an interviewer only points; it never edits or switches tabs
 }
 
 // NewWorkspace validates the browser's targets.
 func NewWorkspace(ctx Context) *Workspace {
-	w := &Workspace{byID: map[string]Target{}, code: ctx.Code, tests: ctx.TestCount, isProblem: ctx.View == "problem"}
+	w := &Workspace{byID: map[string]Target{}, code: ctx.Code, tests: ctx.TestCount, isProblem: ctx.View == "problem", interview: ctx.Interview != nil}
 	for _, t := range ctx.Targets {
 		t.ID, t.Label = strings.TrimSpace(t.ID), strings.TrimSpace(t.Label)
 		if t.ID == "" || len(t.ID) > 64 || w.byID[t.ID].ID != "" || len(w.targets) >= maxTargets {
@@ -102,22 +103,29 @@ func (w *Workspace) Describe() string {
 
 // Tools returns the tool definitions for this page.
 func (w *Workspace) Tools() []Tool {
+	var tools []Tool
+	if !w.interview {
+		tools = append(tools, scratchpadTools()...)
+	}
 	if len(w.targets) == 0 {
-		return nil
+		return tools
 	}
 	ids := make([]string, len(w.targets))
 	for i, t := range w.targets {
 		ids[i] = t.ID
 	}
-	tools := []Tool{fn("highlight",
+	tools = append(tools, fn("highlight",
 		"Point at a part of the page: scrolls it into view, outlines it and shows your note beside it. Use it whenever you refer to something on screen, e.g. the lines of the learner's code that contain a bug, an example, or a lesson section.",
 		map[string]any{
 			"target":     map[string]any{"type": "string", "enum": ids, "description": "id of the region"},
 			"start_line": map[string]any{"type": "integer", "description": "first line to highlight (code editors only)"},
 			"end_line":   map[string]any{"type": "integer", "description": "last line to highlight (code editors only; defaults to start_line)"},
 			"note":       map[string]any{"type": "string", "description": "a short note shown beside the highlight (one sentence)"},
-		}, "target")}
+		}, "target"))
 
+	if w.interview {
+		return tools
+	}
 	if w.codeID != "" {
 		tools = append(tools, fn("write_code",
 			"Edit the learner's code editor. Only use it when the learner asks you to write, fix, or scaffold code, or agrees to it. Prefer small edits. The learner can undo it.",
@@ -184,7 +192,7 @@ func (w *Workspace) Execute(call ToolCall) (string, Action) {
 		return "Highlighted " + where + "; the learner can see it now.", act
 
 	case "write_code":
-		if w.codeID == "" {
+		if w.codeID == "" || w.interview {
 			return "Error: there is no editable code on this page.", nil
 		}
 		code, err := applyEdit(w.code, str(args, "mode"), intArg(args, "start_line"), intArg(args, "end_line"), str(args, "code"))
@@ -198,16 +206,19 @@ func (w *Workspace) Execute(call ToolCall) (string, Action) {
 		}
 		return fmt.Sprintf("Done; the learner can undo it. The editor now holds:\n```\n%s\n```", numberLines(code)), act
 
+	case "scratchpad_run_code", "scratchpad_visualize", "ask_learner":
+		return executeScratchpad(call)
+
 	case "open_tab":
 		tab := str(args, "tab")
-		if !w.isProblem || (tab != "description" && tab != "hints" && tab != "visualization") {
+		if !w.isProblem || w.interview || (tab != "description" && tab != "hints" && tab != "visualization") {
 			return "Error: tab must be description, hints or visualization.", nil
 		}
 		return "Opened the " + tab + " tab.", Action{"name": "open_tab", "tab": tab}
 
 	case "select_test":
 		n := intArg(args, "case")
-		if !w.isProblem || n < 1 || n > w.tests {
+		if !w.isProblem || w.interview || n < 1 || n > w.tests {
 			return fmt.Sprintf("Error: case must be between 1 and %d.", w.tests), nil
 		}
 		return fmt.Sprintf("Selected test case %d.", n), Action{"name": "select_test", "case": n}

@@ -3,9 +3,12 @@ package web
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"dsatutor/internal/chapter"
 	"dsatutor/internal/practice"
@@ -51,12 +54,25 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// A mock interview needs its problem; without one it's a normal chat.
+	problem := s.tutorProblem(req.Context.ProblemID)
+	if problem == nil {
+		req.Context.Interview = nil
+	}
 	// The page regions become tools only for models that can call them.
 	var ws *tutor.Workspace
 	if s.tutor.SupportsTools(req.Model) {
 		ws = tutor.NewWorkspace(req.Context)
 	}
-	system := tutor.SystemPrompt(req.Context, s.tutorProblem(req.Context.ProblemID), s.tutorChapter(req.Context.ChapterNumber), ws)
+	var system string
+	ch := s.tutorChapter(req.Context.ChapterNumber)
+	if req.Context.Interview != nil {
+		system = tutor.InterviewerPrompt(req.Context, problem, ws)
+	} else if req.Context.Teach && ch != nil && problem == nil {
+		system = tutor.TeacherPrompt(req.Context, ch, ws)
+	} else {
+		system = tutor.SystemPrompt(req.Context, problem, ch, ws)
+	}
 	messages := tutor.Conversation(system, req.Messages)
 	var tools []tutor.Tool
 	if ws != nil {
@@ -124,6 +140,12 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 		messages = append(messages, tutor.Message{Role: "assistant", Content: reply.Content, ToolCalls: reply.ToolCalls})
 		for _, call := range reply.ToolCalls {
 			result, action := ws.Execute(call)
+			if action == nil {
+				// A rejected call is fed back to the model; log it so prompt and
+				// schema problems are visible.
+				args, _ := json.Marshal(call.Function.Arguments)
+				log.Printf("tutor: %s rejected: %s (args %.300s)", call.Function.Name, result, args)
+			}
 			if action != nil {
 				action["type"] = "action"
 				if err := send(action); err != nil {
@@ -138,6 +160,80 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	send(map[string]string{"type": "done", "model": model})
+}
+
+// handleInterviewScore ends a mock interview: it runs the candidate's final
+// code against every test (hidden ones included) and asks the model for a
+// scorecard on Google's four coding criteria.
+func (s *Server) handleInterviewScore(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var req struct {
+		Model           string          `json:"model"`
+		ProblemID       string          `json:"problemId"`
+		Language        string          `json:"language"`
+		Code            string          `json:"code"`
+		Messages        []tutor.Message `json:"messages"`
+		ElapsedSeconds  int             `json:"elapsedSeconds"`
+		DurationSeconds int             `json:"durationSeconds"`
+		Level           string          `json:"level"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 2<<20)).Decode(&req); err != nil {
+		http.Error(w, "Invalid request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	problem := s.tutorProblem(req.ProblemID)
+	if problem == nil {
+		http.Error(w, "unknown problem", http.StatusNotFound)
+		return
+	}
+	language := req.Language
+	if language != "oxigen" {
+		language = "python"
+	}
+
+	tests := judgeAll(problem, req.Code, language)
+	card, model, err := s.tutor.Score(r.Context(), req.Model, tutor.ScoreInput{
+		Problem:    problem,
+		Code:       req.Code,
+		Language:   language,
+		Transcript: req.Messages,
+		Elapsed:    time.Duration(req.ElapsedSeconds) * time.Second,
+		Duration:   time.Duration(req.DurationSeconds) * time.Second,
+		Level:      req.Level,
+		Tests:      tests,
+	})
+	out := map[string]any{"model": model, "tests": map[string]any{
+		"status": tests.Status, "passed": tests.PassedCount, "total": tests.TotalCount, "failures": failedNotes(tests),
+	}}
+	if err != nil {
+		// The test results are still worth showing without the write-up.
+		out["error"] = err.Error()
+	} else {
+		out["scorecard"] = card
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(out)
+}
+
+func failedNotes(t *practice.SubmitResponse) []string {
+	notes := []string{}
+	for i, r := range t.Results {
+		if r.Passed {
+			continue
+		}
+		note := r.Note
+		if note == "" {
+			note = fmt.Sprintf("test %d", i+1)
+		}
+		if r.Error != "" {
+			note += " (" + strings.SplitN(r.Error, "\n", 2)[0] + ")"
+		}
+		notes = append(notes, note)
+	}
+	return notes
 }
 
 // handleTutorTranscribe turns a recorded question (the request body, a WAV

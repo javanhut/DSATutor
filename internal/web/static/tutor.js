@@ -65,7 +65,16 @@
     return parts.join('\n\n');
   }
 
+  // Modes (interview.js, teacher.js) can take over the conversation: the
+  // first one whose context() returns something decides the key, persona,
+  // quick prompts and placeholder.
+  window.tutorModes = window.tutorModes || [];
+
   function currentContext() {
+    for (const mode of window.tutorModes) {
+      const c = mode.context && mode.context();
+      if (c) return c;
+    }
     if (visible('practice-mode') && typeof practiceState !== 'undefined' && practiceState.currentProblem) {
       const p = practiceState.currentProblem;
       const prog = practiceState.progress[p.id] || {};
@@ -267,6 +276,13 @@
     });
     $('tutor-mic').onclick = toggleRecording;
     $('tutor-messages').addEventListener('click', (e) => {
+      const answer = e.target.closest('[data-answer]');
+      if (answer) {
+        if (tutor.busy) return;
+        answer.closest('.tutor-ask')?.querySelectorAll('.tutor-answer').forEach(b => b.classList.toggle('chosen', b === answer));
+        send(answer.dataset.answer);
+        return;
+      }
       const chip = e.target.closest('[data-replay]');
       if (!chip || !chip.dataset.replay) return;
       const [mi, ai] = chip.dataset.replay.split(':').map(Number);
@@ -318,9 +334,11 @@
   // panel switches to the right one whenever it opens or a message is sent.
   function syncContext() {
     const c = currentContext();
-    $('tutor-context').textContent = c.kind === 'problem' ? `${c.label} · sees your code and runs`
+    tutor.view = c;
+    $('tutor-context').textContent = c.contextLine || (c.kind === 'problem' ? `${c.label} · sees your code and runs`
       : c.kind === 'sandbox' ? 'Sandbox · sees your code'
-      : c.label;
+      : c.label);
+    $('tutor-clear').classList.toggle('hidden', !!c.noClear);
     if (c.key !== tutor.key) {
       if (tutor.busy) stopReply();
       clearSpotlights();
@@ -328,18 +346,30 @@
       tutor.messages = loadConversation(c.key);
       renderMessages();
     }
-    $('tutor-text').placeholder = {
+    $('tutor-text').placeholder = c.placeholder || {
       problem: 'Ask about this problem, your code, complexity...',
       chapter: 'Ask about this chapter, or say "quiz me"...',
       sandbox: 'Ask about your sandbox code...',
       home: 'Ask anything about data structures and algorithms...',
     }[c.kind];
-    $('tutor-quick').innerHTML = QUICK_PROMPTS[c.kind].map(([label], i) =>
+    // A quick prompt is [label, text] and sends at once; [label, text, true]
+    // only fills the input, for prompts the learner finishes themselves.
+    const quick = c.quick || QUICK_PROMPTS[c.kind] || [];
+    $('tutor-quick').innerHTML = quick.map(([label], i) =>
       `<button type="button" class="tutor-chip" data-i="${i}">${escapeHtml(label)}</button>`
     ).join('');
     $('tutor-quick').onclick = (e) => {
       const chip = e.target.closest('.tutor-chip');
-      if (chip) send(QUICK_PROMPTS[c.kind][+chip.dataset.i][1]);
+      if (!chip) return;
+      const [, text, prefill] = quick[+chip.dataset.i];
+      if (prefill) {
+        const input = $('tutor-text');
+        input.value = text;
+        input.focus();
+        input.setSelectionRange(text.length, text.length);
+      } else {
+        send(text);
+      }
     };
     return c;
   }
@@ -382,28 +412,43 @@
   function renderMessages() {
     const box = $('tutor-messages');
     if (!box) return;
-    if (!tutor.messages.length) {
+    if (!tutor.messages.some(m => !m.hidden)) {
+      if (tutor.view && tutor.view.emptyHtml) {
+        box.innerHTML = `<div class="tutor-empty">${tutor.view.emptyHtml}</div>`;
+        return;
+      }
       box.innerHTML = `<div class="tutor-empty">
         <p>Ask anything: why your code fails a test, how to start, what the complexity is, or to explain an idea again.</p>
         <p class="tutor-empty-note">The tutor sees what's on screen${tutor.key.startsWith('problem:') ? ', including your code and your last run' : ''}. It coaches with hints instead of handing you the answer, unless you ask for it.</p>
       </div>`;
       return;
     }
-    box.innerHTML = tutor.messages.map((m, i) => messageHtml(m, i)).join('');
+    box.innerHTML = tutor.messages.map((m, i) => (m.hidden ? '' : messageHtml(m, i))).join('');
     box.scrollTop = box.scrollHeight;
   }
 
   function messageHtml(m, idx) {
     const body = m.role === 'assistant' ? renderMarkdown(m.content) : `<p>${escapeHtml(m.content).replace(/\n/g, '<br>')}</p>`;
-    const chips = (m.actions || []).map((a, ai) => chipHtml(a, `${idx}:${ai}`)).join('');
-    return `<div class="tutor-msg ${m.role}">${chips ? `<div class="tutor-actions">${chips}</div>` : ''}<div class="tutor-msg-text">${body}</div></div>`;
+    const acts = m.actions || [];
+    const chips = acts.map((a, ai) => (a.name === 'ask_learner' ? '' : chipHtml(a, `${idx}:${ai}`))).join('');
+    const asks = acts.filter(a => a.name === 'ask_learner').map(askHtml).join('');
+    const text = m.content === '(done)' && acts.length ? '' : `<div class="tutor-msg-text">${body}</div>`;
+    return `<div class="tutor-msg ${m.role}">${chips ? `<div class="tutor-actions">${chips}</div>` : ''}${text}${asks}</div>`;
   }
 
-  // A chip records one thing the tutor did on the page. Highlights can be
-  // shown again; edits can't be replayed from history.
+  // A chip records one thing the tutor did. Highlights and scratchpad work
+  // can be shown again; edits can't be replayed from history.
+  const REPLAYABLE = ['highlight', 'scratchpad_code', 'scratchpad_visualize'];
   function chipHtml(a, ref) {
-    const replay = a.name === 'highlight' ? ` data-replay="${ref}" title="Show it again"` : '';
+    const replay = REPLAYABLE.includes(a.name) ? ` data-replay="${ref}" title="Show it again"` : '';
     return `<button type="button" class="tutor-action-chip ${a.name}"${replay}>${escapeHtml(actionLabel(a))}</button>`;
+  }
+
+  // A question from ask_learner: clicking an answer sends it.
+  function askHtml(a) {
+    return `<div class="tutor-ask"><p>${escapeHtml(a.question)}</p><div class="tutor-ask-choices">${
+      (a.choices || []).map(c => `<button type="button" class="tutor-answer" data-answer="${escapeHtml(c)}">${escapeHtml(c)}</button>`).join('')
+    }</div></div>`;
   }
 
   // ---------------------------------------------------------------------
@@ -425,8 +470,10 @@
     text = (text || '').trim();
     if (!text || tutor.busy) return;
     const c = syncContext();
-    $('tutor-text').value = '';
-    tutor.messages.push({ role: 'user', content: text });
+    if (!opts.hidden) $('tutor-text').value = '';
+    // Hidden messages cue the model (an interviewer starting the interview)
+    // without showing up in the chat.
+    tutor.messages.push(opts.hidden ? { role: 'user', content: text, hidden: true } : { role: 'user', content: text });
     renderMessages();
     stopSpeaking();
     if (typeof stopLessonAudio === 'function') stopLessonAudio();
@@ -434,7 +481,7 @@
     const box = $('tutor-messages');
     const bubble = document.createElement('div');
     bubble.className = 'tutor-msg assistant pending';
-    bubble.innerHTML = '<div class="tutor-actions hidden"></div><div class="tutor-msg-text"><p class="tutor-typing">Thinking…</p></div>';
+    bubble.innerHTML = '<div class="tutor-actions hidden"></div><div class="tutor-msg-text"><p class="tutor-typing">Thinking…</p></div><div class="tutor-asks"></div>';
     box.appendChild(bubble);
     const textEl = bubble.querySelector('.tutor-msg-text');
     const actionsEl = bubble.querySelector('.tutor-actions');
@@ -463,7 +510,7 @@
           model: tutor.model,
           think: tutor.prefs.think,
           messages: tutor.messages.map(m => ({ role: m.role, content: m.content })),
-          context: { ...c.ctx, voice: speak, targets: targetList(), testCount: testCount() },
+          context: { ...c.ctx, voice: speak, targets: targetList(), testCount: testCount(), scratchpad: window.dsaScratchpad?.state() || undefined },
         }),
       });
       if (!res.ok) {
@@ -497,7 +544,10 @@
             if (!reply.trim()) textEl.innerHTML = `<p class="tutor-typing">Thinking… <span class="tutor-think-count">${thinking.length} chars of reasoning</span></p>`;
           } else if (ev.type === 'action') {
             const done = runAction(ev);
-            if (done) {
+            if (done && done.name === 'ask_learner') {
+              actions.push(done);
+              bubble.querySelector('.tutor-asks').insertAdjacentHTML('beforeend', askHtml(done));
+            } else if (done) {
               actions.push(done);
               actionsEl.classList.remove('hidden');
               actionsEl.insertAdjacentHTML('beforeend', chipHtml(done, ''));
@@ -532,9 +582,13 @@
     else {
       if (reply.trim()) textEl.innerHTML = renderMarkdown(reply);
       else textEl.remove();
+      if (!actionsEl.children.length) actionsEl.classList.add('hidden');
       // Replay chips need their message index now that it is saved.
       const idx = tutor.messages.length - 1;
-      actionsEl.querySelectorAll('[data-replay]').forEach((chip, ai) => { chip.dataset.replay = `${idx}:${ai}`; });
+      const chipActs = actions.map((x, ai) => [x, ai]).filter(([x]) => x.name !== 'ask_learner');
+      actionsEl.querySelectorAll('.tutor-action-chip').forEach((chip, ci) => {
+        if (chip.dataset.replay !== undefined && chipActs[ci]) chip.dataset.replay = `${idx}:${chipActs[ci][1]}`;
+      });
       box.scrollTop = box.scrollHeight;
     }
   }
@@ -558,7 +612,11 @@
     const kind = currentContext().kind;
     const t = [];
     const add = (id, label, get, extra = {}) => { if (get()) t.push({ id, label, get, ...extra }); };
-    if (kind === 'problem') {
+    if (kind === 'interview') {
+      // An interviewer points at the candidate's code and nothing else: the
+      // tests, hints and buttons aren't part of the interview.
+      add('code', "The candidate's code document", () => $('practice-editor-container'), { lines: true, editor: 'practice-editor-container', textarea: 'practice-code' });
+    } else if (kind === 'problem') {
       add('code', "The learner's code editor", () => $('practice-editor-container'), { lines: true, writable: true, editor: 'practice-editor-container', textarea: 'practice-code' });
       add('statement', 'Problem statement', () => $('problem-statement'));
       document.querySelectorAll('#problem-examples .example').forEach((ex, i) => {
@@ -574,7 +632,7 @@
     } else if (kind === 'sandbox') {
       add('code', "The learner's sandbox code editor", () => $('sandbox-editor-container'), { lines: true, writable: true, editor: 'sandbox-editor-container', textarea: 'sandbox-code' });
       if (hasText($('sandbox-output'))) add('output', 'Output of their last run', () => $('sandbox-output'));
-    } else if (kind === 'chapter') {
+    } else if (kind === 'chapter' || kind === 'teacher') {
       const cards = [...document.querySelectorAll('#standard-chapter-content :is(.overview-card, .tutorial-card, .lesson-card, .memory-card)')]
         .filter(card => card.offsetParent && card.querySelector('h2'));
       cards.forEach((card, i) => {
@@ -662,6 +720,8 @@
       }
       case 'write_code': return `Edited your code${a.summary ? `: ${a.summary}` : ''}`;
       case 'open_tab': return `Opened the ${a.tab} tab`;
+      case 'scratchpad_code': return `Ran code in the scratchpad${a.explanation ? `: ${a.explanation}` : ''}`;
+      case 'scratchpad_visualize': return `Drew “${a.title || 'a diagram'}” in the scratchpad`;
       case 'select_test': return `Selected test case ${a.case}`;
     }
     return a.name;
@@ -738,6 +798,19 @@
         btn.click();
         return { name: 'open_tab', tab: a.tab };
       }
+      case 'scratchpad_code': {
+        if (!window.dsaScratchpad) return null;
+        window.dsaScratchpad.showCode(a);
+        // The trace isn't kept in history; replaying runs the code again.
+        return { name: 'scratchpad_code', code: a.code, explanation: a.explanation };
+      }
+      case 'scratchpad_visualize': {
+        if (!window.dsaScratchpad) return null;
+        window.dsaScratchpad.showFrames(a);
+        return { name: 'scratchpad_visualize', title: a.title, frames: a.frames };
+      }
+      case 'ask_learner':
+        return { name: 'ask_learner', question: a.question, choices: a.choices };
       case 'select_test': {
         const btn = $('test-case-selector')?.querySelector(`[data-index="${a.case - 1}"]`);
         if (!btn) return null;
@@ -992,6 +1065,19 @@
     }
   });
 
+  // The API the modes use.
+  window.dsaTutor = {
+    open: openPanel,
+    close: closePanel,
+    send: (text, opts) => send(text, opts),
+    sync: () => { if (tutor.open) syncContext(); },
+    isBusy: () => tutor.busy,
+    stop: stopReply,
+    // The saved messages of a conversation, whether or not it is on screen.
+    conversation: (key) => (key === tutor.key ? tutor.messages : loadConversation(key)).slice(),
+    model: () => tutor.model,
+    status: loadStatus,
+  };
   window.openTutor = openPanel;
   init();
 })();
