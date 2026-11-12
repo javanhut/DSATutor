@@ -7443,7 +7443,7 @@ button.ghost.danger:hover,
 
 body.interview-active #practice-mode :is(
   .tab-btn[data-tab="hints"], .tab-btn[data-tab="solution"], .tab-btn[data-tab="visualization"],
-  .chapter-links, .leetcode-number, #practice-difficulty, #practice-run, #practice-submit,
+  .chapter-links, .leetcode-number, #practice-difficulty, #practice-run, #practice-submit, .tab-btn[data-tab="mine"],
   #practice-ask-tutor, #practice-interview, #practice-back
 ) { display: none !important; }
 
@@ -7704,3 +7704,15 @@ body.interview-active #practice-mode :is(
 .practice-header .header-controls { margin-left: auto; justify-content: flex-end; }
 .practice-header .control-group { flex-wrap: wrap; justify-content: flex-end; row-gap: 8px; }
 .practice-header .tts-voice { max-width: 150px; text-overflow: ellipsis; }
+
+/* My Solutions tab: accepted submissions saved in the browser */
+.tab-count { margin-left: 4px; font-family: var(--mono); font-size: var(--fs-xs); color: var(--accent-2); }
+.my-solutions-empty { color: var(--text-dim); font-size: var(--fs-sm); }
+.my-solution { margin-bottom: 16px; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.my-solution-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px 10px; background: var(--panel-alt); border-bottom: 1px solid var(--border); }
+.my-solution-date { font-family: var(--mono); font-size: var(--fs-xs); color: var(--text-dim); }
+.my-solution-tag { font-family: var(--mono); font-size: var(--fs-xs); padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border-light); color: var(--text-dim); }
+.my-solution-tag.latest { color: var(--accent-2); border-color: rgba(var(--accent-2-rgb), 0.6); }
+.my-solution-tag.interview { color: var(--mark); border-color: rgba(var(--mark-rgb), 0.6); }
+.my-solution-actions { margin-left: auto; display: flex; gap: 4px; }
+.my-solution-code { margin: 0; padding: 10px 12px; max-height: 320px; overflow: auto; background: var(--code-bg); color: var(--code-text); font-family: var(--mono); font-size: 12.5px; line-height: 1.5; }

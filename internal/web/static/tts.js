@@ -168,7 +168,7 @@ async function initPracticeAudio() {
   // nothing to read.
   panel.addEventListener('click', e => {
     const tab = e.target.closest('.tab-btn');
-    if (tab) host.classList.toggle('hidden', tab.dataset.tab === 'visualization');
+    if (tab) host.classList.toggle('hidden', tab.dataset.tab === 'visualization' || tab.dataset.tab === 'mine');
     if (tab || e.target.closest('#reveal-hint, #unlock-solution')) stopLessonAudio();
   });
   el('practice-back')?.addEventListener('click', stopLessonAudio);

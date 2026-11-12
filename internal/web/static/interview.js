@@ -354,6 +354,9 @@
     past.unshift(record);
     save(HISTORY_KEY, past.slice(0, MAX_HISTORY));
 
+    if (result.tests && result.tests.status === 'Accepted' && typeof saveAcceptedSolution === 'function') {
+      saveAcceptedSolution(a.problemId, code, language, 'interview');
+    }
     if (result.tests) {
       const prev = practiceState.progress[a.problemId] || {};
       updateProblemProgress(a.problemId, {
@@ -365,6 +368,7 @@
       updateProgressCount();
     }
     restoreDraft(a);
+    if (typeof renderMySolutions === 'function') renderMySolutions();
     showScorecard(record, code);
   }
 

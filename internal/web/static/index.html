@@ -361,6 +361,7 @@
                 <button class="tab-btn active" data-tab="description">Description</button>
                 <button class="tab-btn" data-tab="hints">Hints</button>
                 <button class="tab-btn" data-tab="solution">Solution</button>
+                <button class="tab-btn" data-tab="mine" title="Your accepted submissions for this problem">My Solutions<span class="tab-count hidden" id="my-solutions-count"></span></button>
                 <button class="tab-btn" data-tab="visualization">Visualize</button>
               </div>
             </div>
@@ -395,6 +396,11 @@
                 <div class="solution-content hidden" id="solution-content">
                   <div id="solution-walkthrough"></div>
                 </div>
+              </div>
+
+              <!-- My Solutions Tab: accepted submissions saved in this browser -->
+              <div id="problem-mine" class="tab-content hidden">
+                <div id="my-solutions"></div>
               </div>
 
               <!-- Visualization Tab -->

@@ -31,6 +31,14 @@ in [pedagogy.md](pedagogy.md).
   started and hides the category. The learner names the pattern before
   coding.
 
+Every accepted submission is also saved, under
+`dsatutor_accepted_solutions`: up to 10 per problem, newest first, identical
+code not repeated, including solutions from mock interviews. The **My
+Solutions** tab lists them with Load into editor (one undoable change),
+Copy and Delete. Reset all keeps them, and Export includes them (format
+version 2; Import still reads older files and merges solutions instead of
+overwriting).
+
 Progress lives in the browser's localStorage, under
 `dsatutor_practice_progress` and `dsatutor_chapter_progress`, and can be
 exported and imported as JSON.

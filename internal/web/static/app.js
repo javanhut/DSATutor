@@ -6340,33 +6340,34 @@ class SandboxAnimator extends AlgorithmAnimator {
   }
 }
 
-// Editor helper functions (work with CodeMirror or fallback to textarea)
+// Editor helper functions (work with CodeMirror or fallback to textarea).
+// The CodeMirror instances are registered under their container ids, which
+// don't follow the textarea id: practice-code lives in
+// practice-editor-container and sandbox-code in sandbox-editor-container.
+const EDITOR_CONTAINERS = {
+  'practice-code': 'practice-editor-container',
+  'sandbox-code': 'sandbox-editor-container',
+};
+
+function codeMirrorFor(editorId) {
+  const editors = window.dsaEditors || {};
+  return editors[EDITOR_CONTAINERS[editorId]] || editors[editorId + '-container'] || null;
+}
+
 function getEditorCode(editorId) {
-  // Try CodeMirror first
-  if (window.dsaEditors && window.dsaEditors[editorId + '-container']) {
-    const editor = window.dsaEditors[editorId + '-container'];
-    if (editor && editor.getValue) {
-      const content = editor.getValue();
-      if (content !== undefined && content !== '') {
-        return content;
-      }
-    }
-  }
-  // Fallback to textarea
+  const editor = codeMirrorFor(editorId);
+  if (editor && editor.getValue) return editor.getValue();
   const textarea = document.getElementById(editorId);
   return textarea ? textarea.value : '';
 }
 
 function setEditorCode(editorId, code) {
-  // Try CodeMirror first
-  if (window.setEditorContent) {
-    window.setEditorContent(editorId + '-container', code);
-  }
-  // Also set textarea for compatibility
+  const editor = codeMirrorFor(editorId);
+  if (editor && editor.setValue) editor.setValue(code);
+  // The editor's change handler syncs the textarea too; set it directly for
+  // the no-CodeMirror fallback.
   const textarea = document.getElementById(editorId);
-  if (textarea) {
-    textarea.value = code;
-  }
+  if (textarea) textarea.value = code;
 }
 
 // Initialize CodeMirror editor with content
@@ -7612,6 +7613,109 @@ function saveProgress() {
   }
 }
 
+// Accepted solutions: every passing submission's code is kept per problem
+// (newest first, identical code not repeated), separately from progress so
+// "Reset all" restarts practice without throwing away work.
+const SOLUTIONS_KEY = 'dsatutor_accepted_solutions';
+const MAX_SOLUTIONS_PER_PROBLEM = 10;
+
+function loadSolutions() {
+  try {
+    const s = JSON.parse(localStorage.getItem(SOLUTIONS_KEY) || '{}');
+    return s && typeof s === 'object' && !Array.isArray(s) ? s : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function storeSolutions(all) {
+  try {
+    localStorage.setItem(SOLUTIONS_KEY, JSON.stringify(all));
+    return true;
+  } catch (e) {
+    console.error('Failed to save solutions:', e);
+    return false;
+  }
+}
+
+function saveAcceptedSolution(problemId, code, language, source = 'submit') {
+  if (!problemId || !code || !code.trim()) return;
+  const all = loadSolutions();
+  const list = (all[problemId] || []).filter(s => !(s.code === code && s.language === language));
+  list.unshift({ code, language, source, at: new Date().toISOString() });
+  all[problemId] = list.slice(0, MAX_SOLUTIONS_PER_PROBLEM);
+  storeSolutions(all);
+}
+
+function renderMySolutions() {
+  const problem = practiceState.currentProblem;
+  const host = el('my-solutions');
+  const count = el('my-solutions-count');
+  if (!problem || !host) return;
+  const list = loadSolutions()[problem.id] || [];
+  if (count) {
+    count.textContent = list.length ? ` ${list.length}` : '';
+    count.classList.toggle('hidden', !list.length);
+  }
+  if (!list.length) {
+    host.innerHTML = `<p class="my-solutions-empty">Your accepted submissions for this problem will be saved here, newest first, so you can compare attempts or load one back into the editor.</p>`;
+    return;
+  }
+  host.innerHTML = list.map((s, i) => `
+    <div class="my-solution" data-i="${i}">
+      <div class="my-solution-head">
+        <span class="my-solution-date">${escapeHtml(new Date(s.at).toLocaleString())}</span>
+        <span class="my-solution-tag">${escapeHtml(s.language === 'oxigen' ? 'Oxigen' : 'Python')}</span>
+        ${s.source === 'interview' ? '<span class="my-solution-tag interview">mock interview</span>' : ''}
+        ${i === 0 ? '<span class="my-solution-tag latest">latest</span>' : ''}
+        <span class="my-solution-actions">
+          <button class="btn-small ghost" data-act="load" title="Replace the editor's code with this solution (Ctrl/Cmd+Z undoes it)">Load into editor</button>
+          <button class="btn-small ghost" data-act="copy">Copy</button>
+          <button class="btn-small ghost danger" data-act="delete">Delete</button>
+        </span>
+      </div>
+      <pre class="my-solution-code"><code>${escapeHtml(s.code)}</code></pre>
+    </div>`).join('');
+  host.onclick = (e) => {
+    const btn = e.target.closest('[data-act]');
+    if (!btn) return;
+    const i = +btn.closest('.my-solution').dataset.i;
+    const sol = (loadSolutions()[problem.id] || [])[i];
+    if (!sol) return;
+    if (btn.dataset.act === 'load') loadSolutionIntoEditor(sol);
+    if (btn.dataset.act === 'copy') {
+      navigator.clipboard?.writeText(sol.code).then(() => {
+        btn.textContent = 'Copied';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+      });
+    }
+    if (btn.dataset.act === 'delete' && confirm('Delete this saved solution?')) {
+      const all = loadSolutions();
+      all[problem.id] = (all[problem.id] || []).filter((_, j) => j !== i);
+      if (!all[problem.id].length) delete all[problem.id];
+      storeSolutions(all);
+      renderMySolutions();
+    }
+  };
+}
+
+// Put a saved solution in the editor as one undoable change, switching to
+// its language first.
+function loadSolutionIntoEditor(sol) {
+  if (sol.language && sol.language !== practiceState.language) {
+    setPracticeLanguage(sol.language);
+    const picker = el('practice-language');
+    if (picker) picker.value = sol.language;
+  }
+  const cm = window.dsaEditors && window.dsaEditors['practice-editor-container'];
+  if (cm) {
+    cm.replaceRange(sol.code, { line: 0, ch: 0 }, { line: cm.lastLine(), ch: cm.getLine(cm.lastLine()).length }, '+load');
+    cm.focus();
+  }
+  const ta = el('practice-code');
+  if (ta) ta.value = sol.code;
+}
+
 function updateProblemProgress(problemId, data) {
   if (!practiceState.progress[problemId]) {
     practiceState.progress[problemId] = {
@@ -7815,6 +7919,7 @@ async function openProblem(problemId, opts = {}) {
   renderTestCases();
   renderHints();
   renderStarterCode();
+  renderMySolutions();
 
   // Switch to Description tab
   const descTab = document.querySelector('#practice-mode .tab-btn[data-tab="description"]');
@@ -8329,6 +8434,8 @@ async function submitPracticeCode() {
       outputEl.innerHTML = html;
     }
     if (allPassed) {
+      saveAcceptedSolution(problem.id, code, practiceState.language, 'submit');
+      renderMySolutions();
       renderAfterSolve(problem);
       renderProblemsList();
       updateProgressCount();
@@ -9084,6 +9191,7 @@ function setupPracticeControls() {
       // Show/hide tab content based on data-tab attribute
       const targetTab = tab.dataset.tab;
       if (targetTab === 'solution') renderSolutionGate();
+      if (targetTab === 'mine') renderMySolutions();
       panelBody.querySelectorAll('.tab-content').forEach(content => {
         // Map content IDs to tab names:
         // test-cases-tab -> testcases, visualization-tab -> visualization
@@ -9191,7 +9299,9 @@ function filterProblems() {
 }
 
 function exportProgress() {
-  const data = JSON.stringify(practiceState.progress, null, 2);
+  // Version 2 carries accepted solutions too; importProgress still reads
+  // version 1 files (the bare progress object).
+  const data = JSON.stringify({ version: 2, progress: practiceState.progress, solutions: loadSolutions() }, null, 2);
   const blob = new Blob([data], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -9207,7 +9317,23 @@ function importProgress(file) {
     try {
       const data = JSON.parse(e.target.result);
       if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('not a progress object');
-      practiceState.progress = data;
+      const isV2 = data.version === 2 && data.progress && typeof data.progress === 'object';
+      practiceState.progress = isV2 ? data.progress : data;
+      if (isV2 && data.solutions && typeof data.solutions === 'object') {
+        // Merge, so importing never loses solutions saved here.
+        const all = loadSolutions();
+        Object.entries(data.solutions).forEach(([id, list]) => {
+          (Array.isArray(list) ? list : []).slice().reverse().forEach(s => {
+            if (!s || typeof s.code !== 'string') return;
+            const mine = (all[id] || []).filter(x => !(x.code === s.code && x.language === s.language));
+            mine.push(s);
+            mine.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+            all[id] = mine.slice(0, MAX_SOLUTIONS_PER_PROBLEM);
+          });
+        });
+        storeSolutions(all);
+        renderMySolutions();
+      }
       saveProgress();
       renderProblemsList();
       updateProgressCount();
@@ -9231,7 +9357,7 @@ function resetAllProgress() {
   const ok = confirm(
     `Reset all practice progress?\n\n` +
     `This forgets ${solved} solved problem${solved === 1 ? '' : 's'}, your attempts, revealed hints, ` +
-    `review schedule, code drafts and tutor chats for problems. Chapter progress is kept.\n\n` +
+    `review schedule, code drafts and tutor chats for problems. Chapter progress and your saved accepted solutions are kept.\n\n` +
     `It can't be undone. Use Export first if you might want it back.`
   );
   if (!ok) return;
