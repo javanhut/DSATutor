@@ -47,12 +47,16 @@ type Model struct {
 	Thinking bool   `json:"thinking"` // supports a separate reasoning phase
 	Audio    bool   `json:"-"`        // accepts audio input (transcription)
 	Cloud    bool   `json:"cloud"`    // runs on ollama.com, not this machine
+	Tools    bool   `json:"tools"`    // can call tools: point at the page, edit code
 }
 
-// Message is one chat turn.
+// Message is one chat turn. ToolCalls and ToolName only appear in the
+// server's tool loop, never in what the browser sends.
 type Message struct {
-	Role    string `json:"role"` // system, user or assistant
-	Content string `json:"content"`
+	Role      string     `json:"role"` // system, user, assistant or tool
+	Content   string     `json:"content"`
+	ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+	ToolName  string     `json:"tool_name,omitempty"`
 }
 
 // Client talks to one Ollama server. Create it with New.
@@ -150,6 +154,7 @@ func (c *Client) fetchModels() (chat, audio []Model, reason string) {
 			Thinking: caps["thinking"],
 			Audio:    caps["audio"],
 			Cloud:    strings.HasSuffix(t.Name, ":cloud") || strings.HasSuffix(t.Name, "-cloud"),
+			Tools:    caps["tools"],
 		}
 		// Speech models (lfm3-audio, phonon) are narration voices; they can
 		// technically complete text but make poor tutors.
@@ -210,20 +215,37 @@ type Delta struct {
 	Content  string
 }
 
-// Chat streams a reply from model ("" for the default) to messages, calling
-// emit for each piece as it arrives. It returns the model actually used.
-// think asks thinking-capable models to reason first; it is ignored by the
-// others.
-func (c *Client) Chat(ctx context.Context, model string, messages []Message, think bool, emit func(Delta) error) (string, error) {
+// Reply is one model turn: its text and any tool calls it made.
+type Reply struct {
+	Model     string
+	Content   string
+	ToolCalls []ToolCall
+}
+
+// SupportsTools reports whether model ("" for the default) can call tools.
+func (c *Client) SupportsTools(model string) bool {
+	m, err := c.resolve(model)
+	return err == nil && m.Tools
+}
+
+// Chat streams one reply from model ("" for the default) to messages,
+// calling emit for each piece of text as it arrives. think asks
+// thinking-capable models to reason first; it is ignored by the others.
+// tools are offered only to models that support them.
+func (c *Client) Chat(ctx context.Context, model string, messages []Message, think bool, tools []Tool, emit func(Delta) error) (Reply, error) {
 	m, err := c.resolve(model)
 	if err != nil {
-		return "", err
+		return Reply{}, err
 	}
+	reply := Reply{Model: m.Name}
 	body := map[string]any{
 		"model":    m.Name,
 		"messages": messages,
 		"stream":   true,
 		"options":  map[string]any{"temperature": 0.4},
+	}
+	if m.Tools && len(tools) > 0 {
+		body["tools"] = tools
 	}
 	// Thinking models reason by default; say explicitly what we want, but
 	// never send the flag to a model that rejects it.
@@ -232,31 +254,33 @@ func (c *Client) Chat(ctx context.Context, model string, messages []Message, thi
 	}
 	payload, err := json.Marshal(body)
 	if err != nil {
-		return "", err
+		return reply, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, chatTimeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/chat", bytes.NewReader(payload))
 	if err != nil {
-		return "", err
+		return reply, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("%w: ollama chat request failed: %v", ErrUnavailable, err)
+		return reply, fmt.Errorf("%w: ollama chat request failed: %v", ErrUnavailable, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		msg, _ := io.ReadAll(io.LimitReader(resp.Body, 400))
-		return "", fmt.Errorf("ollama %s: %s", resp.Status, strings.TrimSpace(string(msg)))
+		return reply, fmt.Errorf("ollama %s: %s", resp.Status, strings.TrimSpace(string(msg)))
 	}
+	var content strings.Builder
 	sc := bufio.NewScanner(resp.Body)
 	sc.Buffer(make([]byte, 64*1024), 4*1024*1024)
 	for sc.Scan() {
 		var chunk struct {
 			Message struct {
-				Content  string `json:"content"`
-				Thinking string `json:"thinking"`
+				Content   string     `json:"content"`
+				Thinking  string     `json:"thinking"`
+				ToolCalls []ToolCall `json:"tool_calls"`
 			} `json:"message"`
 			Done  bool   `json:"done"`
 			Error string `json:"error"`
@@ -265,21 +289,24 @@ func (c *Client) Chat(ctx context.Context, model string, messages []Message, thi
 			continue
 		}
 		if chunk.Error != "" {
-			return m.Name, errors.New(chunk.Error)
+			return reply, errors.New(chunk.Error)
 		}
+		reply.ToolCalls = append(reply.ToolCalls, chunk.Message.ToolCalls...)
+		content.WriteString(chunk.Message.Content)
 		if chunk.Message.Content != "" || chunk.Message.Thinking != "" {
 			if err := emit(Delta{Thinking: chunk.Message.Thinking, Content: chunk.Message.Content}); err != nil {
-				return m.Name, err
+				return reply, err
 			}
 		}
 		if chunk.Done {
-			return m.Name, nil
+			break
 		}
 	}
+	reply.Content = content.String()
 	if err := sc.Err(); err != nil {
-		return m.Name, fmt.Errorf("ollama chat stream broke: %w", err)
+		return reply, fmt.Errorf("ollama chat stream broke: %w", err)
 	}
-	return m.Name, nil
+	return reply, nil
 }
 
 // Transcribe turns a recorded question (a WAV file) into text with an

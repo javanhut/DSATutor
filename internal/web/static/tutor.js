@@ -266,6 +266,13 @@
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send($('tutor-text').value); }
     });
     $('tutor-mic').onclick = toggleRecording;
+    $('tutor-messages').addEventListener('click', (e) => {
+      const chip = e.target.closest('[data-replay]');
+      if (!chip || !chip.dataset.replay) return;
+      const [mi, ai] = chip.dataset.replay.split(':').map(Number);
+      const a = tutor.messages[mi]?.actions?.[ai];
+      if (a) { clearSpotlights(); runAction(a); }
+    });
     $('tutor-think').onchange = (e) => { tutor.prefs.think = e.target.checked; save(PREFS_KEY, tutor.prefs); };
     $('tutor-speak').onchange = (e) => {
       tutor.prefs.speak = e.target.checked;
@@ -316,6 +323,7 @@
       : c.label;
     if (c.key !== tutor.key) {
       if (tutor.busy) stopReply();
+      clearSpotlights();
       tutor.key = c.key;
       tutor.messages = loadConversation(c.key);
       renderMessages();
@@ -381,13 +389,21 @@
       </div>`;
       return;
     }
-    box.innerHTML = tutor.messages.map(m => messageHtml(m)).join('');
+    box.innerHTML = tutor.messages.map((m, i) => messageHtml(m, i)).join('');
     box.scrollTop = box.scrollHeight;
   }
 
-  function messageHtml(m) {
+  function messageHtml(m, idx) {
     const body = m.role === 'assistant' ? renderMarkdown(m.content) : `<p>${escapeHtml(m.content).replace(/\n/g, '<br>')}</p>`;
-    return `<div class="tutor-msg ${m.role}">${body}</div>`;
+    const chips = (m.actions || []).map((a, ai) => chipHtml(a, `${idx}:${ai}`)).join('');
+    return `<div class="tutor-msg ${m.role}">${chips ? `<div class="tutor-actions">${chips}</div>` : ''}<div class="tutor-msg-text">${body}</div></div>`;
+  }
+
+  // A chip records one thing the tutor did on the page. Highlights can be
+  // shown again; edits can't be replayed from history.
+  function chipHtml(a, ref) {
+    const replay = a.name === 'highlight' ? ` data-replay="${ref}" title="Show it again"` : '';
+    return `<button type="button" class="tutor-action-chip ${a.name}"${replay}>${escapeHtml(actionLabel(a))}</button>`;
   }
 
   // ---------------------------------------------------------------------
@@ -418,8 +434,12 @@
     const box = $('tutor-messages');
     const bubble = document.createElement('div');
     bubble.className = 'tutor-msg assistant pending';
-    bubble.innerHTML = '<p class="tutor-typing">Thinking…</p>';
+    bubble.innerHTML = '<div class="tutor-actions hidden"></div><div class="tutor-msg-text"><p class="tutor-typing">Thinking…</p></div>';
     box.appendChild(bubble);
+    const textEl = bubble.querySelector('.tutor-msg-text');
+    const actionsEl = bubble.querySelector('.tutor-actions');
+    const actions = []; // what the tutor did on the page during this reply
+    clearSpotlights();
     box.scrollTop = box.scrollHeight;
 
     // A question asked by voice gets a spoken answer even with Speak replies
@@ -442,8 +462,8 @@
         body: JSON.stringify({
           model: tutor.model,
           think: tutor.prefs.think,
-          messages: tutor.messages,
-          context: { ...c.ctx, voice: speak },
+          messages: tutor.messages.map(m => ({ role: m.role, content: m.content })),
+          context: { ...c.ctx, voice: speak, targets: targetList(), testCount: testCount() },
         }),
       });
       if (!res.ok) {
@@ -470,11 +490,19 @@
           const ev = JSON.parse(line);
           if (ev.type === 'delta') {
             reply += ev.text;
-            bubble.innerHTML = renderMarkdown(reply);
+            if (reply.trim()) textEl.innerHTML = renderMarkdown(reply);
             if (speech) speech.push(reply);
           } else if (ev.type === 'thinking') {
             thinking += ev.text;
-            if (!reply) bubble.innerHTML = `<p class="tutor-typing">Thinking… <span class="tutor-think-count">${thinking.length} chars of reasoning</span></p>`;
+            if (!reply.trim()) textEl.innerHTML = `<p class="tutor-typing">Thinking… <span class="tutor-think-count">${thinking.length} chars of reasoning</span></p>`;
+          } else if (ev.type === 'action') {
+            const done = runAction(ev);
+            if (done) {
+              actions.push(done);
+              actionsEl.classList.remove('hidden');
+              actionsEl.insertAdjacentHTML('beforeend', chipHtml(done, ''));
+              if (done.undo) actionsEl.lastElementChild.insertAdjacentElement('afterend', undoButton(done.undo));
+            }
           } else if (ev.type === 'error') {
             throw new Error(ev.error);
           }
@@ -489,9 +517,9 @@
     }
 
     bubble.classList.remove('pending');
-    if (reply.trim()) {
-      tutor.messages.push({ role: 'assistant', content: reply });
-      bubble.innerHTML = renderMarkdown(reply);
+    const saved = actions.map(({ undo, ...a }) => a); // undo handles don't survive a reload
+    if (reply.trim() || actions.length) {
+      tutor.messages.push({ role: 'assistant', content: reply.trim() || '(done)', actions: saved });
       if (speech) speech.end(reply);
     } else {
       bubble.remove();
@@ -500,7 +528,239 @@
     }
     if (failed) setStatus(failed, true);
     saveConversation();
-    renderMessages();
+    if (!bubble.isConnected || !(reply.trim() || actions.length)) renderMessages();
+    else {
+      if (reply.trim()) textEl.innerHTML = renderMarkdown(reply);
+      else textEl.remove();
+      // Replay chips need their message index now that it is saved.
+      const idx = tutor.messages.length - 1;
+      actionsEl.querySelectorAll('[data-replay]').forEach((chip, ai) => { chip.dataset.replay = `${idx}:${ai}`; });
+      box.scrollTop = box.scrollHeight;
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Acting on the page. The tutor points at regions by id; the ids and
+  // their labels are sent with each message (targetList) and the server only
+  // accepts those, so pageTargets is the whole vocabulary.
+
+  const TAB_FOR_PANE = { 'problem-description': 'description', 'problem-hints': 'hints', 'visualization-tab': 'visualization' };
+  const textOf = (node, n = 80) => (node ? node.innerText.replace(/\s+/g, ' ').trim().slice(0, n) : '');
+  const hasText = (node) => !!node && node.innerText.trim() !== '';
+  // A heading's own text, without the Listen/Skip buttons inside it.
+  const headingText = (h) => {
+    const c = h.cloneNode(true);
+    c.querySelectorAll('button, select').forEach(n => n.remove());
+    return textOf(c, 60);
+  };
+
+  function pageTargets() {
+    const kind = currentContext().kind;
+    const t = [];
+    const add = (id, label, get, extra = {}) => { if (get()) t.push({ id, label, get, ...extra }); };
+    if (kind === 'problem') {
+      add('code', "The learner's code editor", () => $('practice-editor-container'), { lines: true, writable: true, editor: 'practice-editor-container', textarea: 'practice-code' });
+      add('statement', 'Problem statement', () => $('problem-statement'));
+      document.querySelectorAll('#problem-examples .example').forEach((ex, i) => {
+        add(`example-${i + 1}`, `Example ${i + 1}: ${textOf(ex.querySelector('.example-io'))}`, () => document.querySelectorAll('#problem-examples .example')[i]);
+      });
+      if (hasText($('problem-constraints'))) add('constraints', 'Constraints', () => $('problem-constraints'));
+      add('tests', 'Test cases panel: case buttons, input and expected output', () => document.querySelector('#practice-mode .results-panel'));
+      if (hasText($('current-test-output'))) add('run-output', "Result of the learner's last run", () => $('current-test-output'));
+      if (hasText($('test-results'))) add('submit-results', "Result of the learner's last submission", () => $('test-results'));
+      if (hasText($('hints-list'))) add('hints', 'Revealed hints (Hints tab)', () => $('hints-list'));
+      add('run-button', 'Run button (runs the selected test case)', () => $('practice-run'), { button: true });
+      add('submit-button', 'Submit button (runs every test)', () => $('practice-submit'), { button: true });
+    } else if (kind === 'sandbox') {
+      add('code', "The learner's sandbox code editor", () => $('sandbox-editor-container'), { lines: true, writable: true, editor: 'sandbox-editor-container', textarea: 'sandbox-code' });
+      if (hasText($('sandbox-output'))) add('output', 'Output of their last run', () => $('sandbox-output'));
+    } else if (kind === 'chapter') {
+      const cards = [...document.querySelectorAll('#standard-chapter-content :is(.overview-card, .tutorial-card, .lesson-card, .memory-card)')]
+        .filter(card => card.offsetParent && card.querySelector('h2'));
+      cards.forEach((card, i) => {
+        const title = headingText(card.querySelector('h2'));
+        add(`section-${i + 1}`, `Lesson section "${title}"`, () => card);
+        card.querySelectorAll('.worked-step').forEach((step, j) => {
+          add(`section-${i + 1}-step-${j + 1}`, `Worked example step ${j + 1} in "${title}": ${textOf(step.querySelector('.subgoal'), 60)}`, () => step);
+        });
+        card.querySelectorAll('.check-question').forEach((q, j) => {
+          add(`section-${i + 1}-question-${j + 1}`, `Check question ${j + 1}: ${textOf(q.querySelector('.check-prompt'), 70)}`, () => q);
+        });
+        [...card.querySelectorAll('pre')].filter(p => !p.closest('.worked-step, .check-question')).slice(0, 6).forEach((pre, j) => {
+          add(`section-${i + 1}-code-${j + 1}`, `Code block ${j + 1} in "${title}": ${textOf(pre, 50)}`, () => pre);
+        });
+      });
+    }
+    return t.slice(0, 60);
+  }
+
+  function targetList() {
+    return pageTargets().map(({ id, label, lines, writable }) => ({ id, label, lines, writable }));
+  }
+
+  function testCount() {
+    return document.querySelectorAll('#test-case-selector .test-case-btn').length;
+  }
+
+  function cmFor(containerId) {
+    return (window.dsaEditors && window.dsaEditors[containerId]) || null;
+  }
+
+  // Everything highlighted during the current reply, so the next one starts
+  // from a clean page.
+  const spot = { nodes: [], lines: [], widgets: [], timers: [], keys: new Set() };
+
+  function clearSpotlights() {
+    spot.nodes.forEach(n => n.classList.remove('tutor-spotlight', 'tutor-spotlight-pulse'));
+    spot.lines.forEach(({ cm, handle, cls }) => cm.removeLineClass(handle, 'background', cls));
+    spot.widgets.forEach(w => w.clear ? w.clear() : w.remove());
+    spot.timers.forEach(clearTimeout);
+    document.querySelectorAll('.tutor-callout').forEach(n => n.remove());
+    Object.assign(spot, { nodes: [], lines: [], widgets: [], timers: [], keys: new Set() });
+  }
+
+  // A pane inside a hidden problem tab has to be shown before it can be
+  // pointed at.
+  function reveal(node) {
+    const pane = node.closest('.tab-content');
+    if (pane && !pane.classList.contains('active') && TAB_FOR_PANE[pane.id]) {
+      document.querySelector(`#practice-mode .tab-btn[data-tab="${TAB_FOR_PANE[pane.id]}"]`)?.click();
+    }
+  }
+
+  function calloutNode(note) {
+    const box = document.createElement('div');
+    box.className = 'tutor-callout';
+    box.innerHTML = `<span class="tutor-callout-label">Tutor</span><span class="tutor-callout-text"></span><button type="button" class="tutor-callout-close" aria-label="Dismiss">✕</button>`;
+    box.querySelector('.tutor-callout-text').textContent = note;
+    return box;
+  }
+
+  function highlightLines(cm, start, end, cls, note) {
+    const last = cm.lastLine();
+    const from = Math.max(0, Math.min(start - 1, last));
+    const to = Math.max(from, Math.min(end - 1, last));
+    for (let l = from; l <= to; l++) {
+      const handle = cm.addLineClass(l, 'background', cls);
+      spot.lines.push({ cm, handle, cls });
+    }
+    if (note) {
+      const node = calloutNode(note);
+      const widget = cm.addLineWidget(to, node, { coverGutter: false, noHScroll: true });
+      node.querySelector('.tutor-callout-close').onclick = () => widget.clear();
+      spot.widgets.push(widget);
+    }
+    cm.scrollIntoView({ from: { line: from, ch: 0 }, to: { line: to + (note ? 1 : 0), ch: 0 } }, 60);
+    cm.getWrapperElement().scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  function actionLabel(a) {
+    switch (a.name) {
+      case 'highlight': {
+        const where = a.start_line ? `lines ${a.start_line}${a.end_line && a.end_line !== a.start_line ? `–${a.end_line}` : ''} of your code` : (a.label || a.target);
+        return `Pointed at ${where}`;
+      }
+      case 'write_code': return `Edited your code${a.summary ? `: ${a.summary}` : ''}`;
+      case 'open_tab': return `Opened the ${a.tab} tab`;
+      case 'select_test': return `Selected test case ${a.case}`;
+    }
+    return a.name;
+  }
+
+  // runAction carries out one action from the server. It returns the record
+  // shown as a chip (with an undo handle for edits), or null when the page
+  // has changed so much that the target is gone.
+  function runAction(a) {
+    const targets = pageTargets();
+    const target = targets.find(t => t.id === a.target);
+    switch (a.name) {
+      case 'highlight': {
+        if (!target) return null;
+        // Models sometimes point at the same thing twice in one reply.
+        const key = `${a.target}:${a.start_line || ''}:${a.end_line || ''}`;
+        if (spot.keys.has(key)) return null;
+        spot.keys.add(key);
+        const node = target.get();
+        reveal(node);
+        const record = { name: 'highlight', target: a.target, label: target.label.split(':')[0], note: a.note, start_line: a.start_line, end_line: a.end_line };
+        const cm = target.editor && cmFor(target.editor);
+        if (cm && a.start_line) {
+          highlightLines(cm, a.start_line, a.end_line || a.start_line, 'tutor-line-hl', a.note);
+          return record;
+        }
+        node.classList.add('tutor-spotlight');
+        spot.nodes.push(node);
+        if (target.button) {
+          node.classList.add('tutor-spotlight-pulse');
+        } else if (a.note) {
+          const call = calloutNode(a.note);
+          call.querySelector('.tutor-callout-close').onclick = () => call.remove();
+          node.insertAdjacentElement('afterend', call);
+        }
+        node.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        return record;
+      }
+      case 'write_code': {
+        if (!target || !target.writable) return null;
+        const cm = cmFor(target.editor);
+        const ta = $(target.textarea);
+        const before = cm ? cm.getValue() : (ta?.value || '');
+        const after = a.code;
+        if (cm) {
+          // One replaceRange is one undo step.
+          cm.replaceRange(after, { line: 0, ch: 0 }, { line: cm.lastLine(), ch: cm.getLine(cm.lastLine()).length }, '+tutor');
+        }
+        if (ta) ta.value = after;
+        const gen = cm ? cm.changeGeneration(true) : 0;
+        // Flash the lines that changed.
+        const a1 = before.split('\n'), b1 = after.split('\n');
+        let p = 0;
+        while (p < a1.length && p < b1.length && a1[p] === b1[p]) p++;
+        let q = 0;
+        while (q < a1.length - p && q < b1.length - p && a1[a1.length - 1 - q] === b1[b1.length - 1 - q]) q++;
+        if (cm && b1.length - q > p) highlightLines(cm, p + 1, b1.length - q, 'tutor-line-new', '');
+        return {
+          name: 'write_code', target: a.target, summary: a.summary,
+          undo: () => {
+            if (cm) {
+              if (!cm.isClean(gen)) return "You've changed the code since; use Ctrl+Z / Cmd+Z in the editor.";
+              cm.undo();
+            } else if (ta) {
+              ta.value = before;
+            }
+            return '';
+          },
+        };
+      }
+      case 'open_tab': {
+        const btn = document.querySelector(`#practice-mode .tab-btn[data-tab="${a.tab}"]`);
+        if (!btn || a.tab === 'solution') return null;
+        btn.click();
+        return { name: 'open_tab', tab: a.tab };
+      }
+      case 'select_test': {
+        const btn = $('test-case-selector')?.querySelector(`[data-index="${a.case - 1}"]`);
+        if (!btn) return null;
+        btn.click();
+        btn.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        return { name: 'select_test', case: a.case };
+      }
+    }
+    return null;
+  }
+
+  function undoButton(undo) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'tutor-undo';
+    btn.textContent = 'Undo';
+    btn.onclick = () => {
+      const problem = undo();
+      if (problem) { setStatus(problem, true); return; }
+      btn.textContent = 'Undone';
+      btn.disabled = true;
+    };
+    return btn;
   }
 
   // ---------------------------------------------------------------------

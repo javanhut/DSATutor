@@ -16,6 +16,10 @@ import (
 // 16 kHz mono WAV.
 const maxRecordingBytes = 10 << 20
 
+// maxToolRounds bounds how many times one reply may call tools before the
+// model has to answer in words.
+const maxToolRounds = 6
+
 // handleTutorStatus tells the UI whether the AI tutor works (an Ollama with
 // a chat model), which models it can pick from and whether the microphone
 // button can transcribe. With no chat model the Tutor button stays hidden.
@@ -47,8 +51,17 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	system := tutor.SystemPrompt(req.Context, s.tutorProblem(req.Context.ProblemID), s.tutorChapter(req.Context.ChapterNumber))
+	// The page regions become tools only for models that can call them.
+	var ws *tutor.Workspace
+	if s.tutor.SupportsTools(req.Model) {
+		ws = tutor.NewWorkspace(req.Context)
+	}
+	system := tutor.SystemPrompt(req.Context, s.tutorProblem(req.Context.ProblemID), s.tutorChapter(req.Context.ChapterNumber), ws)
 	messages := tutor.Conversation(system, req.Messages)
+	var tools []tutor.Tool
+	if ws != nil {
+		tools = ws.Tools()
+	}
 
 	w.Header().Set("Content-Type", "application/x-ndjson")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -64,8 +77,7 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 		}
 		return nil
 	}
-
-	model, err := s.tutor.Chat(r.Context(), req.Model, messages, req.Think, func(d tutor.Delta) error {
+	emit := func(d tutor.Delta) error {
 		if d.Thinking != "" {
 			if err := send(map[string]string{"type": "thinking", "text": d.Thinking}); err != nil {
 				return err
@@ -75,23 +87,55 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 			return send(map[string]string{"type": "delta", "text": d.Content})
 		}
 		return nil
-	})
-	if err != nil {
-		if r.Context().Err() != nil {
-			return // the learner pressed Stop
+	}
+
+	// The tool loop: each round streams the model's text; tool calls are
+	// carried out (sent to the page as actions) and their results fed back,
+	// until the model answers without calling a tool.
+	var model string
+	for round := 0; ; round++ {
+		if round == maxToolRounds {
+			tools = nil // last round: make it answer in words
 		}
-		// Nothing has been streamed yet for these, so a real status code
-		// still reaches the browser.
-		switch {
-		case errors.Is(err, tutor.ErrUnknownModel):
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		case errors.Is(err, tutor.ErrUnavailable):
-			http.Error(w, err.Error(), http.StatusServiceUnavailable)
+		reply, err := s.tutor.Chat(r.Context(), req.Model, messages, req.Think, tools, emit)
+		if err != nil {
+			if r.Context().Err() != nil {
+				return // the learner pressed Stop
+			}
+			if round == 0 {
+				// Nothing has been streamed yet, so a real status code
+				// still reaches the browser.
+				switch {
+				case errors.Is(err, tutor.ErrUnknownModel):
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				case errors.Is(err, tutor.ErrUnavailable):
+					http.Error(w, err.Error(), http.StatusServiceUnavailable)
+					return
+				}
+			}
+			send(map[string]string{"type": "error", "error": err.Error()})
 			return
 		}
-		send(map[string]string{"type": "error", "error": err.Error()})
-		return
+		model = reply.Model
+		if len(reply.ToolCalls) == 0 || ws == nil {
+			break
+		}
+		messages = append(messages, tutor.Message{Role: "assistant", Content: reply.Content, ToolCalls: reply.ToolCalls})
+		for _, call := range reply.ToolCalls {
+			result, action := ws.Execute(call)
+			if action != nil {
+				action["type"] = "action"
+				if err := send(action); err != nil {
+					return
+				}
+			}
+			messages = append(messages, tutor.Message{Role: "tool", ToolName: call.Function.Name, Content: result})
+		}
+		if reply.Content != "" {
+			// Keep text from successive rounds apart in the page.
+			send(map[string]string{"type": "delta", "text": "\n\n"})
+		}
 	}
 	send(map[string]string{"type": "done", "model": model})
 }

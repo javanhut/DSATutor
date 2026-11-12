@@ -54,3 +54,78 @@ func TestTutorTranscribeRejectsNonWAV(t *testing.T) {
 		t.Errorf("status = %d, want 400", rec.Code)
 	}
 }
+
+// A fake Ollama whose model first calls highlight and write_code, then
+// answers in words once it has the tool results.
+func TestTutorChatRunsToolLoop(t *testing.T) {
+	var rounds int
+	var lastMessages []map[string]any
+	ollama := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/tags":
+			w.Write([]byte(`{"models":[{"name":"m:latest"}]}`))
+		case "/api/show":
+			w.Write([]byte(`{"capabilities":["completion","tools"]}`))
+		case "/api/chat":
+			var body struct {
+				Messages []map[string]any `json:"messages"`
+				Tools    []any            `json:"tools"`
+			}
+			json.NewDecoder(r.Body).Decode(&body)
+			lastMessages = body.Messages
+			rounds++
+			if rounds == 1 {
+				if len(body.Tools) == 0 {
+					t.Error("no tools offered")
+				}
+				w.Write([]byte(`{"message":{"content":"Look:","tool_calls":[{"function":{"name":"highlight","arguments":{"target":"code","start_line":1,"note":"bug"}}},{"function":{"name":"write_code","arguments":{"mode":"replace_all","code":"fixed()"}}}]},"done":true}` + "\n"))
+				return
+			}
+			w.Write([]byte(`{"message":{"content":"Fixed it."},"done":true}` + "\n"))
+		}
+	}))
+	defer ollama.Close()
+	t.Setenv("DSATUTOR_OLLAMA_URL", ollama.URL)
+	t.Setenv("DSATUTOR_TUTOR_MODEL", "")
+	s := NewServer(nil)
+
+	req := `{"messages":[{"role":"user","content":"fix it"}],"context":{"view":"sandbox","code":"broken()","targets":[{"id":"code","label":"editor","lines":true,"writable":true}]}}`
+	rec := httptest.NewRecorder()
+	s.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/tutor/chat", strings.NewReader(req)))
+
+	var events []map[string]any
+	for _, line := range strings.Split(strings.TrimSpace(rec.Body.String()), "\n") {
+		var ev map[string]any
+		if err := json.Unmarshal([]byte(line), &ev); err != nil {
+			t.Fatalf("bad line %q", line)
+		}
+		events = append(events, ev)
+	}
+	var kinds []string
+	for _, ev := range events {
+		k := ev["type"].(string)
+		if k == "action" {
+			k += ":" + ev["name"].(string)
+		}
+		kinds = append(kinds, k)
+	}
+	if got := strings.Join(kinds, ","); got != "delta,action:highlight,action:write_code,delta,delta,done" {
+		t.Errorf("events = %s", got)
+	}
+	if events[2]["code"] != "fixed()" {
+		t.Errorf("write_code action = %v", events[2])
+	}
+	if rounds != 2 {
+		t.Errorf("rounds = %d, want 2", rounds)
+	}
+	// The second round got both tool results, the edit showing the new code.
+	var results []string
+	for _, m := range lastMessages {
+		if m["role"] == "tool" {
+			results = append(results, m["content"].(string))
+		}
+	}
+	if len(results) != 2 || !strings.Contains(results[1], "fixed()") {
+		t.Errorf("tool results = %q", results)
+	}
+}

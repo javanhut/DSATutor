@@ -1,0 +1,130 @@
+package tutor
+
+import (
+	"strings"
+	"testing"
+)
+
+func call(name string, args map[string]any) ToolCall {
+	var c ToolCall
+	c.Function.Name = name
+	c.Function.Arguments = args
+	return c
+}
+
+func problemWorkspace() *Workspace {
+	return NewWorkspace(Context{
+		View:      "problem",
+		Code:      "a\nb\nc",
+		TestCount: 3,
+		Targets: []Target{
+			{ID: "code", Label: "editor", Lines: true, Writable: true},
+			{ID: "example-1", Label: "Example 1"},
+			{ID: "example-1", Label: "duplicate is dropped"},
+			{ID: "", Label: "no id is dropped"},
+		},
+	})
+}
+
+func TestApplyEdit(t *testing.T) {
+	cases := []struct {
+		mode       string
+		start, end int
+		text, want string
+	}{
+		{"replace_lines", 2, 2, "B", "a\nB\nc"},
+		{"replace_lines", 2, 9, "X\nY", "a\nX\nY"}, // end clamps to the last line
+		{"replace_lines", 1, 0, "Z", "Z\nb\nc"},    // end < start means one line
+		{"insert_after_line", 0, 0, "top", "top\na\nb\nc"},
+		{"insert_after_line", 3, 0, "end\n", "a\nb\nc\nend"},
+		{"replace_all", 0, 0, "new", "new"},
+	}
+	for _, c := range cases {
+		got, err := applyEdit("a\nb\nc", c.mode, c.start, c.end, c.text)
+		if err != nil || got != c.want {
+			t.Errorf("%s %d-%d %q: got %q, %v; want %q", c.mode, c.start, c.end, c.text, got, err, c.want)
+		}
+	}
+	for _, bad := range []struct {
+		mode  string
+		start int
+	}{{"replace_lines", 0}, {"replace_lines", 4}, {"insert_after_line", 4}, {"delete", 1}} {
+		if _, err := applyEdit("a\nb\nc", bad.mode, bad.start, bad.start, "x"); err == nil {
+			t.Errorf("%s at %d: want an error", bad.mode, bad.start)
+		}
+	}
+}
+
+func TestStripLineNumbers(t *testing.T) {
+	numbered := "  1 | def f(a, b):\n  2 |\n  3 |     return a | b"
+	if got := stripLineNumbers(numbered); got != "def f(a, b):\n\n    return a | b" {
+		t.Errorf("got %q", got)
+	}
+	plain := "x = a | b\ny = 2"
+	if got := stripLineNumbers(plain); got != plain {
+		t.Errorf("plain code changed: %q", got)
+	}
+}
+
+func TestWorkspaceToolsAndTargets(t *testing.T) {
+	ws := problemWorkspace()
+	if len(ws.targets) != 2 {
+		t.Fatalf("targets = %+v, want code and example-1", ws.targets)
+	}
+	names := map[string]bool{}
+	for _, tool := range ws.Tools() {
+		names[tool.Function.Name] = true
+	}
+	for _, want := range []string{"highlight", "write_code", "open_tab", "select_test"} {
+		if !names[want] {
+			t.Errorf("missing tool %s", want)
+		}
+	}
+	if !strings.Contains(ws.Describe(), "`example-1`: Example 1") {
+		t.Errorf("describe = %s", ws.Describe())
+	}
+
+	// A chapter page: only highlight, nothing to edit or switch.
+	ch := NewWorkspace(Context{View: "chapter", Targets: []Target{{ID: "section-1", Label: "Overview"}}})
+	if tools := ch.Tools(); len(tools) != 1 || tools[0].Function.Name != "highlight" {
+		t.Errorf("chapter tools = %+v", tools)
+	}
+	if NewWorkspace(Context{View: "home"}).Tools() != nil {
+		t.Error("a page with no targets gets tools")
+	}
+}
+
+func TestExecute(t *testing.T) {
+	ws := problemWorkspace()
+
+	res, act := ws.Execute(call("highlight", map[string]any{"target": "code", "start_line": 2.0, "end_line": "9", "note": "here"}))
+	if act == nil || act["start_line"] != 2 || act["end_line"] != 3 || act["note"] != "here" {
+		t.Errorf("highlight: %s %v", res, act)
+	}
+	if _, act := ws.Execute(call("highlight", map[string]any{"target": "nowhere"})); act != nil {
+		t.Error("unknown target accepted")
+	}
+	if _, act := ws.Execute(call("highlight", map[string]any{"target": "code", "start_line": 7.0})); act != nil {
+		t.Error("line past the end accepted")
+	}
+
+	res, act = ws.Execute(call("write_code", map[string]any{"mode": "replace_lines", "start_line": 2.0, "code": "  2 | B"}))
+	if act == nil || act["code"] != "a\nB\nc" || !strings.Contains(res, "  2 | B") {
+		t.Errorf("write_code: %s %v", res, act)
+	}
+	// Later calls see the edited code.
+	_, act = ws.Execute(call("write_code", map[string]any{"mode": "insert_after_line", "start_line": 3.0, "code": "d"}))
+	if act == nil || act["code"] != "a\nB\nc\nd" {
+		t.Errorf("second edit: %v", act)
+	}
+
+	if _, act := ws.Execute(call("open_tab", map[string]any{"tab": "solution"})); act != nil {
+		t.Error("solution tab opened")
+	}
+	if _, act := ws.Execute(call("select_test", map[string]any{"case": 4.0})); act != nil {
+		t.Error("test case 4 of 3 accepted")
+	}
+	if _, act := ws.Execute(call("select_test", map[string]any{"case": 2.0})); act == nil || act["case"] != 2 {
+		t.Errorf("select_test: %v", act)
+	}
+}

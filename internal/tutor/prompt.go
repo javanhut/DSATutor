@@ -20,35 +20,49 @@ const (
 // The server looks the problem and chapter up itself, so the prompt always
 // carries the real statement, hints and reference notes.
 type Context struct {
-	View             string `json:"view"` // "problem", "chapter", "sandbox" or "home"
-	ProblemID        string `json:"problemId,omitempty"`
-	ChapterNumber    int    `json:"chapterNumber,omitempty"`
-	Language         string `json:"language,omitempty"` // python or oxigen
-	Code             string `json:"code,omitempty"`
-	LastRun          string `json:"lastRun,omitempty"` // the last run/submit result as shown
-	HintsRevealed    int    `json:"hintsRevealed,omitempty"`
-	SolutionUnlocked bool   `json:"solutionUnlocked,omitempty"`
-	Voice            bool   `json:"voice,omitempty"` // replies are read aloud
+	View             string   `json:"view"` // "problem", "chapter", "sandbox" or "home"
+	ProblemID        string   `json:"problemId,omitempty"`
+	ChapterNumber    int      `json:"chapterNumber,omitempty"`
+	Language         string   `json:"language,omitempty"` // python or oxigen
+	Code             string   `json:"code,omitempty"`
+	LastRun          string   `json:"lastRun,omitempty"` // the last run/submit result as shown
+	HintsRevealed    int      `json:"hintsRevealed,omitempty"`
+	SolutionUnlocked bool     `json:"solutionUnlocked,omitempty"`
+	Voice            bool     `json:"voice,omitempty"`     // replies are read aloud
+	Targets          []Target `json:"targets,omitempty"`   // regions the tutor can point at
+	TestCount        int      `json:"testCount,omitempty"` // visible test cases
 }
 
 const persona = `You are the DSA Tutor's built-in coach: a patient, sharp teacher of data structures and algorithms helping one learner prepare for coding interviews.
 
 How you teach:
 - Coach, don't solve. Ask a guiding question or give the smallest hint that unblocks the learner. Escalate (nudge -> key insight -> plan -> code) only when they are still stuck or ask for more.
-- Never write the full solution unless the learner explicitly asks for it. Short snippets that illustrate an idea or fix one line are fine.
+- Don't volunteer the full solution. But the learner is in charge: when they explicitly ask you to fix, write or finish their code, do it, then explain what changed and why. Short snippets that illustrate an idea or fix one line are always fine.
 - When reviewing their code, point to specific line numbers, explain WHY the logic fails, and give a concrete input that breaks it. Trace small examples by hand.
 - Bring up time and space complexity: ask them to state it, then confirm or correct it with reasoning. Compare brute force with the better approach.
 - Name the pattern (two pointers, sliding window, BFS, DP...) once they are close, and connect to the chapter that teaches it.
 - Be honest and precise. If their code is correct, say so and suggest what to check next (edge cases, complexity, cleaner code).
 - Keep replies focused: a few short paragraphs or a short list. Use Markdown, with fenced code blocks for code. Never use LaTeX or $...$ math; write math as plain text, like 6 - 3 = 3 or O(n log n).`
 
+const toolNote = `
+
+You can act on the learner's screen with tools:
+- highlight: whenever you refer to something on screen, point at it. When you talk about a bug, highlight the exact lines in their code with a one-sentence note. When you mention an example, a constraint or a lesson section, highlight it. One or two highlights per reply is plenty.
+- write_code: edit their editor only when they ask you to write, fix, or scaffold code, or say yes when you offer. Make the smallest edit that does the job. When coaching, a skeleton with TODO comments beats a finished answer.
+- open_tab and select_test: show them a tab or a test case when it helps.
+Call the tools; never describe a tool call in text. After using them, still answer in words.`
+
 const voiceNote = `
 The learner is talking to you by voice and your reply is read aloud: answer in two to five short spoken sentences, avoid code blocks and symbols-heavy notation, and say identifiers as plain words.`
 
-// SystemPrompt builds the system message for one request.
-func SystemPrompt(ctx Context, problem *practice.Problem, ch *chapter.Chapter) string {
+// SystemPrompt builds the system message for one request. ws is nil when
+// the model can't use tools.
+func SystemPrompt(ctx Context, problem *practice.Problem, ch *chapter.Chapter, ws *Workspace) string {
 	var b strings.Builder
 	b.WriteString(persona)
+	if ws != nil && len(ws.Tools()) > 0 {
+		b.WriteString(toolNote)
+	}
 	if ctx.Voice {
 		b.WriteString(voiceNote)
 	}
@@ -78,6 +92,9 @@ func SystemPrompt(ctx Context, problem *practice.Problem, ch *chapter.Chapter) s
 	}
 	if run := strings.TrimSpace(ctx.LastRun); run != "" {
 		fmt.Fprintf(&b, "\n## Their latest run or submission\n%s\n", truncate(run, maxRunChars))
+	}
+	if ws != nil {
+		b.WriteString(ws.Describe())
 	}
 	return b.String()
 }

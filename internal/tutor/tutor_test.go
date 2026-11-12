@@ -103,25 +103,25 @@ func TestChatStreamsAndSetsThinkOnlyForThinkingModels(t *testing.T) {
 	var got strings.Builder
 	collect := func(d Delta) error { got.WriteString(d.Content); return nil }
 
-	model, err := c.Chat(context.Background(), "", []Message{{Role: "user", Content: "hi"}}, false, collect)
+	reply, err := c.Chat(context.Background(), "", []Message{{Role: "user", Content: "hi"}}, false, nil, collect)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if model != "gemma4:latest" || got.String() != "Look at line 4." {
-		t.Errorf("model=%s reply=%q", model, got.String())
+	if reply.Model != "gemma4:latest" || got.String() != "Look at line 4." {
+		t.Errorf("model=%s reply=%q", reply.Model, got.String())
 	}
 	if think, ok := body["think"]; !ok || think != false {
 		t.Errorf("think = %v (present %v), want explicit false for a thinking model", think, ok)
 	}
 
-	if _, err := c.Chat(context.Background(), "llama3:latest", []Message{{Role: "user", Content: "hi"}}, true, collect); err != nil {
+	if _, err := c.Chat(context.Background(), "llama3:latest", []Message{{Role: "user", Content: "hi"}}, true, nil, collect); err != nil {
 		t.Fatal(err)
 	}
 	if _, ok := body["think"]; ok {
 		t.Error("think sent to a model without thinking support")
 	}
 
-	if _, err := c.Chat(context.Background(), "missing", nil, false, collect); err == nil || !strings.Contains(err.Error(), "unknown tutor model") {
+	if _, err := c.Chat(context.Background(), "missing", nil, false, nil, collect); err == nil || !strings.Contains(err.Error(), "unknown tutor model") {
 		t.Errorf("err = %v, want unknown model", err)
 	}
 }
@@ -159,7 +159,7 @@ func TestSystemPromptHidesSolutionCodeUntilUnlocked(t *testing.T) {
 		Solution:    practice.Solution{Code: "def SECRET(): pass", KeyInsight: "complement lookup"},
 	}
 	ctx := Context{View: "problem", Code: "x = 1\ny = 2", HintsRevealed: 1}
-	locked := SystemPrompt(ctx, p, nil)
+	locked := SystemPrompt(ctx, p, nil, nil)
 	for _, want := range []string{"Two Sum", "complement lookup", "Use a map.", "  2 | y = 2"} {
 		if !strings.Contains(locked, want) {
 			t.Errorf("prompt lacks %q", want)
@@ -171,7 +171,7 @@ func TestSystemPromptHidesSolutionCodeUntilUnlocked(t *testing.T) {
 		}
 	}
 	ctx.SolutionUnlocked = true
-	if !strings.Contains(SystemPrompt(ctx, p, nil), "SECRET") {
+	if !strings.Contains(SystemPrompt(ctx, p, nil, nil), "SECRET") {
 		t.Error("unlocked prompt lacks the solution code")
 	}
 }

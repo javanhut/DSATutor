@@ -26,6 +26,43 @@ an Ollama cloud model.
 - Each problem, chapter and the sandbox keeps its own conversation, saved in
   the browser. **Clear** starts it over.
 
+## Pointing at the page and writing code
+
+With a model that supports tool calling, the tutor acts on the screen
+instead of only describing it:
+
+| Tool | What you see |
+|------|--------------|
+| `highlight` | the region scrolls into view and gets outlined, with the tutor's note pinned under it. In your code, the lines themselves light up with the note right below them. |
+| `write_code` | your editor changes and the changed lines flash green. The chat shows **Edited your code** with an **Undo** button (one undo step; Ctrl/Cmd+Z works too). |
+| `open_tab` | the problem panel switches to Description, Hints or Visualize (never Solution) |
+| `select_test` | a test case is selected, ready for Run |
+
+Each action leaves a chip in the conversation; clicking a *Pointed at…*
+chip shows that highlight again. The tutor edits your code only when you ask
+it to write, fix or scaffold code, or accept its offer.
+
+What it can point at depends on the view:
+
+- **Problem**: your code (by line), the statement, each example, the
+  constraints, the test panel, your last run and submission, revealed hints,
+  the Run and Submit buttons
+- **Chapter**: each lesson section, each revealed worked-example step, each
+  check question, and code blocks
+- **Sandbox**: your code (by line) and its output
+
+The page sends this list (ids and labels) with every message. The server
+offers tools that only accept those ids and runs the tool loop itself: each
+call is streamed to the page as an `action` event, and the result goes back
+to the model. Edits are applied to the server's copy of the code too, so the
+model's next step sees the code as it now is. A reply can go through at most
+six tool rounds before the model has to answer in words.
+
+**Which model**: tool use depends on the model. In testing, `ornith`
+reliably highlighted lines and wrote fixes, while `gemma4` mostly answered
+in text without using the tools. Pick the model in the panel (it's
+remembered), or set `DSATUTOR_TUTOR_MODEL=ornith`.
+
 ## What the tutor sees
 
 Every message carries what is on screen, and the server fills in the rest
@@ -79,7 +116,7 @@ The microphone needs a secure page: `http://localhost` works, but a plain
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/tutor/status` | GET | `{"available", "default", "models": [{"name", "thinking", "cloud"}], "transcribe", "reason"}` |
-| `/api/tutor/chat` | POST | `{"model", "think", "messages": [{"role", "content"}], "context": {"view", "problemId", "chapterNumber", "language", "code", "lastRun", "hintsRevealed", "solutionUnlocked", "voice"}}` → NDJSON stream of `{"type":"thinking"\|"delta","text"}` then `{"type":"done","model"}` or `{"type":"error","error"}` |
+| `/api/tutor/chat` | POST | `{"model", "think", "messages": [{"role", "content"}], "context": {"view", "problemId", "chapterNumber", "language", "code", "lastRun", "hintsRevealed", "solutionUnlocked", "voice", "targets": [{"id", "label", "lines", "writable"}], "testCount"}}` → NDJSON stream of `{"type":"thinking"\|"delta","text"}` and `{"type":"action","name":"highlight"\|"write_code"\|"open_tab"\|"select_test", ...}`, then `{"type":"done","model"}` or `{"type":"error","error"}` |
 | `/api/tutor/transcribe` | POST | body: a WAV recording, `?model=` names the chat model in use → `{"text"}` |
 
 The server builds the system prompt itself (`internal/tutor/prompt.go`).
