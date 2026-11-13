@@ -78,28 +78,8 @@ func scratchpadTools() []Tool {
 				"title":    map[string]any{"type": "string"},
 				"captions": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "one short caption per step"},
 				"elements": map[string]any{
-					"type": "array",
-					"items": map[string]any{
-						"type": "object",
-						"properties": map[string]any{
-							"type":     map[string]any{"type": "string", "enum": sketchTypes},
-							"step":     map[string]any{"type": "integer", "description": "which step reveals it (0 = first)"},
-							"x":        map[string]any{"type": "number"},
-							"y":        map[string]any{"type": "number"},
-							"x2":       map[string]any{"type": "number", "description": "arrow/line end"},
-							"y2":       map[string]any{"type": "number", "description": "arrow/line end"},
-							"w":        map[string]any{"type": "number", "description": "box width"},
-							"h":        map[string]any{"type": "number", "description": "box height"},
-							"r":        map[string]any{"type": "number", "description": "circle/node radius"},
-							"text":     map[string]any{"type": "string", "description": "text, or the label of a box/node/arrow"},
-							"size":     map[string]any{"type": "string", "enum": []string{"s", "m", "l"}},
-							"color":    map[string]any{"type": "string", "enum": sketchColors},
-							"values":   map[string]any{"type": "array", "description": "cells: the values in the row"},
-							"marks":    map[string]any{"type": "array", "items": map[string]any{"type": "integer"}, "description": "cells: indexes to circle"},
-							"pointers": map[string]any{"type": "object", "description": "cells: pointer name -> index, e.g. {\"left\": 0, \"right\": 4}; draws a labelled arrow under each of those cells. Prefer this to placing arrows by hand."},
-						},
-						"required": []string{"type"},
-					},
+					"type":  "array",
+					"items": sketchElementSchema(),
 				},
 			}, "title", "elements"),
 		fn("ask_learner",
@@ -156,15 +136,21 @@ func executeScratchpad(call ToolCall) (string, Action) {
 		}
 		clean := make([]any, 0, len(frames))
 		for i, f := range frames {
-			fm, ok := f.(map[string]any)
+			fm, ok := decodeJSONString(f).(map[string]any)
 			if !ok {
 				return fmt.Sprintf("Error: frame %d is not an object.", i+1), nil
 			}
 			structs := listArg(fm, "structures")
 			for j, st := range structs {
+				st = decodeJSONString(st)
+				structs[j] = st
 				sm, ok := st.(map[string]any)
 				if !ok || !validType(str(sm, "type")) {
 					return fmt.Sprintf("Error: frame %d structure %d needs a type from %v.", i+1, j+1, structureTypes), nil
+				}
+				// Some models send nested data as JSON text; draw the real thing.
+				for _, k := range []string{"data", "highlights"} {
+					sm[k] = decodeJSONString(sm[k])
 				}
 			}
 			clean = append(clean, map[string]any{"caption": str(fm, "caption"), "structures": structs})
@@ -185,14 +171,14 @@ func executeScratchpad(call ToolCall) (string, Action) {
 		}
 		steps := 0
 		for i, e := range raw {
+			e = decodeJSONString(e)
+			raw[i] = e
 			em, ok := e.(map[string]any)
 			if !ok || !contains(sketchTypes, str(em, "type")) {
 				return fmt.Sprintf("Error: element %d needs a type from %v.", i+1, sketchTypes), nil
 			}
-			for _, k := range []string{"values", "marks"} {
-				if _, isStr := em[k].(string); isStr {
-					em[k] = listArg(em, k)
-				}
+			for _, k := range []string{"values", "marks", "pointers"} {
+				em[k] = decodeJSONString(em[k])
 			}
 			steps = max(steps, intArg(em, "step")+1)
 		}
@@ -239,4 +225,48 @@ func contains(list []string, s string) bool {
 		}
 	}
 	return false
+}
+
+// decodeJSONString turns a value that arrived as JSON text ("[1, 2]",
+// "{\"left\": 0}") back into data. Other strings and values pass through.
+func decodeJSONString(v any) any {
+	s, ok := v.(string)
+	if !ok {
+		return v
+	}
+	t := strings.TrimSpace(s)
+	if t == "" || (t[0] != '[' && t[0] != '{') {
+		return v
+	}
+	var out any
+	if json.Unmarshal([]byte(t), &out) != nil {
+		return v
+	}
+	return out
+}
+
+// sketchElementSchema describes one whiteboard element, for the sketch tool
+// and for the director's structured output.
+func sketchElementSchema() map[string]any {
+	return map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"type":     map[string]any{"type": "string", "enum": sketchTypes},
+			"step":     map[string]any{"type": "integer", "description": "which step reveals it (0 = first)"},
+			"x":        map[string]any{"type": "number"},
+			"y":        map[string]any{"type": "number"},
+			"x2":       map[string]any{"type": "number", "description": "arrow/line end"},
+			"y2":       map[string]any{"type": "number", "description": "arrow/line end"},
+			"w":        map[string]any{"type": "number", "description": "box width"},
+			"h":        map[string]any{"type": "number", "description": "box height"},
+			"r":        map[string]any{"type": "number", "description": "circle/node radius"},
+			"text":     map[string]any{"type": "string", "description": "text, or the label of a box/node/arrow"},
+			"size":     map[string]any{"type": "string", "enum": []string{"s", "m", "l"}},
+			"color":    map[string]any{"type": "string", "enum": sketchColors},
+			"values":   map[string]any{"type": "array", "description": "cells: the values in the row"},
+			"marks":    map[string]any{"type": "array", "items": map[string]any{"type": "integer"}, "description": "cells: indexes to circle"},
+			"pointers": map[string]any{"type": "object", "description": "cells: pointer name -> index, e.g. {\"left\": 0, \"right\": 4}; draws a labelled arrow under each of those cells. Prefer this to placing arrows by hand."},
+		},
+		"required": []string{"type"},
+	}
 }

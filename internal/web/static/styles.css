@@ -7585,10 +7585,11 @@ body.interview-active #practice-mode :is(
   bottom: 24px;
   z-index: 70;
   width: min(560px, calc(100vw - 32px));
-  height: min(620px, calc(100vh - 48px));
+  height: min(520px, calc(100vh - 48px));
   display: flex;
   flex-direction: column;
   background: var(--panel);
+  transition: top 0.35s ease, bottom 0.35s ease;
   border: 1px solid var(--border-light);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow), 0 12px 40px rgba(0, 0, 0, 0.18);
@@ -7716,3 +7717,40 @@ body.interview-active #practice-mode :is(
 .my-solution-tag.interview { color: var(--mark); border-color: rgba(var(--mark-rgb), 0.6); }
 .my-solution-actions { margin-left: auto; display: flex; gap: 4px; }
 .my-solution-code { margin: 0; padding: 10px 12px; max-height: 320px; overflow: auto; background: var(--code-bg); color: var(--code-text); font-family: var(--mono); font-size: 12.5px; line-height: 1.5; }
+
+/* Precise pointing (tutor.js): quoted words highlighted in place, and a
+   hand or arrow that glides to them. */
+::highlight(tutor-quote) {
+  background-color: rgba(var(--mark-rgb), 0.28);
+  color: inherit;
+  text-decoration: underline 2px rgba(var(--mark-rgb), 0.9);
+  text-underline-offset: 3px;
+}
+.tutor-quote-fallback { outline: 2px solid var(--mark); outline-offset: 2px; border-radius: 3px; }
+.tutor-pointer {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 66;
+  pointer-events: none;
+  opacity: 0;
+  transition: transform 0.55s cubic-bezier(.2,.8,.2,1), opacity 0.25s ease;
+}
+.tutor-pointer.show { opacity: 1; }
+.tutor-pointer .tp-hand {
+  display: inline-block;
+  font-size: 32px;
+  line-height: 40px;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
+  animation: tp-tap 1.4s ease-in-out infinite;
+}
+.tutor-pointer.below .tp-hand { transform: rotate(-90deg); animation-name: tp-tap-up; }
+.tutor-pointer.arrow { color: var(--mark); }
+.tutor-pointer.below.arrow svg { transform: rotate(-60deg); }
+@keyframes tp-tap { 50% { transform: translateX(6px); } }
+@keyframes tp-tap-up { 0%, 100% { transform: rotate(-90deg); } 50% { transform: rotate(-90deg) translateX(6px); } }
+.tutor-stage { margin: 6px 0 0; color: var(--muted); font-style: italic; font-size: var(--fs-xs); }
+@media (prefers-reduced-motion: reduce) {
+  .tutor-pointer { transition: opacity 0.2s ease; }
+  .tutor-pointer .tp-hand { animation: none; }
+}

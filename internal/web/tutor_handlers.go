@@ -109,6 +109,8 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 	// carried out (sent to the page as actions) and their results fed back,
 	// until the model answers without calling a tool.
 	var model string
+	var said strings.Builder // everything the model said this turn
+	did := map[string]bool{} // actions carried out this turn
 	for round := 0; ; round++ {
 		if round == maxToolRounds {
 			tools = nil // last round: make it answer in words
@@ -134,6 +136,7 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		model = reply.Model
+		said.WriteString(reply.Content)
 		// Stop when the model answers in words, and always after the last
 		// round: some models keep emitting tool calls even when no tools are
 		// offered, which would otherwise loop forever.
@@ -150,6 +153,11 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 				log.Printf("tutor: %s rejected: %s (args %.300s)", call.Function.Name, result, args)
 			}
 			if action != nil {
+				// A near-empty sketch doesn't count as the turn's visual, so
+				// the director still draws a real one.
+				if !(action["name"] == "scratchpad_sketch" && tutor.WeakSketch(action)) {
+					did[action["name"].(string)] = true
+				}
 				action["type"] = "action"
 				if err := send(action); err != nil {
 					return
@@ -160,6 +168,36 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 		if reply.Content != "" {
 			// Keep text from successive rounds apart in the page.
 			send(map[string]string{"type": "delta", "text": "\n\n"})
+		}
+	}
+	// Teacher Mode: stage whatever the model left out — a precise pointer at
+	// the page and a whiteboard sketch — so every lesson turn has both.
+	if req.Context.Teach && ch != nil && ws != nil && req.Context.Interview == nil && strings.TrimSpace(said.String()) != "" {
+		need := tutor.DirectorNeeds{
+			Highlight: !did["highlight"],
+			Sketch:    !did["scratchpad_sketch"] && !did["scratchpad_visualize"] && !did["scratchpad_code"],
+		}
+		if need.Highlight || need.Sketch {
+			send(map[string]string{"type": "status", "text": "Pointing and drawing…"})
+			calls, err := s.tutor.Direct(r.Context(), model, req.Context, ch, ws, said.String(), need)
+			if err != nil {
+				if r.Context().Err() != nil {
+					return
+				}
+				log.Printf("tutor: director failed: %v", err)
+			}
+			for _, call := range calls {
+				result, action := ws.Execute(call)
+				if action == nil {
+					args, _ := json.Marshal(call.Function.Arguments)
+					log.Printf("tutor: director %s rejected: %s (args %.300s)", call.Function.Name, result, args)
+					continue
+				}
+				action["type"] = "action"
+				if err := send(action); err != nil {
+					return
+				}
+			}
 		}
 	}
 	send(map[string]string{"type": "done", "model": model})

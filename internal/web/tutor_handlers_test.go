@@ -1,6 +1,7 @@
 package web
 
 import (
+	"dsatutor/internal/chapter"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -158,5 +159,89 @@ func TestTutorChatToolLoopIsBounded(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), `"type":"done"`) {
 		t.Errorf("reply never finished: %s", rec.Body.String())
+	}
+}
+
+// In Teacher Mode, a model that only talks gets its turn staged by the
+// director: one structured call returns a highlight and a sketch, which are
+// carried out like tool calls.
+func TestTeacherDirectorStagesTextOnlyTurns(t *testing.T) {
+	var formats int
+	thin := false
+	ollama := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/tags":
+			w.Write([]byte(`{"models":[{"name":"m:latest"}]}`))
+		case "/api/show":
+			w.Write([]byte(`{"capabilities":["completion","tools"]}`))
+		case "/api/chat":
+			var body map[string]any
+			json.NewDecoder(r.Body).Decode(&body)
+			if body["format"] != nil {
+				formats++
+				card := `{"highlight":{"target":"section-1","quote":"two pointers","pointer":"hand","note":"here"},"sketch":{"title":"t","captions":["a"],"elements":[{"type":"cells","x":10,"y":10,"values":"[1, 2, 3]","pointers":"{\"left\": 0}"},{"type":"text","x":10,"y":40,"text":"start"},{"type":"arrow","x":10,"y":50,"x2":20,"y2":30}]}}`
+				if thin {
+					card = `{"highlight":{"target":"section-1","quote":"two pointers","pointer":"hand","note":"here"},"sketch":{"title":"t","captions":["a"],"elements":[{"type":"text","x":10,"y":10,"text":"idea"}]}}`
+				}
+				json.NewEncoder(w).Encode(map[string]any{"message": map[string]string{"content": card}, "done": true})
+				return
+			}
+			w.Write([]byte(`{"message":{"content":"Two pointers walk inward."},"done":true}` + "\n"))
+		}
+	}))
+	defer ollama.Close()
+	t.Setenv("DSATUTOR_OLLAMA_URL", ollama.URL)
+	t.Setenv("DSATUTOR_TUTOR_MODEL", "")
+	s := NewServer([]chapter.Chapter{{Number: 3, Title: "Two Pointers", Summary: "s"}})
+
+	req := `{"messages":[{"role":"user","content":"next"}],"context":{"view":"chapter","chapterNumber":3,"teach":true,"targets":[{"id":"section-1","label":"Overview"}]}}`
+	rec := httptest.NewRecorder()
+	s.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/tutor/chat", strings.NewReader(req)))
+
+	var kinds []string
+	var sketch map[string]any
+	for _, line := range strings.Split(strings.TrimSpace(rec.Body.String()), "\n") {
+		var ev map[string]any
+		json.Unmarshal([]byte(line), &ev)
+		k := ev["type"].(string)
+		if k == "action" {
+			k += ":" + ev["name"].(string)
+			if ev["name"] == "scratchpad_sketch" {
+				sketch = ev
+			}
+		}
+		kinds = append(kinds, k)
+	}
+	if got := strings.Join(kinds, ","); got != "delta,status,action:highlight,action:scratchpad_sketch,done" {
+		t.Errorf("events = %s", got)
+	}
+	if formats != 1 {
+		t.Errorf("director called %d times, want 1", formats)
+	}
+	// Stringified values and pointers arrive as real data.
+	el := sketch["elements"].([]any)[0].(map[string]any)
+	if _, ok := el["values"].([]any); !ok {
+		t.Errorf("values not decoded: %#v", el["values"])
+	}
+	if _, ok := el["pointers"].(map[string]any); !ok {
+		t.Errorf("pointers not decoded: %#v", el["pointers"])
+	}
+
+	// A thin sketch from the director gets exactly one retry.
+	formats, thin = 0, true
+	rec = httptest.NewRecorder()
+	s.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/tutor/chat", strings.NewReader(req)))
+	if formats != 2 {
+		t.Errorf("thin sketch: director called %d times, want 2 (one retry)", formats)
+	}
+	thin = false
+
+	// Outside Teacher Mode there is no director.
+	formats = 0
+	rec = httptest.NewRecorder()
+	s.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/tutor/chat",
+		strings.NewReader(`{"messages":[{"role":"user","content":"hi"}],"context":{"view":"chapter","chapterNumber":3,"targets":[{"id":"section-1","label":"Overview"}]}}`)))
+	if formats != 0 {
+		t.Error("director ran outside Teacher Mode")
 	}
 }

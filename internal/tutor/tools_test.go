@@ -204,3 +204,21 @@ func TestScratchpadRunsCode(t *testing.T) {
 		t.Errorf("run: %s %v", res, act)
 	}
 }
+
+func TestWeakSketch(t *testing.T) {
+	el := func(typ string) any { return map[string]any{"type": typ} }
+	cases := []struct {
+		els  []any
+		weak bool
+	}{
+		{[]any{el("line")}, true},
+		{[]any{el("text"), el("text"), el("line")}, true},
+		{[]any{el("cells"), el("text")}, true},
+		{[]any{el("cells"), el("text"), el("arrow")}, false},
+	}
+	for i, c := range cases {
+		if got := WeakSketch(Action{"elements": c.els}); got != c.weak {
+			t.Errorf("case %d: weak = %v, want %v", i, got, c.weak)
+		}
+	}
+}

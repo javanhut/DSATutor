@@ -246,8 +246,10 @@ const teacherPersona = `You are the DSA Tutor's teacher, running a live, one-on-
 
 How you teach:
 - One idea per turn. Move through the chapter in order: why the technique is needed (the slow way first), the core idea and its intuition, a worked example traced on a tiny input, the invariant or reason it works, common mistakes, and when to use it.
-- Every turn does three things: point at the part of the page you're on with highlight, make the idea visible in the scratchpad (scratchpad_sketch to explain intuition on a hand-drawn whiteboard like at a real board, scratchpad_visualize for an exact step-by-step diagram, or scratchpad_run_code for a small program to trace), and end with a question for the learner, often with ask_learner. Then stop and wait.
+- Every turn does three things: point precisely at the part of the page you're on with highlight (quote the exact sentence or give the code lines, with pointer \"hand\" while you read through it or \"arrow\" to say look here), make the idea visible in the scratchpad (scratchpad_sketch to explain intuition on a hand-drawn whiteboard like at a real board, scratchpad_visualize for an exact step-by-step diagram, or scratchpad_run_code for a small program to trace), and end with a question for the learner, often with ask_learner. Then stop and wait.
 - Keep your words short: two to five sentences per turn. The diagram and the question do the heavy lifting.
+- The scratchpad must show exactly the example your words use: the same array, the same numbers, the same pointer positions.
+- Never use LaTeX or $...$ math; write math as plain text, like 1 + 11 = 12 or O(n).
 - Use at most one scratchpad tool per turn: each one replaces what the scratchpad shows. Your words must describe what is in the scratchpad now ("In the scratchpad, step through…"); never write "here's the code:" with nothing after it, since the code appears in the scratchpad, not in the chat.
 - Ask exactly one question: either with ask_learner or as the last sentence of your text, never both. Never write stage directions such as "(waits for your answer)".
 - Use small concrete inputs (5 to 8 elements) and the same input across a few turns so the learner can follow it.
@@ -263,27 +265,39 @@ func TeacherPrompt(ctx Context, ch *chapter.Chapter, ws *Workspace) string {
 		b.WriteString(voiceNote)
 	}
 	b.WriteString("\n\n# The chapter you are teaching\n")
-	writeChapter(&b, ch)
+	writeChapterMaterial(&b, ch)
+	writeScratchpad(&b, ctx.Scratchpad)
+	if ws != nil {
+		b.WriteString(ws.Describe())
+	}
+	return truncate(b.String(), 60000)
+}
+
+// writeChapterMaterial writes everything a teacher (or the director that
+// stages its visuals) needs from a chapter: overview, concepts, worked
+// examples and check questions.
+func writeChapterMaterial(b *strings.Builder, ch *chapter.Chapter) {
+	writeChapter(b, ch)
 	for _, c := range ch.Concepts {
-		fmt.Fprintf(&b, "\n## Concept: %s\n", c.Name)
+		fmt.Fprintf(b, "\n## Concept: %s\n", c.Name)
 		if c.WhyItWorks != "" {
-			fmt.Fprintf(&b, "Why it works: %s\n", c.WhyItWorks)
+			fmt.Fprintf(b, "Why it works: %s\n", c.WhyItWorks)
 		}
 		for _, idea := range c.CoreIdeas {
-			fmt.Fprintf(&b, "- %s\n", idea)
+			fmt.Fprintf(b, "- %s\n", idea)
 		}
 		for _, ex := range c.Examples {
 			if ex.Snippet != "" {
-				fmt.Fprintf(&b, "Example code:\n```\n%s\n```\n", truncate(strings.TrimSpace(ex.Snippet), 1500))
+				fmt.Fprintf(b, "Example code:\n```\n%s\n```\n", truncate(strings.TrimSpace(ex.Snippet), 1500))
 			}
 		}
 	}
 	for _, we := range ch.WorkedExamples {
-		fmt.Fprintf(&b, "\n## Worked example: %s\n%s\n", we.Title, we.Problem)
+		fmt.Fprintf(b, "\n## Worked example: %s\n%s\n", we.Title, we.Problem)
 		for i, st := range we.Steps {
-			fmt.Fprintf(&b, "%d. %s: %s", i+1, st.Subgoal, st.Explanation)
+			fmt.Fprintf(b, "%d. %s: %s", i+1, st.Subgoal, st.Explanation)
 			if st.State != "" {
-				fmt.Fprintf(&b, " (trace: %s)", st.State)
+				fmt.Fprintf(b, " (trace: %s)", st.State)
 			}
 			b.WriteString("\n")
 		}
@@ -291,19 +305,14 @@ func TeacherPrompt(ctx Context, ch *chapter.Chapter, ws *Workspace) string {
 	if len(ch.CheckQuestions) > 0 {
 		b.WriteString("\n## Check questions you can draw on (answers are for you)\n")
 		for _, q := range ch.CheckQuestions {
-			fmt.Fprintf(&b, "- %s", q.Prompt)
+			fmt.Fprintf(b, "- %s", q.Prompt)
 			if len(q.Choices) > 0 && q.Answer >= 0 && q.Answer < len(q.Choices) {
-				fmt.Fprintf(&b, " Answer: %s.", q.Choices[q.Answer])
+				fmt.Fprintf(b, " Answer: %s.", q.Choices[q.Answer])
 			}
 			if q.Explanation != "" {
-				fmt.Fprintf(&b, " %s", truncate(q.Explanation, 400))
+				fmt.Fprintf(b, " %s", truncate(q.Explanation, 400))
 			}
 			b.WriteString("\n")
 		}
 	}
-	writeScratchpad(&b, ctx.Scratchpad)
-	if ws != nil {
-		b.WriteString(ws.Describe())
-	}
-	return truncate(b.String(), 60000)
 }

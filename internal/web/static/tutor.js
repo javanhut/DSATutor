@@ -168,6 +168,9 @@
   // Markdown (just what tutors write: code, lists, emphasis, headings)
 
   function inlineMd(text) {
+    // Some models write LaTeX math ($O(n)$); show it as code instead of
+    // stray dollar signs.
+    text = text.replace(/\$([^$\n]{1,80})\$/g, (m, inner) => '`' + inner.replace(/\\(cdot|times)/g, '*').replace(/\\(le|leq)/g, '<=').replace(/\\(ge|geq)/g, '>=').replace(/\\[a-z]+/g, '').replace(/[{}]/g, '') + '`');
     return escapeHtml(text)
       .replace(/`([^`]+)`/g, '<code>$1</code>')
       .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
@@ -542,6 +545,14 @@
           } else if (ev.type === 'thinking') {
             thinking += ev.text;
             if (!reply.trim()) textEl.innerHTML = `<p class="tutor-typing">Thinking… <span class="tutor-think-count">${thinking.length} chars of reasoning</span></p>`;
+          } else if (ev.type === 'status') {
+            let st = bubble.querySelector('.tutor-stage');
+            if (!st) {
+              st = document.createElement('p');
+              st.className = 'tutor-stage';
+              bubble.appendChild(st);
+            }
+            st.textContent = ev.text;
           } else if (ev.type === 'action') {
             const done = runAction(ev);
             if (done && done.name === 'ask_learner') {
@@ -567,6 +578,7 @@
     }
 
     bubble.classList.remove('pending');
+    bubble.querySelector('.tutor-stage')?.remove();
     const saved = actions.map(({ undo, ...a }) => a); // undo handles don't survive a reload
     if (reply.trim() || actions.length) {
       tutor.messages.push({ role: 'assistant', content: reply.trim() || '(done)', actions: saved });
@@ -644,10 +656,29 @@
         card.querySelectorAll('.check-question').forEach((q, j) => {
           add(`section-${i + 1}-question-${j + 1}`, `Check question ${j + 1}: ${textOf(q.querySelector('.check-prompt'), 70)}`, () => q);
         });
-        [...card.querySelectorAll('pre')].filter(p => !p.closest('.worked-step, .check-question')).slice(0, 6).forEach((pre, j) => {
-          add(`section-${i + 1}-code-${j + 1}`, `Code block ${j + 1} in "${title}": ${textOf(pre, 50)}`, () => pre);
+        // Visible code only (a worked example's full solution stays hidden
+        // until its steps are revealed), each addressable by line.
+        [...card.querySelectorAll('pre')].filter(p => p.offsetParent && !p.closest('.check-question')).slice(0, 8).forEach((pre, j) => {
+          const step = pre.closest('.worked-step');
+          const what = pre.id === 'code-lines' ? 'The animation\'s code panel'
+            : step ? `Code of worked-example step "${textOf(step.querySelector('.subgoal'), 40)}"`
+            : pre.closest('.completion') ? 'Fill-in-the-blank exercise code'
+            : 'Code block';
+          const first = pre.querySelector('.line-content') || pre;
+          add(`section-${i + 1}-code-${j + 1}`, `${what} in "${title}": ${textOf(first, 50)}`, () => pre, { lines: true });
         });
       });
+    }
+    if (kind === 'chapter' || kind === 'teacher') {
+      // The chapter's animation and its code panel, so the tutor can point
+      // at a line of the code the animation is stepping through.
+      const panel = $('code-lines');
+      if (panel && panel.offsetParent && panel.querySelector('.code-line')) {
+        const sb = $('storyboard-select');
+        const name = sb && sb.selectedOptions[0] ? sb.selectedOptions[0].textContent : 'the animation';
+        add('animation-code', `The animation's code panel (${name}), by line`, () => panel, { lines: true });
+        add('animation', `The animation itself (${name})`, () => $('visualizer-canvas'));
+      }
     }
     return t.slice(0, 60);
   }
@@ -674,7 +705,215 @@
     spot.widgets.forEach(w => w.clear ? w.clear() : w.remove());
     spot.timers.forEach(clearTimeout);
     document.querySelectorAll('.tutor-callout').forEach(n => n.remove());
+    document.querySelectorAll('.tutor-quote-fallback').forEach(n => n.classList.remove('tutor-quote-fallback'));
+    if (window.CSS && CSS.highlights) CSS.highlights.delete('tutor-quote');
+    spot.ranges = [];
+    hidePointer();
     Object.assign(spot, { nodes: [], lines: [], widgets: [], timers: [], keys: new Set() });
+  }
+
+  // ---------------------------------------------------------------------
+  // Precise pointing: find the exact words the tutor quoted (or lines of a
+  // code block) on the page, highlight them with the CSS Custom Highlight
+  // API (no DOM changes), and point a hand or an arrow at them.
+
+  const SKIP_TEXT = '.tutor-callout, button, select, script, style, .hidden, .tts-btn';
+
+  // Every visible text node under root, with its start offset in the
+  // concatenated text.
+  function textIndex(root) {
+    const nodes = [];
+    let total = 0;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: (n) => (n.parentElement && n.parentElement.closest(SKIP_TEXT) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+    });
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      nodes.push({ node: n, start: total });
+      total += n.nodeValue.length;
+    }
+    return nodes;
+  }
+
+  function rangeFromOffsets(index, from, to) {
+    const locate = (pos, isEnd) => {
+      for (let i = 0; i < index.length; i++) {
+        const { node, start } = index[i];
+        const end = start + node.nodeValue.length;
+        if (pos < end || (isEnd && pos === end)) return { node, offset: pos - start };
+      }
+      const last = index[index.length - 1];
+      return last ? { node: last.node, offset: last.node.nodeValue.length } : null;
+    };
+    const a = locate(from, false), b = locate(to, true);
+    if (!a || !b) return null;
+    const r = document.createRange();
+    r.setStart(a.node, a.offset);
+    r.setEnd(b.node, b.offset);
+    return r;
+  }
+
+  const FOLD = { '\u2018': "'", '\u2019': "'", '\u201c': '"', '\u201d': '"', '\u2013': '-', '\u2014': '-', '\u00d7': 'x', '\u2264': '<=', '\u2265': '>=', '\u2192': '->' };
+  const foldChar = (c) => (FOLD[c] || c).toLowerCase();
+  // Sentence punctuation is ignored when matching: headings have none, and
+  // models add or drop it.
+  const SENTENCE_PUNCT = /[.,;:!?"'\u2018\u2019\u201c\u201d]/;
+
+  // findQuote matches loosely: case, whitespace, curly quotes and Markdown
+  // marks don't matter, and if the whole quote isn't there its longest
+  // leading run of words is used (models paraphrase the tail).
+  function findQuote(root, quote) {
+    if (!root || !quote) return null;
+    const index = textIndex(root);
+    if (!index.length) return null;
+    let hay = '';
+    const map = []; // folded position -> original position
+    const BLOCK = 'p, li, h1, h2, h3, h4, h5, h6, pre, td, th, dt, dd, blockquote, .code-line, div';
+    let lastBlock = null;
+    index.forEach(({ node, start }) => {
+      const t = node.nodeValue;
+      // Text from different blocks (a heading, then its paragraph) reads
+      // as separate words even though the DOM has no space between them.
+      const block = node.parentElement && node.parentElement.closest(BLOCK);
+      if (lastBlock && block !== lastBlock && hay && !hay.endsWith(' ')) {
+        hay += ' ';
+        map.push(start);
+      }
+      lastBlock = block;
+      for (let i = 0; i < t.length; i++) {
+        const c = t[i];
+        if (SENTENCE_PUNCT.test(c)) continue;
+        if (/\s/.test(c)) {
+          if (hay.endsWith(' ') || hay === '') continue;
+          hay += ' ';
+          map.push(start + i);
+          continue;
+        }
+        const f = foldChar(c);
+        for (const ch of f) { hay += ch; map.push(start + i); }
+      }
+    });
+    const clean = quote.replace(/[`*_]/g, '').split('').filter(c => !SENTENCE_PUNCT.test(c)).map(foldChar).join('').replace(/\s+/g, ' ').trim();
+    const words = clean.split(' ');
+    for (let n = words.length; n >= Math.min(3, words.length); n--) {
+      const needle = words.slice(0, n).join(' ');
+      if (needle.length < 8 && n < words.length) break;
+      const at = hay.indexOf(needle);
+      if (at >= 0) return rangeFromOffsets(index, map[at], map[at + needle.length - 1] + 1);
+    }
+    return null;
+  }
+
+  // Lines start..end (1-based) of a <pre> block. The animation's code panel
+  // is one div.code-line per line rather than newline-separated text.
+  function preLinesRange(pre, start, end) {
+    const rows = pre.querySelectorAll('.code-line[data-line]');
+    if (rows.length) {
+      const s = Math.max(1, Math.min(start, rows.length)), e = Math.max(s, Math.min(end || start, rows.length));
+      const a = rows[s - 1].querySelector('.line-content') || rows[s - 1];
+      const b = rows[e - 1].querySelector('.line-content') || rows[e - 1];
+      const r = document.createRange();
+      r.setStart(a, 0);
+      r.setEnd(b, b.childNodes.length);
+      return r;
+    }
+    const index = textIndex(pre);
+    const text = index.map(x => x.node.nodeValue).join('');
+    const lines = text.split('\n');
+    const s = Math.max(1, Math.min(start, lines.length)), e = Math.max(s, Math.min(end || start, lines.length));
+    let from = 0;
+    for (let i = 0; i < s - 1; i++) from += lines[i].length + 1;
+    let to = from;
+    for (let i = s - 1; i < e; i++) to += lines[i].length + (i < e - 1 ? 1 : 0);
+    return rangeFromOffsets(index, from, to);
+  }
+
+  function markRange(range) {
+    spot.ranges = spot.ranges || [];
+    spot.ranges.push(range);
+    if (window.CSS && CSS.highlights && window.Highlight) {
+      CSS.highlights.set('tutor-quote', new Highlight(...spot.ranges));
+    } else {
+      // Older browsers: outline the smallest element around the quote.
+      const el = range.commonAncestorContainer.nodeType === 1 ? range.commonAncestorContainer : range.commonAncestorContainer.parentElement;
+      el.classList.add('tutor-quote-fallback');
+    }
+  }
+
+  // The block (paragraph, list item, code block...) a range sits in, for
+  // scrolling and for the note.
+  function blockOf(range, atEnd) {
+    const c = atEnd ? range.endContainer : range.startContainer;
+    const el = c.nodeType === 1 ? c : c.parentElement;
+    return el.closest('p, li, pre, td, h2, h3, h4, .example, .worked-step, .check-question, .completion, div') || el;
+  }
+
+  // ---------------------------------------------------------------------
+  // The pointer: a hand (reading through this line with you) or an arrow
+  // (look here) that glides to the spot and follows it while the page
+  // scrolls.
+
+  const pointer = { el: null, rect: null, kind: '', raf: 0 };
+
+  function hidePointer() {
+    cancelAnimationFrame(pointer.raf);
+    pointer.raf = 0;
+    pointer.rect = null;
+    pointer.el?.classList.remove('show');
+  }
+
+  // anchor: the element whose left edge the pointer stands at, so it sits
+  // in the margin beside the line instead of over the words before a quote.
+  function pointAt(getRect, kind, anchor) {
+    if (!kind || kind === 'none') return;
+    if (!pointer.el) {
+      pointer.el = document.createElement('div');
+      pointer.el.id = 'tutor-pointer';
+      pointer.el.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(pointer.el);
+    }
+    pointer.kind = kind;
+    pointer.rect = getRect;
+    pointer.el.className = `tutor-pointer ${kind}`;
+    pointer.el.innerHTML = kind === 'hand'
+      ? '<span class="tp-hand">\u{1F449}</span>'
+      : '<svg viewBox="0 0 64 40" width="64" height="40"><path d="M3 30 C 18 34, 34 28, 52 18" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><path d="M40 12 L 55 17 L 46 30" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    requestAnimationFrame(() => pointer.el.classList.add('show'));
+    cancelAnimationFrame(pointer.raf);
+    const follow = () => {
+      const r = pointer.rect && pointer.rect();
+      if (!r || (!r.width && !r.height)) {
+        pointer.el.style.opacity = '0';
+      } else {
+        pointer.el.style.opacity = '';
+        const w = kind === 'hand' ? 40 : 64, h = 40;
+        // Stand in the margin left of the anchor, level with the spot; when
+        // there's no room (it would cover the sidebar), point up from below.
+        const edge = anchor && anchor.isConnected ? Math.min(anchor.getBoundingClientRect().left, r.left) : r.left;
+        const main = document.querySelector('.main-content');
+        const floor = main ? main.getBoundingClientRect().left : 0;
+        let x = edge - w - 6, y = r.top + Math.min(r.height, 28) / 2 - h / 2, below = false;
+        if (x < floor + 2) { x = r.left + 4; y = r.bottom + 4; below = true; }
+        pointer.el.classList.toggle('below', below);
+        pointer.el.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
+        // Every half second, make sure the scratchpad isn't covering it.
+        const now = performance.now();
+        if (!pointer.lastAvoid || now - pointer.lastAvoid > 500) {
+          pointer.lastAvoid = now;
+          window.dsaScratchpad?.avoid({ left: Math.min(x, r.left), right: Math.max(x + w, r.left + (r.width || 1)), top: Math.min(y, r.top), bottom: Math.max(y + h, r.bottom) });
+        }
+      }
+      pointer.raf = requestAnimationFrame(follow);
+    };
+    follow();
+  }
+
+  function rectOfRange(range) {
+    return () => {
+      if (!range.startContainer.isConnected) return null;
+      // The first rect with some width: blank lines and line ends have none.
+      const rects = [...range.getClientRects()].filter(r => r.width > 2);
+      return rects.length ? rects[0] : range.getBoundingClientRect();
+    };
   }
 
   // A pane inside a hidden problem tab has to be shown before it can be
@@ -715,7 +954,8 @@
   function actionLabel(a) {
     switch (a.name) {
       case 'highlight': {
-        const where = a.start_line ? `lines ${a.start_line}${a.end_line && a.end_line !== a.start_line ? `–${a.end_line}` : ''} of your code` : (a.label || a.target);
+        if (a.quote) return `Pointed at “${a.quote.length > 48 ? a.quote.slice(0, 46) + '…' : a.quote}”`;
+        const where = a.start_line ? `lines ${a.start_line}${a.end_line && a.end_line !== a.start_line ? `–${a.end_line}` : ''} of ${a.target === 'code' ? 'your code' : (a.label || a.target)}` : (a.label || a.target);
         return `Pointed at ${where}`;
       }
       case 'write_code': return `Edited your code${a.summary ? `: ${a.summary}` : ''}`;
@@ -738,15 +978,46 @@
       case 'highlight': {
         if (!target) return null;
         // Models sometimes point at the same thing twice in one reply.
-        const key = `${a.target}:${a.start_line || ''}:${a.end_line || ''}`;
+        const key = `${a.target}:${a.quote || ''}:${a.start_line || ''}:${a.end_line || ''}`;
         if (spot.keys.has(key)) return null;
         spot.keys.add(key);
         const node = target.get();
         reveal(node);
-        const record = { name: 'highlight', target: a.target, label: target.label.split(':')[0], note: a.note, start_line: a.start_line, end_line: a.end_line };
+        const record = { name: 'highlight', target: a.target, label: target.label.split(':')[0], note: a.note, start_line: a.start_line, end_line: a.end_line, quote: a.quote, pointer: a.pointer };
         const cm = target.editor && cmFor(target.editor);
         if (cm && a.start_line) {
           highlightLines(cm, a.start_line, a.end_line || a.start_line, 'tutor-line-hl', a.note);
+          const line = Math.max(0, Math.min(a.start_line - 1, cm.lastLine()));
+          pointAt(() => {
+            if (!cm.getWrapperElement().isConnected) return null;
+            const c = cm.charCoords({ line, ch: 0 }, 'window');
+            return { left: c.left, top: c.top, bottom: c.bottom, width: 1, height: c.bottom - c.top };
+          }, a.pointer || 'hand', cm.getWrapperElement());
+          return record;
+        }
+        // Precise: the quoted words (searched in the region, then anywhere
+        // in this view, since models sometimes pick the wrong region), or
+        // lines of a lesson code block.
+        let range = null;
+        if (a.quote) {
+          const view = node.closest('#standard-chapter-content, #practice-mode, #sandbox-mode') || document.body;
+          range = findQuote(node, a.quote) || findQuote(view, a.quote);
+        }
+        if (!range && a.start_line && node.tagName === 'PRE') range = preLinesRange(node, a.start_line, a.end_line);
+        if (range) {
+          reveal(blockOf(range));
+          markRange(range);
+          const block = blockOf(range);
+          block.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          // Point first: the note goes after the range's last block, outside
+          // the highlighted text.
+          const rows = block.closest('pre');
+          pointAt(rectOfRange(range), a.pointer || 'hand', rows || block);
+          if (a.note && !target.button) {
+            const call = calloutNode(a.note);
+            call.querySelector('.tutor-callout-close').onclick = () => call.remove();
+            blockOf(range, true).insertAdjacentElement('afterend', call);
+          }
           return record;
         }
         node.classList.add('tutor-spotlight');
@@ -759,6 +1030,10 @@
           node.insertAdjacentElement('afterend', call);
         }
         node.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        if (a.pointer && a.pointer !== 'none') {
+          const head = node.querySelector('h2, h3, .example-header') || node;
+          pointAt(() => (head.isConnected ? head.getBoundingClientRect() : null), a.pointer);
+        }
         return record;
       }
       case 'write_code': {
@@ -1083,6 +1358,9 @@
     conversation: (key) => (key === tutor.key ? tutor.messages : loadConversation(key)).slice(),
     model: () => tutor.model,
     status: loadStatus,
+    // Carry out one action as if the server had sent it (testing, demos).
+    act: (a) => runAction(a),
+    clear: () => clearSpotlights(),
   };
   window.openTutor = openPanel;
   init();

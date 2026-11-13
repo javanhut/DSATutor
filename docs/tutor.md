@@ -75,6 +75,26 @@ questions, the tutor teaches the chapter one idea at a time. Each turn it:
 3. asks you one question, often with clickable answers (`ask_learner`), and
    waits.
 
+**Precise pointing.** `highlight` takes a `quote` (the exact words on the
+page) or a line range (the editor, a lesson code block, an exercise, or the
+animation's code panel). The page finds the words — ignoring case,
+whitespace, punctuation and Markdown, searching the whole lesson if the
+model named the wrong region, and using the longest matching start if it
+paraphrased the end — highlights exactly that text in place, scrolls it into
+view, pins the note under it, and a **hand** (reading through this line) or
+an **arrow** (look here) glides into the margin beside it and follows it
+while the page scrolls. The scratchpad moves out of the way of whatever is
+being pointed at, unless you dragged it somewhere yourself.
+
+**Every turn is staged.** Whether a model calls highlight or draws varies
+by model and run, so after each Teacher Mode turn the server checks: if the
+turn didn't point at a precise spot, or drew nothing substantial (a sketch
+with fewer than three elements or no cells, nodes, boxes, circles or
+arrows), a "director" asks the same model for the missing parts with one
+structured-output call (JSON schema, which every model follows), retrying
+once if its sketch is still thin. The chat shows "Pointing and drawing…"
+meanwhile.
+
 It adapts: a right answer moves on; a wrong one gets the misconception shown
 in the scratchpad and the question asked another way. The quick prompts
 **Next**, **Show me**, **I'm confused**, **Quiz me** and **Let me try** steer

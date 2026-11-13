@@ -115,11 +115,13 @@ func (w *Workspace) Tools() []Tool {
 		ids[i] = t.ID
 	}
 	tools = append(tools, fn("highlight",
-		"Point at a part of the page: scrolls it into view, outlines it and shows your note beside it. Use it whenever you refer to something on screen, e.g. the lines of the learner's code that contain a bug, an example, or a lesson section.",
+		"Point at a precise spot on the page: it scrolls there, highlights it, and a hand or an arrow points at it, with your note beside it. Be precise: give quote (the exact words on the page you are talking about) or start_line/end_line (for code), not just a section. Use it whenever you refer to something on screen.",
 		map[string]any{
-			"target":     map[string]any{"type": "string", "enum": ids, "description": "id of the region"},
-			"start_line": map[string]any{"type": "integer", "description": "first line to highlight (code editors only)"},
-			"end_line":   map[string]any{"type": "integer", "description": "last line to highlight (code editors only; defaults to start_line)"},
+			"target":     map[string]any{"type": "string", "enum": ids, "description": "id of the region that contains the spot"},
+			"quote":      map[string]any{"type": "string", "description": "the exact words from the page to highlight, copied verbatim (3 to 15 words), e.g. a sentence of the lesson or a line of an example"},
+			"start_line": map[string]any{"type": "integer", "description": "first line to highlight (code editors and code blocks)"},
+			"end_line":   map[string]any{"type": "integer", "description": "last line to highlight (defaults to start_line)"},
+			"pointer":    map[string]any{"type": "string", "enum": []string{"hand", "arrow", "none"}, "description": "hand: you're reading or walking through this sentence or line with the learner; arrow: 'look here' at a spot; none: just highlight"},
 			"note":       map[string]any{"type": "string", "description": "a short note shown beside the highlight (one sentence)"},
 		}, "target"))
 
@@ -173,8 +175,23 @@ func (w *Workspace) Execute(call ToolCall) (string, Action) {
 		if note := strings.TrimSpace(str(args, "note")); note != "" {
 			act["note"] = truncate(note, 300)
 		}
+		if q := strings.TrimSpace(str(args, "quote")); q != "" {
+			act["quote"] = truncate(q, 300)
+		}
+		switch p := str(args, "pointer"); p {
+		case "hand", "arrow", "none":
+			act["pointer"] = p
+		}
 		where := t.Label
-		if t.Lines {
+		if t.Lines && t.ID != w.codeID {
+			// A code block in a lesson: the server doesn't hold its text, so
+			// the page clamps the range to the block.
+			if start := intArg(args, "start_line"); start > 0 {
+				end := max(start, intArg(args, "end_line"))
+				act["start_line"], act["end_line"] = start, end
+				where = fmt.Sprintf("lines %d-%d of %s", start, end, t.Label)
+			}
+		} else if t.Lines {
 			n := lineCount(w.codeFor(t))
 			start, end := intArg(args, "start_line"), intArg(args, "end_line")
 			if start > 0 {
@@ -188,6 +205,9 @@ func (w *Workspace) Execute(call ToolCall) (string, Action) {
 				act["start_line"], act["end_line"] = start, end
 				where = fmt.Sprintf("lines %d-%d of %s", start, end, t.Label)
 			}
+		}
+		if q, ok := act["quote"].(string); ok {
+			where = fmt.Sprintf("%q in %s", q, t.Label)
 		}
 		return "Highlighted " + where + "; the learner can see it now.", act
 

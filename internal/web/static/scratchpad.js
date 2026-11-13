@@ -397,6 +397,7 @@
     let start = null;
     handle.addEventListener('pointerdown', (e) => {
       if (e.target.closest('button')) return;
+      box.dataset.placed = 'user'; // the learner chose a spot: never move it
       const r = box.getBoundingClientRect();
       start = { x: e.clientX, y: e.clientY, left: r.left, top: r.top };
       handle.setPointerCapture(e.pointerId);
@@ -708,6 +709,30 @@
     try { localStorage.setItem(HAND_KEY, on ? '1' : ''); } catch (e) { /* private mode */ }
   }
 
+  // Move the scratchpad out of the way of a spot the tutor is pointing at
+  // (rect in viewport coordinates): to the top or the bottom of the window,
+  // whichever leaves the spot visible. A scratchpad the learner dragged
+  // stays where they put it.
+  function avoid(rect) {
+    const box = $('scratchpad');
+    if (!box || box.classList.contains('hidden') || box.dataset.placed === 'user' || !rect) return;
+    const r = box.getBoundingClientRect();
+    const overlaps = r.left < rect.right && rect.left < r.right && r.top < rect.bottom && rect.top < r.bottom;
+    if (!overlaps) return;
+    const h = r.height, margin = 16;
+    if (rect.top > h + margin * 2) {
+      Object.assign(box.style, { top: `${margin}px`, bottom: 'auto' }); // spot is low: go to the top
+    } else if (window.innerHeight - rect.bottom > h + margin * 2) {
+      Object.assign(box.style, { top: 'auto', bottom: `${margin}px` }); // spot is high: go to the bottom
+    } else {
+      // No vertical room: shrink to fit under or over the spot.
+      const below = window.innerHeight - rect.bottom - margin * 2;
+      const above = rect.top - margin * 2;
+      if (below >= above) Object.assign(box.style, { top: 'auto', bottom: `${margin}px`, height: `${Math.max(220, below)}px` });
+      else Object.assign(box.style, { top: `${margin}px`, bottom: 'auto', height: `${Math.max(220, above)}px` });
+    }
+  }
+
   // What the tutor sees of the scratchpad.
   function state() {
     if (!$('scratchpad') || sp.kind !== 'code') return null;
@@ -716,5 +741,5 @@
     return { code, output: sp.ran ? `${sp.output}${sp.error ? `\n${sp.error}` : ''}`.trim() : '' };
   }
 
-  window.dsaScratchpad = { showCode, showFrames, showSketch, open, close, state, setHandwritten };
+  window.dsaScratchpad = { showCode, showFrames, showSketch, open, close, state, setHandwritten, avoid };
 })();
