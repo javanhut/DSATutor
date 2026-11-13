@@ -7754,3 +7754,6 @@ body.interview-active #practice-mode :is(
   .tutor-pointer { transition: opacity 0.2s ease; }
   .tutor-pointer .tp-hand { animation: none; }
 }
+/* When the scratchpad is shortened to stay clear of a highlight, its body
+   scrolls; its rows must not be squeezed into each other. */
+.sp-body > * { flex-shrink: 0; }

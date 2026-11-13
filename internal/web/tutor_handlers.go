@@ -179,7 +179,8 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 		}
 		if need.Highlight || need.Sketch {
 			send(map[string]string{"type": "status", "text": "Pointing and drawing…"})
-			calls, err := s.tutor.Direct(r.Context(), model, req.Context, ch, ws, said.String(), need)
+			ws.ResetDrawings()
+			calls, err := s.tutor.Direct(r.Context(), model, messages, ch, ws, said.String(), need)
 			if err != nil {
 				if r.Context().Err() != nil {
 					return

@@ -35,6 +35,11 @@
         contextLine: `Teacher mode · Ch. ${ch.number}: ${ch.title}`,
         placeholder: 'Answer, ask a question, or say "next"…',
         emptyHtml: '<p>Your teacher is getting the lesson ready…</p>',
+        // Sent (hidden) whenever this chapter's lesson has nothing in it yet:
+        // on turning Teacher Mode on, opening the panel, Clear, reloads and
+        // chapter changes alike.
+        kickoff: '(Start the lesson on this chapter from the beginning. Keep it to one idea, then ask me a question.)',
+        kickoffLabel: 'Start the lesson',
         quick: [
           ['Next', "Got it. Let's move on to the next idea."],
           ['Show me', 'Show me that in the scratchpad with a small example.'],
@@ -47,16 +52,30 @@
     },
   });
 
-  async function begin() {
+  // Some chapters open on a full-page view (Chapter 1's Runtime Shapes)
+  // that hides the lesson sections. The teacher teaches from — and points
+  // at — the lesson, so switch to a topic that shows it.
+  function showLessonContent() {
+    const standard = $('standard-chapter-content');
+    const select = $('storyboard-select');
+    if (!standard || !standard.classList.contains('hidden') || !select) return;
+    for (const opt of select.options) {
+      select.value = opt.value;
+      select.dispatchEvent(new Event('change'));
+      if (!standard.classList.contains('hidden')) return;
+    }
+  }
+
+  // Open the lesson for the chapter on screen. A chapter with nothing yet
+  // starts its lesson (the tutor sends the kickoff); a chapter taught before
+  // resumes where it stopped.
+  async function begin(force) {
     const ch = chapterOnScreen();
     if (!ch) return;
+    showLessonContent();
     await window.dsaTutor.open();
-    window.dsaTutor.sync();
-    // A fresh chapter starts the lesson; a chapter taught before resumes.
-    const convo = window.dsaTutor.conversation(`teach:${ch.number}`);
-    if (!convo.length && !window.dsaTutor.isBusy()) {
-      window.dsaTutor.send('(Start the lesson on this chapter from the beginning. Keep it to one idea, then ask me a question.)', { hidden: true });
-    }
+    if (force) window.dsaTutor.kickoff();
+    else window.dsaTutor.sync();
   }
 
   function setOn(on) {
@@ -68,16 +87,29 @@
       btn.setAttribute('aria-pressed', on ? 'true' : 'false');
       btn.textContent = on ? 'Teacher mode: on' : 'Teacher mode';
     }
-    if (on) begin();
+    if (on) begin(true);
     else window.dsaTutor.sync();
   }
 
   // Moving to another chapter with Teacher Mode on starts or resumes that
-  // chapter's lesson.
-  document.addEventListener('click', (e) => {
-    if (!teach.on || !e.target.closest('.chapter-item, .chapter-link, #home-start')) return;
-    setTimeout(() => { if (teach.on && chapterOnScreen()) begin(); }, 600);
-  });
+  // chapter's lesson, however the chapter was opened (sidebar, links, the
+  // page restoring the last chapter): watch the chapter title.
+  let shownChapter = null;
+  let pending = 0;
+  const onChapterChange = () => {
+    clearTimeout(pending);
+    pending = setTimeout(() => {
+      const ch = chapterOnScreen();
+      const n = ch ? ch.number : null;
+      if (n === shownChapter) return;
+      shownChapter = n;
+      if (teach.on && ch) begin(false);
+    }, 300);
+  };
+  const title = $('detail-title');
+  if (title) new MutationObserver(onChapterChange).observe(title, { childList: true, characterData: true, subtree: true });
+  const detail = $('detail');
+  if (detail) new MutationObserver(onChapterChange).observe(detail, { attributes: true, attributeFilter: ['class'] });
 
   async function init() {
     const st = await window.dsaTutor?.status();

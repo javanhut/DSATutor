@@ -47,7 +47,10 @@ type ToolCall struct {
 // {"type":"action", ...}.
 type Action map[string]any
 
-const maxTargets = 60
+const (
+	maxTargets         = 60
+	maxDrawingsPerTurn = 2
+)
 
 // Workspace is the page as one request sees it: the regions and the
 // learner's code, updated as the tutor edits it.
@@ -59,6 +62,7 @@ type Workspace struct {
 	tests     int    // test cases on screen; 0 when no problem is open
 	isProblem bool
 	interview bool // an interviewer only points; it never edits or switches tabs
+	drawn     int  // scratchpad drawings this turn; capped so a model can't spam the board
 }
 
 // NewWorkspace validates the browser's targets.
@@ -226,7 +230,17 @@ func (w *Workspace) Execute(call ToolCall) (string, Action) {
 		}
 		return fmt.Sprintf("Done; the learner can undo it. The editor now holds:\n```\n%s\n```", numberLines(code)), act
 
-	case "scratchpad_run_code", "scratchpad_visualize", "scratchpad_sketch", "ask_learner":
+	case "scratchpad_run_code", "scratchpad_visualize", "scratchpad_sketch":
+		if w.drawn >= maxDrawingsPerTurn {
+			return fmt.Sprintf("You have already drawn %d times this turn; the scratchpad keeps them. Don't draw again now: continue in words.", w.drawn), nil
+		}
+		res, act := executeScratchpad(call)
+		if act != nil {
+			w.drawn++
+		}
+		return res, act
+
+	case "ask_learner":
 		return executeScratchpad(call)
 
 	case "open_tab":
@@ -367,3 +381,7 @@ func listArg(args map[string]any, key string) []any {
 	}
 	return nil
 }
+
+// ResetDrawings lifts the per-turn drawing cap, for the director's sketch
+// after the model's own attempts.
+func (w *Workspace) ResetDrawings() { w.drawn = 0 }

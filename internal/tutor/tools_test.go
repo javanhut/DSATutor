@@ -222,3 +222,33 @@ func TestWeakSketch(t *testing.T) {
 		}
 	}
 }
+
+// ornith-1.5 sent text elements without text and cells without values,
+// which drew a blank board; those are dropped, and an all-empty sketch is
+// rejected with a reason so the model can redraw.
+func TestSketchContentAndDrawingCap(t *testing.T) {
+	ws := NewWorkspace(Context{View: "chapter"})
+	empty := map[string]any{"title": "t", "elements": []any{
+		map[string]any{"type": "text", "x": 5.0, "y": 5.0, "text": nil},
+		map[string]any{"type": "cells", "x": 5.0, "y": 20.0, "values": nil},
+	}}
+	if res, act := ws.Execute(call("scratchpad_sketch", empty)); act != nil || !strings.Contains(res, "blank") {
+		t.Errorf("empty sketch: %s %v", res, act)
+	}
+	mixed := map[string]any{"title": "t", "elements": []any{
+		map[string]any{"type": "text", "x": 5.0, "y": 5.0},
+		map[string]any{"type": "cells", "x": 5.0, "y": 20.0, "values": []any{1.0, 2.0}},
+	}}
+	res, act := ws.Execute(call("scratchpad_sketch", mixed))
+	if act == nil || len(act["elements"].([]any)) != 1 || !strings.Contains(res, "left out") {
+		t.Errorf("mixed sketch: %s %v", res, act)
+	}
+	ws.Execute(call("scratchpad_sketch", mixed))
+	if res, act := ws.Execute(call("scratchpad_sketch", mixed)); act != nil || !strings.Contains(res, "already drawn") {
+		t.Errorf("third drawing allowed: %s", res)
+	}
+	ws.ResetDrawings()
+	if _, act := ws.Execute(call("scratchpad_sketch", mixed)); act == nil {
+		t.Error("drawing blocked after ResetDrawings")
+	}
+}

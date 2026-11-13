@@ -170,9 +170,10 @@ func executeScratchpad(call ToolCall) (string, Action) {
 			raw = raw[:maxSketchElements]
 		}
 		steps := 0
+		kept := make([]any, 0, len(raw))
+		dropped := 0
 		for i, e := range raw {
 			e = decodeJSONString(e)
-			raw[i] = e
 			em, ok := e.(map[string]any)
 			if !ok || !contains(sketchTypes, str(em, "type")) {
 				return fmt.Sprintf("Error: element %d needs a type from %v.", i+1, sketchTypes), nil
@@ -180,8 +181,19 @@ func executeScratchpad(call ToolCall) (string, Action) {
 			for _, k := range []string{"values", "marks", "pointers"} {
 				em[k] = decodeJSONString(em[k])
 			}
+			// An element with nothing to draw (text without text, a row
+			// without values) would leave a blank board.
+			if !sketchElementHasContent(em) {
+				dropped++
+				continue
+			}
+			kept = append(kept, em)
 			steps = max(steps, intArg(em, "step")+1)
 		}
+		if len(kept) == 0 {
+			return "Error: nothing in this sketch has visible content, so the whiteboard would be blank. Every \"text\" element needs a non-empty \"text\", every \"cells\" row needs \"values\" (a list of at least two numbers or letters), and nodes, boxes and arrows need x and y. Draw it again with real content.", nil
+		}
+		raw = kept
 		if steps > 20 {
 			return "Error: use at most 20 steps.", nil
 		}
@@ -196,7 +208,11 @@ func executeScratchpad(call ToolCall) (string, Action) {
 		if b, _ := json.Marshal(raw); len(b) > maxFrameBytes {
 			return "Error: the sketch is too large; draw fewer elements.", nil
 		}
-		return fmt.Sprintf("Sketched %d elements over %d steps on the whiteboard; the learner can step through them.", len(raw), steps),
+		note := ""
+		if dropped > 0 {
+			note = fmt.Sprintf(" (%d elements had no content and were left out: text needs text, cells need values)", dropped)
+		}
+		return fmt.Sprintf("Sketched %d elements over %d steps on the whiteboard%s; the learner can step through them.", len(raw), steps, note),
 			Action{"name": "scratchpad_sketch", "title": truncate(str(args, "title"), 120), "elements": raw, "captions": captions}
 
 	case "ask_learner":
@@ -260,13 +276,35 @@ func sketchElementSchema() map[string]any {
 			"w":        map[string]any{"type": "number", "description": "box width"},
 			"h":        map[string]any{"type": "number", "description": "box height"},
 			"r":        map[string]any{"type": "number", "description": "circle/node radius"},
-			"text":     map[string]any{"type": "string", "description": "text, or the label of a box/node/arrow"},
+			"text":     map[string]any{"type": "string", "description": "REQUIRED: the words to write, the label of a box/node/arrow or cells row. Only circle, line and underline may use an empty string"},
 			"size":     map[string]any{"type": "string", "enum": []string{"s", "m", "l"}},
 			"color":    map[string]any{"type": "string", "enum": sketchColors},
 			"values":   map[string]any{"type": "array", "description": "cells: the values in the row"},
 			"marks":    map[string]any{"type": "array", "items": map[string]any{"type": "integer"}, "description": "cells: indexes to circle"},
 			"pointers": map[string]any{"type": "object", "description": "cells: pointer name -> index, e.g. {\"left\": 0, \"right\": 4}; draws a labelled arrow under each of those cells. Prefer this to placing arrows by hand."},
 		},
-		"required": []string{"type"},
+		"required": []string{"type", "text", "x", "y"},
 	}
+}
+
+// sketchElementHasContent reports whether a whiteboard element would draw
+// something: text needs words, a cells row needs values, and every shape
+// needs a position.
+func sketchElementHasContent(e map[string]any) bool {
+	if _, ok := e["x"]; !ok {
+		return false
+	}
+	if _, ok := e["y"]; !ok {
+		return false
+	}
+	hasText := e["text"] != nil && strings.TrimSpace(fmt.Sprint(e["text"])) != ""
+	switch str(e, "type") {
+	case "text", "box", "node":
+		// An unlabelled box or node is an empty shape that teaches nothing.
+		return hasText
+	case "cells":
+		vals, _ := e["values"].([]any)
+		return len(vals) > 0
+	}
+	return true
 }

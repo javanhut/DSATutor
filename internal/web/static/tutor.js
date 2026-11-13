@@ -25,6 +25,7 @@
   const MAX_SAVED_MESSAGES = 40;
 
   const tutor = {
+    kickoffFailed: {}, // conversation key -> its automatic start failed
     status: null,
     model: '',
     prefs: { think: false, speak: false },
@@ -266,12 +267,18 @@
     document.body.appendChild(panel);
 
     $('tutor-close').onclick = closePanel;
-    $('tutor-clear').onclick = () => {
+    $('tutor-clear').onclick = async () => {
       stopReply();
       stopSpeaking();
+      clearSpotlights();
+      // Let the aborted reply finish unwinding, then start fresh (a mode
+      // like Teacher Mode begins its lesson again).
+      for (let i = 0; i < 40 && tutor.busy; i++) await new Promise(r => setTimeout(r, 50));
       tutor.messages = [];
+      delete tutor.kickoffFailed[tutor.key];
       saveConversation();
       renderMessages();
+      maybeKickoff(true);
     };
     $('tutor-form').onsubmit = (e) => { e.preventDefault(); send($('tutor-text').value); };
     $('tutor-text').addEventListener('keydown', (e) => {
@@ -279,6 +286,11 @@
     });
     $('tutor-mic').onclick = toggleRecording;
     $('tutor-messages').addEventListener('click', (e) => {
+      if (e.target.closest('[data-kickoff]')) {
+        setStatus('');
+        maybeKickoff(true);
+        return;
+      }
       const answer = e.target.closest('[data-answer]');
       if (answer) {
         if (tutor.busy) return;
@@ -377,6 +389,20 @@
     return c;
   }
 
+  // A mode can start its own conversation (Teacher Mode's lesson): when the
+  // panel shows it with nothing said yet, its kickoff cue is sent. After a
+  // failed start it waits for the learner to press Start instead of
+  // retrying in a loop.
+  function maybeKickoff(force) {
+    const c = tutor.view;
+    if (!tutor.open || !c || !c.kickoff || tutor.busy) return;
+    if (tutor.messages.some(m => !m.hidden)) return;
+    if (tutor.kickoffFailed[tutor.key] && !force) { renderMessages(); return; }
+    delete tutor.kickoffFailed[tutor.key];
+    tutor.messages = [];
+    send(c.kickoff, { hidden: true });
+  }
+
   async function openPanel(prefill) {
     const st = await loadStatus();
     if (!st.available) return;
@@ -389,6 +415,7 @@
     setStatus('');
     if (prefill) $('tutor-text').value = prefill;
     $('tutor-text').focus();
+    maybeKickoff();
   }
 
   function closePanel() {
@@ -416,6 +443,15 @@
     const box = $('tutor-messages');
     if (!box) return;
     if (!tutor.messages.some(m => !m.hidden)) {
+      if (tutor.view && tutor.view.kickoff) {
+        // A conversation the mode starts by itself: say it's starting while
+        // it is, otherwise offer to start it (after a failure, say so).
+        const starting = tutor.busy || tutor.messages.some(m => m.hidden);
+        box.innerHTML = starting
+          ? `<div class="tutor-empty">${tutor.view.emptyHtml || '<p>Starting…</p>'}</div>`
+          : `<div class="tutor-empty"><p>${tutor.kickoffFailed[tutor.key] ? "The lesson couldn't start (see the message below). Check that Ollama is running, then try again." : 'Ready when you are.'}</p><button type="button" class="btn-small primary" data-kickoff>${escapeHtml(tutor.view.kickoffLabel || 'Start')}</button></div>`;
+        return;
+      }
       if (tutor.view && tutor.view.emptyHtml) {
         box.innerHTML = `<div class="tutor-empty">${tutor.view.emptyHtml}</div>`;
         return;
@@ -586,7 +622,12 @@
     } else {
       bubble.remove();
       if (speech) stopSpeaking();
-      if (!failed) tutor.messages.pop(); // stopped before any answer: drop the question too
+      // Stopped before any answer: drop the question too. A hidden cue (the
+      // start of a lesson) is dropped even when it failed, so the next
+      // attempt starts clean.
+      const last = tutor.messages[tutor.messages.length - 1];
+      if (!failed || (last && last.hidden)) tutor.messages.pop();
+      if (failed && last && last.hidden) tutor.kickoffFailed[tutor.key] = true;
     }
     if (failed) setStatus(failed, true);
     saveConversation();
@@ -670,6 +711,15 @@
       });
     }
     if (kind === 'chapter' || kind === 'teacher') {
+      // A full-page topic view (Chapter 1's Runtime Shapes) replaces the
+      // lesson; its panels are what's on screen then.
+      const topic = $('topic-full-page');
+      if (topic && !topic.classList.contains('hidden')) {
+        [...topic.querySelectorAll('h2, h3, h4')].filter(h => h.offsetParent).slice(0, 12).forEach((h, i) => {
+          const panel = h.closest('section, article, .card, .panel, div') || h;
+          add(`topic-${i + 1}`, `Panel "${textOf(h, 60)}"`, () => panel);
+        });
+      }
       // The chapter's animation and its code panel, so the tutor can point
       // at a line of the code the animation is stepping through.
       const panel = $('code-lines');
@@ -1000,7 +1050,7 @@
         // lines of a lesson code block.
         let range = null;
         if (a.quote) {
-          const view = node.closest('#standard-chapter-content, #practice-mode, #sandbox-mode') || document.body;
+          const view = node.closest('#standard-chapter-content, #topic-full-page, #practice-mode, #sandbox-mode') || document.body;
           range = findQuote(node, a.quote) || findQuote(view, a.quote);
         }
         if (!range && a.start_line && node.tagName === 'PRE') range = preLinesRange(node, a.start_line, a.end_line);
@@ -1330,7 +1380,7 @@
   // When the learner moves to another problem or chapter with the panel
   // open, follow them to that conversation.
   document.addEventListener('click', () => {
-    if (tutor.open) setTimeout(() => { if (tutor.open && !tutor.busy) syncContext(); }, 400);
+    if (tutor.open) setTimeout(() => { if (tutor.open && !tutor.busy) { syncContext(); maybeKickoff(); } }, 400);
   });
 
   // Resetting practice also forgets the tutor's problem conversations: they
@@ -1351,7 +1401,9 @@
     open: openPanel,
     close: closePanel,
     send: (text, opts) => send(text, opts),
-    sync: () => { if (tutor.open) syncContext(); },
+    sync: () => { if (tutor.open) { syncContext(); maybeKickoff(); } },
+    // Start the mode's conversation now (the learner asked for it).
+    kickoff: () => { if (tutor.open) { syncContext(); maybeKickoff(true); } },
     isBusy: () => tutor.busy,
     stop: stopReply,
     // The saved messages of a conversation, whether or not it is on screen.
@@ -1360,6 +1412,7 @@
     status: loadStatus,
     // Carry out one action as if the server had sent it (testing, demos).
     act: (a) => runAction(a),
+    targets: () => targetList(),
     clear: () => clearSpotlights(),
   };
   window.openTutor = openPanel;

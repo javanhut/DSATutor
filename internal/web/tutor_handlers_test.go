@@ -179,9 +179,9 @@ func TestTeacherDirectorStagesTextOnlyTurns(t *testing.T) {
 			json.NewDecoder(r.Body).Decode(&body)
 			if body["format"] != nil {
 				formats++
-				card := `{"highlight":{"target":"section-1","quote":"two pointers","pointer":"hand","note":"here"},"sketch":{"title":"t","captions":["a"],"elements":[{"type":"cells","x":10,"y":10,"values":"[1, 2, 3]","pointers":"{\"left\": 0}"},{"type":"text","x":10,"y":40,"text":"start"},{"type":"arrow","x":10,"y":50,"x2":20,"y2":30}]}}`
+				card := `{"highlight":{"target":"section-1","quote":"two pointers","pointer":"hand","note":"here"},"sketch":{"title":"t","captions":["a"],"rows":[{"step":0,"x":10,"y":10,"label":"nums","values":[1,2,3],"pointers":{"left":0}}],"notes":[{"step":0,"x":10,"y":40,"text":"start","color":"ink"}],"arrows":[{"step":1,"x":10,"y":50,"x2":20,"y2":30,"label":"move"}],"boxes":[]}}`
 				if thin {
-					card = `{"highlight":{"target":"section-1","quote":"two pointers","pointer":"hand","note":"here"},"sketch":{"title":"t","captions":["a"],"elements":[{"type":"text","x":10,"y":10,"text":"idea"}]}}`
+					card = `{"highlight":{"target":"section-1","quote":"two pointers","pointer":"hand","note":"here"},"sketch":{"title":"t","captions":["a"],"rows":[],"notes":[{"step":0,"x":10,"y":10,"text":"idea","color":"ink"}],"arrows":[],"boxes":[]}}`
 				}
 				json.NewEncoder(w).Encode(map[string]any{"message": map[string]string{"content": card}, "done": true})
 				return
@@ -218,7 +218,7 @@ func TestTeacherDirectorStagesTextOnlyTurns(t *testing.T) {
 	if formats != 1 {
 		t.Errorf("director called %d times, want 1", formats)
 	}
-	// Stringified values and pointers arrive as real data.
+	// Director rows become cells elements with real values and pointers.
 	el := sketch["elements"].([]any)[0].(map[string]any)
 	if _, ok := el["values"].([]any); !ok {
 		t.Errorf("values not decoded: %#v", el["values"])

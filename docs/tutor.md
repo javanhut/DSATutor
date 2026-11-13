@@ -86,6 +86,16 @@ an **arrow** (look here) glides into the margin beside it and follows it
 while the page scrolls. The scratchpad moves out of the way of whatever is
 being pointed at, unless you dragged it somewhere yourself.
 
+**Drawings must have content.** Sketch elements need their text (boxes,
+nodes and notes without a label are dropped) and cell rows need values; a
+sketch with nothing visible is rejected with the reason so the model redraws,
+and a model may draw at most twice per turn. The director's own sketch uses a
+schema where every row, note, arrow and box has its content as a required
+field, and it reuses the turn's exact conversation so Ollama's prompt cache
+skips re-reading the chapter (about 25 s per turn instead of 90 s with
+ornith-1.5). On a chapter that opens on a full-page view (Chapter 1's
+Runtime Shapes), Teacher Mode switches to the lesson it teaches from.
+
 **Every turn is staged.** Whether a model calls highlight or draws varies
 by model and run, so after each Teacher Mode turn the server checks: if the
 turn didn't point at a precise spot, or drew nothing substantial (a sketch
@@ -94,6 +104,15 @@ arrows), a "director" asks the same model for the missing parts with one
 structured-output call (JSON schema, which every model follows), retrying
 once if its sketch is still thin. The chat shows "Pointing and drawing…"
 meanwhile.
+
+**Starting the lesson.** A chapter's lesson starts by itself whenever the
+tutor panel shows that chapter in Teacher Mode with nothing said yet: when
+you turn Teacher Mode on, open the panel, press Clear, reload the page, or
+reach the chapter any way at all (the chapter title is watched, not just
+sidebar clicks). If the start fails (Ollama not running, a model still
+loading), the panel says so and offers **Start the lesson** instead of
+retrying in a loop; a failed start leaves nothing behind in the
+conversation.
 
 It adapts: a right answer moves on; a wrong one gets the misconception shown
 in the scratchpad and the question asked another way. The quick prompts
