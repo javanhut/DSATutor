@@ -21,6 +21,10 @@ import (
 type DirectorNeeds struct {
 	Article bool
 	Section int
+	// Advance is set when the learner met the current section's goal and the
+	// teacher's reply didn't move on: the staging teaches Section instead of
+	// echoing the reply.
+	Advance bool
 	Sketch  bool
 	Check   bool
 }
@@ -43,17 +47,33 @@ func (c *Client) Direct(ctx context.Context, model string, base []Message, ch *c
 
 	if need.Article {
 		sec := lesson.Sections[need.Section]
-		props["article"] = map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"heading": map[string]any{"type": "string", "minLength": 1},
-				"body":    map[string]any{"type": "string", "minLength": 200},
-				"code":    map[string]any{"type": "string"},
-			},
-			"required": []string{"heading", "body"},
+		minStr := func(min int) map[string]any { return map[string]any{"type": "string", "minLength": min} }
+		artProps := map[string]any{
+			"heading":    minStr(1),
+			"concept":    minStr(120),
+			"why":        minStr(40),
+			"example":    minStr(30),
+			"key_points": map[string]any{"type": "array", "items": minStr(1), "minItems": 2, "maxItems": 4},
+			"code":       map[string]any{"type": "string"},
 		}
+		artRequired := []string{"heading", "concept", "why", "example", "key_points"}
+		if need.Section > 0 {
+			// Moving on from an earlier section: a spoken bridge so the new
+			// section doesn't just appear.
+			withBridge := map[string]any{"transition": minStr(1)}
+			for k, v := range artProps {
+				withBridge[k] = v
+			}
+			artProps = withBridge
+			artRequired = append([]string{"transition"}, artRequired...)
+		}
+		props["article"] = map[string]any{"type": "object", "properties": artProps, "required": artRequired}
 		required = append(required, "article")
-		asks = append(asks, fmt.Sprintf(`"article": the lesson text for section %d of your plan (%q: %s), written by you onto the lesson page as the learner's reference text. heading: the section heading. body: 80 to 200 words of Markdown (short paragraphs and a bullet list of key facts, inline code allowed, no headings, no code fences, no LaTeX) explaining the idea in plain language around one tiny concrete example: the same example as your reply. No question in the article. code: optional short Python snippet (under 20 lines), or an empty string.`, need.Section, sec.Heading, sec.Goal))
+		asks = append(asks, fmt.Sprintf(`"article": the lesson text for section %d of your plan (%q: %s), written by you onto the lesson page as the learner's reference text. heading: the section heading. Teach the concept, not just an example. concept: the idea itself in general terms, not tied to any example: what it is, how it works, and what it costs (complexity in plain text like O(n)), 2 to 4 sentences. why: the reason, rule or invariant that makes it work, 1 to 3 sentences. example: one tiny concrete case that illustrates the concept (the same example as your reply, if it has one), 1 to 3 sentences. key_points: 2 to 4 short takeaways. Inline code allowed; no headings, no code fences, no LaTeX, no question. code: optional short Python snippet (under 20 lines), or an empty string.`, need.Section, sec.Heading, sec.Goal))
+		if need.Section > 0 {
+			prev := lesson.Sections[need.Section-1].Heading
+			asks = append(asks, fmt.Sprintf(`"article.transition": one short spoken sentence (under 25 words) that bridges from %q to %q: name what the learner just got and why the next idea follows from it, e.g. "Front inserts cost O(n) because everything shifts; hashing lets us skip that search entirely." Talk to the learner about the ideas; never mention sections, the page, or what you are doing.`, prev, sec.Heading))
+		}
 	}
 	if need.Sketch {
 		// Content is required field by field (a row's values, a note's
@@ -118,7 +138,7 @@ func (c *Client) Direct(ctx context.Context, model string, base []Message, ch *c
 			"required": []string{"question", "choices"},
 		}
 		required = append(required, "check")
-		asks = append(asks, `"check": one prediction question about the concrete example in the reply or sketch, with 2 to 4 short answer choices. Wrong choices should be plausible misconceptions. Do not ask a generic definition question.`)
+		asks = append(asks, `"check": one question that checks understanding of the concept, with 2 to 4 short answer choices: why it works, what would change if the input changed, what it costs and why, or when to use it. A question about the example is fine only if answering it requires the concept, not just reading the example. Wrong choices should be plausible misconceptions. Do not ask a bare definition question.`)
 	}
 	if len(required) == 0 {
 		return nil, nil
@@ -129,7 +149,11 @@ func (c *Client) Direct(ctx context.Context, model string, base []Message, ch *c
 	for _, a := range asks {
 		ask.WriteString("- " + a + "\n")
 	}
-	ask.WriteString("Be faithful to your reply: the article, sketch, and check must all teach the same single idea. The check may not introduce a different operation or complexity.\n\nYour reply was:\n" + truncate(reply, 6000))
+	if need.Advance && need.Article {
+		fmt.Fprintf(&ask, "The learner has met the previous section's goal, so the lesson moves on now: the article, sketch, and check must all teach section %d (%s), starting from its simplest idea, not the previous section. Do not ask about the previous section again.\n\nYour reply (which closed the previous section) was:\n%s", need.Section, lesson.Sections[need.Section].Heading, truncate(reply, 6000))
+	} else {
+		ask.WriteString("Be faithful to your reply: the article, sketch, and check must all teach the same single idea. The check may not introduce a different operation or complexity. Do not repeat a question the learner already answered.\n\nYour reply was:\n" + truncate(reply, 6000))
+	}
 
 	messages := append(append([]Message{}, base...), Message{Role: "user", Content: ask.String()})
 	if len(base) == 0 {
@@ -171,6 +195,36 @@ func (c *Client) Direct(ctx context.Context, model string, base []Message, ch *c
 		calls = append(calls, newCall("ask_learner", check))
 	}
 	return calls, nil
+}
+
+// GoalMet asks whether the learner has shown the current section's goal well
+// enough to move on. base is the turn's conversation (so the prompt cache
+// covers it). Errors count as "not yet": staying is the safe default.
+func (c *Client) GoalMet(ctx context.Context, model string, base []Message, lesson *Lesson, reply string) bool {
+	if !lesson.Valid() || len(base) == 0 {
+		return false
+	}
+	sec := lesson.Sections[lesson.Current]
+	ask := fmt.Sprintf(`(Stage direction, not from the learner.) Judge the current section, %q, whose goal is: %s. From the learner's answers since this section started, have they shown they meet that goal? Two correct answers about it, or one answer that explains the idea correctly, is enough; a wrong answer, confusion, or an open question from the learner means not yet. Your latest reply was: %s
+
+Respond with JSON only: "evidence" (one sentence on what the learner has shown) and "goal_met" (true or false).`, sec.Heading, sec.Goal, truncate(reply, 2000))
+	schema := map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"evidence": map[string]any{"type": "string"},
+			"goal_met": map[string]any{"type": "boolean"},
+		},
+		"required": []string{"evidence", "goal_met"},
+	}
+	messages := append(append([]Message{}, base...), Message{Role: "user", Content: ask})
+	raw, _, err := c.ChatJSON(ctx, model, messages, schema)
+	if err != nil {
+		return false
+	}
+	var out struct {
+		GoalMet bool `json:"goal_met"`
+	}
+	return json.Unmarshal(raw, &out) == nil && out.GoalMet
 }
 
 // retryMarker tells the director its last sketch was too thin.

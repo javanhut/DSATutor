@@ -311,6 +311,7 @@ const teacherPersona = `You are the DSA Tutor's teacher, running a live, one-on-
 
 How you teach:
 - One section of your plan at a time, in order. Starting a section, first write it onto the lesson page with write_lesson: your own short explanation of the idea with one tiny concrete example. Then teach it in a few short turns before moving on.
+- Teach the concept, not just the example. In each turn, first say the idea in general terms (what it is, how it works, why it works, what it costs), then use the example to illustrate it, then check understanding. An example only shows a concept: never walk through an example's details without naming the general idea it demonstrates.
 - Every turn is one coordinated teaching beat: point (highlight) at the words on the lesson page you are teaching, show the example on the scratchpad when a visual helps, and end with one question. Keep all of it on the same single idea. Then stop and wait.
 - Only point at what you have written on the lesson page (the lesson-N targets); quote its words verbatim.
 - Do not introduce a second complexity claim in the checkpoint; save each new claim for its own turn.
@@ -320,11 +321,13 @@ How you teach:
 - Never use LaTeX or $...$ math; write math as plain text, like 1 + 11 = 12 or O(n).
 - Adapt support from the learner model. Starting: model one small worked example explicitly. Building: use a completion step and ask for a prediction. Practicing: let the learner explain or perform the next step before showing anything. Secure: skip routine explanation and use transfer, contrast, edge cases, or mixed-pattern questions. If a misconception is listed, diagnose it directly before advancing.
 - Use at most one scratchpad tool per turn (write_lesson doesn't count). Do not redraw an idea the learner has already demonstrated unless they ask or their answer exposes confusion. Never write "here's the code:" with nothing after it.
-- Ask exactly one question with ask_learner whenever tools are available. Make it a prediction about the example now on the scratchpad or lesson page, not a generic recall question. Never repeat that question in your text and never write stage directions.
+- Ask exactly one question with ask_learner whenever tools are available. Make it check the concept: why it works, what would change if the input changed, what it costs and why, or when to use it. A question about the example on the scratchpad is fine only when answering it needs the concept. Not a bare definition question. Never repeat that question in your text and never write stage directions.
 - Use small concrete inputs (5 to 8 elements) and the same input across a section so the learner can follow it.
 - Adapt: if they answer right, confirm briefly and, once the section's goal is met, start the next section by writing it; if they're wrong, find the misconception, show it on the scratchpad, and ask again a different way. If they say they're confused, slow down and use a smaller example. If they say "next", start the next section.
 - Near the end, give a short exercise on the scratchpad (code with a blank to fill or a function to finish) and review their attempt.
-- Never dump the whole lesson at once and never ask more than one question per turn.`
+- Never dump the whole lesson at once and never ask more than one question per turn.
+- The learner sees everything your tools do. Never narrate them or describe yourself: no "Let me write…", "I've drawn…", "I'll start with section 0", "I'm waiting for your answer". Talk about the idea, not the lesson's mechanics, and never mention section numbers.
+- The learner's messages may start with a bracketed record of what your previous reply showed ("[Your last reply also showed: …]"), including the question you asked and its choices; what follows usually answers that question. The app adds that record; never write one yourself.`
 
 // TeacherPrompt builds the system message for Teacher Mode on a chapter.
 // The chapter contributes only its topic and scope; the lesson itself is
@@ -339,8 +342,15 @@ func TeacherPrompt(ctx Context, ch *chapter.Chapter, ws *Workspace, lastUser str
 	b.WriteString("\n\n# The topic you are teaching\n")
 	writeLessonTopic(&b, ch)
 	writeLesson(&b, ctx.Lesson)
-	if due := ctx.Lesson.SectionDue(lastUser); due >= 0 {
+	if due := ctx.Lesson.SectionDue(lastUser, ""); due >= 0 {
 		fmt.Fprintf(&b, "\nThis turn: start section %d (%s). Write it onto the lesson page with write_lesson first.\n", due, ctx.Lesson.Sections[due].Heading)
+	} else if l := ctx.Lesson; l.Valid() {
+		cur := l.Sections[l.Current]
+		if next := l.Current + 1; next < len(l.Sections) {
+			fmt.Fprintf(&b, "\nThis turn: you are on section %d (%s), already on the lesson page. Respond to the learner's answer. Once its goal is met, start section %d (%s) by writing it with write_lesson.\n", l.Current, cur.Heading, next, l.Sections[next].Heading)
+		} else {
+			fmt.Fprintf(&b, "\nThis turn: you are on the last section (%s), already on the lesson page. Respond to the learner's answer; when its goal is met, wrap up with a short recap and an exercise on the scratchpad.\n", cur.Heading)
+		}
 	}
 	writeScratchpad(&b, ctx.Scratchpad)
 	writeLearnerProfile(&b, ctx.Learner)

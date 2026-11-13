@@ -47,6 +47,8 @@
       sections: l.plan.sections,
       current: l.current || 0,
       written: Object.keys(l.sections || {}).map(Number),
+      // The text already on the page, so the teacher builds on it.
+      pages: Object.entries(l.sections || {}).map(([i, p]) => ({ section: +i, heading: p.heading, body: p.body })),
     };
   }
 

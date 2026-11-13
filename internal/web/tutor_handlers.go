@@ -135,7 +135,20 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 	// carried out (sent to the page as actions) and their results fed back,
 	// until the model answers without calling a tool.
 	var model string
-	var said strings.Builder // everything the model said this turn
+	var said strings.Builder // everything the model said this turn (as shown)
+	var raw strings.Builder  // the same, before stage directions were removed
+	// Teacher Mode holds each round's text until the round ends, so
+	// narration of its own tool use can be dropped before the learner sees
+	// or hears it.
+	var held strings.Builder
+	turn := &teachTurn{}
+	chatEmit := emit
+	if teach {
+		chatEmit = func(d tutor.Delta) error {
+			held.WriteString(d.Content)
+			return emit(tutor.Delta{Thinking: d.Thinking})
+		}
+	}
 	did := map[string]bool{} // actions carried out this turn
 	for round := 0; ; round++ {
 		if round == maxToolRounds {
@@ -143,7 +156,8 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 		} else if ws != nil && round > 0 {
 			tools = ws.Tools() // a section written this turn can be pointed at now
 		}
-		reply, err := s.tutor.Chat(r.Context(), req.Model, messages, req.Think, tools, emit)
+		held.Reset()
+		reply, err := s.tutor.Chat(r.Context(), req.Model, messages, req.Think, tools, chatEmit)
 		if err != nil {
 			if r.Context().Err() != nil {
 				return // the learner pressed Stop
@@ -164,7 +178,17 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		model = reply.Model
-		said.WriteString(reply.Content)
+		raw.WriteString(reply.Content)
+		shown := reply.Content
+		if teach {
+			// Teacher Mode sends its turn in lesson order at the end (see
+			// teachTurn); the text is held with everything else.
+			shown = tutor.StripStageDirections(held.String())
+			if shown != "" && said.Len() > 0 {
+				shown = "\n\n" + shown
+			}
+		}
+		said.WriteString(shown)
 		// Stop when the model answers in words, and always after the last
 		// round: some models keep emitting tool calls even when no tools are
 		// offered, which would otherwise loop forever.
@@ -187,13 +211,15 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 					did[action["name"].(string)] = true
 				}
 				action["type"] = "action"
-				if err := send(action); err != nil {
+				if teach {
+					turn.add(action, false)
+				} else if err := send(action); err != nil {
 					return
 				}
 			}
 			messages = append(messages, tutor.Message{Role: "tool", ToolName: call.Function.Name, Content: result})
 		}
-		if reply.Content != "" {
+		if reply.Content != "" && !teach {
 			// Keep text from successive rounds apart in the page.
 			send(map[string]string{"type": "delta", "text": "\n\n"})
 		}
@@ -202,22 +228,42 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 	// lesson page, a checkpoint, and a scratchpad example for learners who
 	// still need explicit support (faded once their evidence reaches the
 	// practising level).
-	if teach && ws != nil && strings.TrimSpace(said.String()) != "" {
+	if teach && ws != nil && (strings.TrimSpace(raw.String()) != "" || !did["ask_learner"]) {
 		forceVisual := req.Context.Learner == nil || req.Context.Learner.Level == "starting" || req.Context.Learner.Level == "building" || len(req.Context.Learner.Misconceptions) > 0
 		due := -1
 		if !did["write_lesson"] {
-			due = req.Context.Lesson.SectionDue(lastUser)
+			due = req.Context.Lesson.SectionDue(lastUser, raw.String())
+		}
+		advance := false
+		if l := req.Context.Lesson; due < 0 && !did["write_lesson"] && l.Valid() && l.HasArticle(l.Current) && l.Current+1 < len(l.Sections) && !l.HasArticle(l.Current+1) && len(req.Messages) > 1 {
+			// The teacher stayed on the section; move on if the learner
+			// has already shown its goal, rather than quizzing it again.
+			send(map[string]string{"type": "status", "text": "Checking your progress…"})
+			if s.tutor.GoalMet(r.Context(), model, messages, l, raw.String()) {
+				due, advance = l.Current+1, true
+			}
+		}
+		if advance {
+			turn.ask = nil // a question about the section the learner already has
 		}
 		need := tutor.DirectorNeeds{
 			Article: due >= 0,
 			Section: due,
-			Sketch:  forceVisual && !did["scratchpad_sketch"] && !did["scratchpad_visualize"] && !did["scratchpad_code"],
-			Check:   !did["ask_learner"],
+			Advance: advance,
+			Sketch:  forceVisual && (advance || !did["scratchpad_sketch"] && !did["scratchpad_visualize"] && !did["scratchpad_code"]),
+			Check:   advance || !did["ask_learner"],
 		}
 		if need.Article || need.Sketch || need.Check {
 			send(map[string]string{"type": "status", "text": "Writing up the lesson…"})
 			ws.ResetDrawings()
-			calls, err := s.tutor.Direct(r.Context(), model, messages, ch, req.Context.Lesson, said.String(), need)
+			reply := said.String()
+			if strings.TrimSpace(reply) == "" {
+				reply = raw.String() // everything was narration; stage what it meant
+			}
+			if strings.TrimSpace(reply) == "" {
+				reply = "(Continue the lesson from where it stands.)"
+			}
+			calls, err := s.tutor.Direct(r.Context(), model, messages, ch, req.Context.Lesson, reply, need)
 			if err != nil {
 				if r.Context().Err() != nil {
 					return
@@ -225,6 +271,13 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 				log.Printf("tutor: director failed: %v", err)
 			}
 			for _, call := range calls {
+				if call.Function.Name == "write_lesson" {
+					// Lead in to the new section in the reply itself, so it
+					// is shown and spoken before the section appears.
+					t, _ := call.Function.Arguments["transition"].(string)
+					turn.transition = tutor.StripStageDirections(t)
+					delete(call.Function.Arguments, "transition")
+				}
 				result, action := ws.Execute(call)
 				if action == nil {
 					args, _ := json.Marshal(call.Function.Arguments)
@@ -232,9 +285,14 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 					continue
 				}
 				action["type"] = "action"
-				if err := send(action); err != nil {
-					return
-				}
+				turn.add(action, true)
+			}
+		}
+	}
+	if teach {
+		for _, ev := range turn.events(said.String()) {
+			if err := send(ev); err != nil {
+				return
 			}
 		}
 	}
@@ -295,6 +353,69 @@ func (s *Server) handleInterviewScore(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(out)
+}
+
+// teachTurn collects a Teacher Mode turn (the model's rounds and the
+// director's staging) and sends it in lesson order: the lesson page first,
+// read before anything else, then the teacher's words, then one example on
+// the scratchpad, then the question. A model sketch too thin to teach from
+// gives way to the director's, so the scratchpad gets one drawing per turn.
+type teachTurn struct {
+	transition string // bridge from the previous section, when moving on
+	sections   []tutor.Action
+	highlights []tutor.Action
+	drawing    tutor.Action
+	weak       bool // drawing is a thin model sketch the director may replace
+	ask        tutor.Action
+}
+
+func (t *teachTurn) add(a tutor.Action, fromDirector bool) {
+	switch a["name"] {
+	case "write_lesson":
+		t.sections = append(t.sections, a)
+	case "highlight":
+		t.highlights = append(t.highlights, a)
+	case "ask_learner":
+		// The director's question only exists when the model asked none, or
+		// when moving on replaced the model's.
+		t.ask = a
+	case "scratchpad_sketch", "scratchpad_visualize", "scratchpad_code":
+		weak := a["name"] == "scratchpad_sketch" && tutor.WeakSketch(a)
+		if t.drawing == nil || (t.weak && (fromDirector || !weak)) {
+			t.drawing, t.weak = a, weak && !fromDirector
+		}
+	}
+}
+
+func (t *teachTurn) events(said string) []any {
+	var out []any
+	text := func(s string) {
+		if s = strings.TrimSpace(s); s != "" {
+			out = append(out, map[string]string{"type": "delta", "text": s})
+		}
+	}
+	if t.transition != "" {
+		// Closing the previous section, then the bridge, then the new one.
+		text(said + "\n\n" + t.transition + "\n\n")
+		for _, a := range t.sections {
+			out = append(out, a)
+		}
+	} else {
+		for _, a := range t.sections {
+			out = append(out, a)
+		}
+		text(said)
+	}
+	for _, a := range t.highlights {
+		out = append(out, a)
+	}
+	if t.drawing != nil {
+		out = append(out, t.drawing)
+	}
+	if t.ask != nil {
+		out = append(out, t.ask)
+	}
+	return out
 }
 
 func failedNotes(t *practice.SubmitResponse) []string {

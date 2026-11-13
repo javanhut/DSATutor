@@ -78,8 +78,13 @@ chapter contributes only the topic and its scope (title, summary,
 objectives, concept names), never its prewritten explanations, worked
 examples or check questions. The lesson page starts blank, with the plan as
 an outline, and the teacher writes each section onto it when it starts that
-section (`write_lesson`: a heading, 80 to 200 words of Markdown around one
-tiny example, optional code). That text is the learner's reference for the
+section (`write_lesson`). A section is written in parts so the concept is
+always stated, not just shown: `concept` (the idea in general terms: what it
+is, how it works, what it costs), `why` (the reason or invariant), `example`
+(one tiny illustration), `key_points`, and optional `code`; the server
+composes them into the section's text and sends back a concept too thin to
+teach from. Questions check the concept (why, what changes, cost, when to
+use), not just details of the example. That text is the learner's reference for the
 lesson. The plan and written sections are kept per chapter in localStorage
 (`dsatutor_teacher_lesson:<n>`) and sent back with each turn, so the server
 knows which section is current and which are written. Each turn the teacher:
@@ -111,6 +116,30 @@ schema where every row, note, arrow and box has its content as a required
 field, and it reuses the turn's exact conversation so Ollama's prompt cache
 skips re-reading the prompt (about 25 s per turn instead of 90 s with
 ornith-1.5).
+
+**Keeping the teacher on track.** Each request carries a record of what
+earlier replies showed: sections written, drawings, and the question asked
+with its choices, prefixed to the learner's next message as
+`[Your last reply also showed: …]`. Without it the model can't tell what an
+answer answers. The prompt also carries the text already on the lesson page,
+and a written section can't be rewritten. In Teacher Mode each round's text
+is held until the round ends so narration of the tools ("Let me write…",
+"I'm waiting for your answer") is dropped (`tutor.StripStageDirections`),
+and the model's own question is held to the end of the turn. When the
+teacher stays on a section, one small structured call (`GoalMet`) asks
+whether the learner has already shown its goal; if so the held question is
+dropped and the next section is written and taught instead of quizzing the
+same idea again. **Lesson order.** A Teacher Mode turn is held on the server and sent in
+lesson order (`teachTurn` in `tutor_handlers.go`): the section written on the
+lesson page, the teacher's words, any pointer, one drawing, then the
+question. A model sketch too thin to teach from is replaced by the
+director's rather than shown beside it, so the scratchpad gets one drawing
+per turn. With speech on, the page reads a newly written section aloud first
+(marked while it's read), and the drawing and question appear once that
+reading is done (`speech.until` in `tutor.js`); stopping the voice shows them
+at once. When the server writes a later section, the same call
+also produces a one-sentence transition from the previous section, appended
+to the reply (and spoken) before the section appears.
 
 **Every turn is staged.** Whether a model writes the section, draws, or
 creates a checkpoint varies by model and run, so after each Teacher Mode turn

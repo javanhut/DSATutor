@@ -8,6 +8,7 @@ package tts
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -229,5 +230,30 @@ func (o *Ollama) Synthesize(ctx context.Context, model, voice, text string) ([]b
 	if len(wav) == 0 {
 		return nil, fmt.Errorf("ollama returned empty audio for model %s", model)
 	}
-	return wav, nil
+	return fixWAVSizes(wav), nil
+}
+
+// fixWAVSizes writes the real sizes into a WAV header. Ollama's speech
+// models stream their audio and leave the RIFF and data sizes as
+// 0xFFFFFFFF ("unknown length"); some browsers (Safari/WebKit) refuse to
+// play such a file, so replies stayed silent. Anything that isn't a
+// RIFF/WAVE file with a data chunk is returned unchanged.
+func fixWAVSizes(wav []byte) []byte {
+	if len(wav) < 12 || string(wav[0:4]) != "RIFF" || string(wav[8:12]) != "WAVE" {
+		return wav
+	}
+	binary.LittleEndian.PutUint32(wav[4:8], uint32(len(wav)-8))
+	for off := 12; off+8 <= len(wav); {
+		id, size := string(wav[off:off+4]), binary.LittleEndian.Uint32(wav[off+4:off+8])
+		if id == "data" {
+			binary.LittleEndian.PutUint32(wav[off+4:off+8], uint32(len(wav)-off-8))
+			break
+		}
+		next := off + 8 + int(size) + int(size&1) // chunks are padded to even sizes
+		if next <= off || next > len(wav) {
+			break
+		}
+		off = next
+	}
+	return wav
 }

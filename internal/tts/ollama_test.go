@@ -2,6 +2,7 @@ package tts
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -135,5 +136,21 @@ func TestOllamaListsVoices(t *testing.T) {
 	}
 	if got := o.Voices("lfm3-audio:latest"); len(got) != 0 {
 		t.Errorf("Voices(lfm3-audio) = %v, want none", got)
+	}
+}
+
+func TestFixWAVSizesFillsStreamingHeader(t *testing.T) {
+	// A 16-bit mono header as Ollama streams it: sizes 0xFFFFFFFF.
+	wav := []byte("RIFF\xff\xff\xff\xffWAVEfmt \x10\x00\x00\x00\x01\x00\x01\x00\xc0\x5d\x00\x00\x80\xbb\x00\x00\x02\x00\x10\x00data\xff\xff\xff\xff")
+	wav = append(wav, make([]byte, 100)...)
+	got := fixWAVSizes(wav)
+	if riff := binary.LittleEndian.Uint32(got[4:8]); riff != uint32(len(got)-8) {
+		t.Errorf("RIFF size = %d, want %d", riff, len(got)-8)
+	}
+	if data := binary.LittleEndian.Uint32(got[40:44]); data != 100 {
+		t.Errorf("data size = %d, want 100", data)
+	}
+	if other := fixWAVSizes([]byte("not a wav")); string(other) != "not a wav" {
+		t.Errorf("non-WAV input changed: %q", other)
 	}
 }

@@ -26,6 +26,16 @@ type Lesson struct {
 	// written on the lesson page.
 	Current int   `json:"current"`
 	Written []int `json:"written,omitempty"`
+	// Pages is the text already on the lesson page, so the teacher can
+	// build on (and point at) what it wrote in earlier turns.
+	Pages []LessonPage `json:"pages,omitempty"`
+}
+
+// LessonPage is one written section of the lesson page.
+type LessonPage struct {
+	Section int    `json:"section"`
+	Heading string `json:"heading"`
+	Body    string `json:"body"`
 }
 
 // LessonSection is one part of the plan: what it covers and what the
@@ -67,6 +77,15 @@ func (l *Lesson) Clean() {
 		}
 	}
 	l.Written = written
+	var pages []LessonPage
+	for _, p := range l.Pages {
+		if p.Section >= 0 && p.Section < len(secs) && len(pages) < maxLessonSections {
+			p.Heading = truncate(strings.TrimSpace(p.Heading), 120)
+			p.Body = truncate(strings.TrimSpace(p.Body), 1200)
+			pages = append(pages, p)
+		}
+	}
+	l.Pages = pages
 }
 
 // HasArticle reports whether section i is written on the lesson page.
@@ -79,20 +98,35 @@ func (l *Lesson) HasArticle(i int) bool {
 	return false
 }
 
-// SectionDue returns the section whose article this turn should write, or
-// -1 when none is due: the current section until it has an article, then
-// the next one once the learner asks to move on.
-func (l *Lesson) SectionDue(lastUser string) int {
+// SectionDue returns the section this turn should write on the lesson page,
+// or -1 when none is due: the current section until it is written, then the
+// next one once the learner asks to move on or the teacher's reply moves on
+// (models often announce the next section without writing it).
+func (l *Lesson) SectionDue(lastUser, reply string) int {
 	if !l.Valid() {
 		return -1
 	}
 	if !l.HasArticle(l.Current) {
 		return l.Current
 	}
-	if next := l.Current + 1; next < len(l.Sections) && wantsToMoveOn(lastUser) {
+	next := l.Current + 1
+	if next < len(l.Sections) && !l.HasArticle(next) && (wantsToMoveOn(lastUser) || l.replyMovesOn(reply, next)) {
 		return next
 	}
 	return -1
+}
+
+func (l *Lesson) replyMovesOn(reply string, next int) bool {
+	r := strings.ToLower(reply)
+	if r == "" {
+		return false
+	}
+	if strings.Contains(r, fmt.Sprintf("section %d", next)) || strings.Contains(r, "next section") ||
+		strings.Contains(r, "move on") || strings.Contains(r, "moving on") {
+		return true
+	}
+	h := strings.ToLower(l.Sections[next].Heading)
+	return len(h) >= 8 && strings.Contains(r, h)
 }
 
 func wantsToMoveOn(msg string) bool {
@@ -150,6 +184,12 @@ func writeLesson(b *strings.Builder, l *Lesson) {
 		}
 		fmt.Fprintf(b, "%d. %s: %s [%s]\n", i, s.Heading, s.Goal, status)
 	}
+	if len(l.Pages) > 0 {
+		b.WriteString("\n## Already written on the lesson page (the learner can read it; point at its words with highlight, target lesson-N; do not write these sections again)\n")
+		for _, p := range l.Pages {
+			fmt.Fprintf(b, "### lesson-%d: %s\n%s\n", p.Section, p.Heading, p.Body)
+		}
+	}
 }
 
 // PlanLesson asks the model for a fresh lesson plan on the chapter's topic.
@@ -159,7 +199,7 @@ func (c *Client) PlanLesson(ctx context.Context, model string, ch *chapter.Chapt
 	writeLessonTopic(&sys, ch)
 	writeLearnerProfile(&sys, learner)
 
-	ask := fmt.Sprintf(`Plan the lesson as %d to %d short sections taught in order, one idea each. A good arc: the problem this solves and the slow way first, the core idea and its intuition, a worked example on a tiny input, why it works (the invariant), common mistakes, and when to reach for it in interviews, ending with a short exercise. Adapt the depth to the learner model. Respond with JSON only: "title" (the lesson's name) and "sections", each with "heading" (a few words) and "goal" (one sentence: what the learner can do after it).`, minLessonSections, maxLessonSections)
+	ask := fmt.Sprintf(`Plan the lesson as %d to %d short sections taught in order, one idea each. Each section teaches a concept, not just an example: its goal says what the learner will understand (an idea, a reason, a trade-off), not which example they will trace. A good arc: the problem this solves and why the slow way is slow, the core idea and its intuition, how it works step by step, why it works (the invariant), its cost and trade-offs, common mistakes, and when to reach for it in interviews, ending with a short exercise. Adapt the depth to the learner model. Respond with JSON only: "title" (the lesson's name) and "sections", each with "heading" (a few words) and "goal" (one sentence: what the learner can do after it).`, minLessonSections, maxLessonSections)
 
 	str := map[string]any{"type": "string", "minLength": 1}
 	schema := map[string]any{
@@ -198,41 +238,83 @@ func (c *Client) PlanLesson(ctx context.Context, model string, ch *chapter.Chapt
 	return &l, nil
 }
 
+// articleFields describe a lesson-page section as separate parts, so the
+// concept itself (not just an example of it) is always written down: models
+// asked for free text tend to walk through an example and never state the
+// idea in general terms.
+func articleFields() map[string]any {
+	return map[string]any{
+		"heading":    map[string]any{"type": "string", "description": "the section's heading"},
+		"concept":    map[string]any{"type": "string", "description": "the idea itself in general terms, not tied to any example: what it is, how it works, and what it costs (complexity in plain text like O(n)), 2 to 4 sentences"},
+		"why":        map[string]any{"type": "string", "description": "why it works or why it matters: the reason, rule or invariant behind it, 1 to 3 sentences"},
+		"example":    map[string]any{"type": "string", "description": "one tiny concrete example that illustrates the concept, 1 to 3 sentences, using the same numbers you will show on the scratchpad"},
+		"key_points": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "2 to 4 short takeaways worth remembering"},
+		"code":       map[string]any{"type": "string", "description": "optional: a short Python snippet (under 20 lines) shown in the section"},
+	}
+}
+
 func articleTool(sections int) Tool {
+	props := articleFields()
 	section := map[string]any{"type": "integer", "description": "index of the plan section this article teaches"}
 	if sections > 0 {
 		section["minimum"], section["maximum"] = 0, sections-1
 	}
+	props["section"] = section
 	return fn("write_lesson",
-		"Write one section of your plan onto the lesson page, the learner's reference text for this lesson: you write it yourself, there is no textbook. The page starts blank and fills up section by section as you teach; rewriting a section replaces it. Write it when you start a section, before any sketch, then point at it with highlight while you teach. 80 to 200 words of Markdown: a plain-language explanation with one tiny concrete example (the same numbers you will draw or trace on the scratchpad), short bullet points for the key facts, and the complexity in plain text like O(n). No question in it; ask with ask_learner. Examples you draw or run go on the scratchpad, not here.",
-		map[string]any{
-			"section": section,
-			"heading": map[string]any{"type": "string", "description": "the section's heading"},
-			"body":    map[string]any{"type": "string", "description": "the article in Markdown (paragraphs, bullet lists, `inline code`); no headings, no code fences"},
-			"code":    map[string]any{"type": "string", "description": "optional: a short Python snippet (under 20 lines) shown in the section"},
-		}, "section", "heading", "body")
+		"Write one section of your plan onto the lesson page, the learner's reference text for this lesson: you write it yourself, there is no textbook. The page starts blank and fills up section by section as you teach; each section is written once. Write it when you start a section, before any sketch, then point at it with highlight while you teach. Teach the concept first: state the idea in general terms (concept), give the reason it works (why), and only then illustrate it with one tiny example. No question in it; ask with ask_learner. Examples you draw or run go on the scratchpad.",
+		props, "section", "heading", "concept", "why", "example")
+}
+
+// articleBody composes the section's Markdown: concept, reason, example,
+// takeaways. A model that sent a free-text body instead keeps it.
+func articleBody(args map[string]any) string {
+	concept := strings.TrimSpace(str(args, "concept"))
+	if concept == "" {
+		return strings.TrimSpace(str(args, "body"))
+	}
+	parts := []string{concept}
+	if why := strings.TrimSpace(str(args, "why")); why != "" {
+		parts = append(parts, "**Why it works.** "+why)
+	}
+	if ex := strings.TrimSpace(str(args, "example")); ex != "" {
+		parts = append(parts, "**Example.** "+ex)
+	}
+	var points []string
+	for _, p := range listArg(args, "key_points") {
+		if t, ok := p.(string); ok && strings.TrimSpace(t) != "" && len(points) < 5 {
+			points = append(points, "- "+strings.TrimSpace(t))
+		}
+	}
+	if len(points) > 0 {
+		parts = append(parts, "**Remember:**\n"+strings.Join(points, "\n"))
+	}
+	return strings.Join(parts, "\n\n")
 }
 
 func executeArticle(args map[string]any, l *Lesson) (string, Action) {
 	heading := truncate(strings.TrimSpace(str(args, "heading")), 120)
-	body := strings.TrimSpace(str(args, "body"))
+	body := articleBody(args)
 	if heading == "" || len(strings.Fields(body)) < 15 {
-		return "Error: write_lesson needs a heading and a body of at least a few sentences.", nil
+		return "Error: write_lesson needs a heading and the concept explained in a few sentences (concept, why, example).", nil
+	}
+	if str(args, "concept") != "" && len(strings.Fields(str(args, "concept"))) < 12 {
+		return "Error: concept is too thin. State the idea in general terms: what it is, how it works, and what it costs, in 2 to 4 sentences, before any example.", nil
 	}
 	section := intArg(args, "section")
 	if l.Valid() && (section < 0 || section >= len(l.Sections)) {
 		return fmt.Sprintf("Error: section must be between 0 and %d.", len(l.Sections)-1), nil
 	}
+	if l.Valid() && l.HasArticle(section) {
+		return fmt.Sprintf("Error: section %d is already on the lesson page. Don't write it again: point at its words with highlight (target lesson-%d) or show a new example on the scratchpad.", section, section), nil
+	}
 	act := Action{"name": "write_lesson", "section": section, "heading": heading, "body": truncate(body, maxArticleChars)}
 	if l.Valid() {
 		act["total"] = len(l.Sections)
 		l.Current = section
-		if !l.HasArticle(section) {
-			l.Written = append(l.Written, section)
-		}
+		l.Written = append(l.Written, section)
 	}
 	if code := stripLineNumbers(strings.TrimSpace(str(args, "code"))); code != "" {
 		act["code"] = truncate(code, maxArticleCode)
 	}
-	return fmt.Sprintf("Section %d is written on the lesson page (target id lesson-%d; highlight its words as you teach). Now teach it: one scratchpad sketch or traced run if it helps, then one ask_learner question.", section, section), act
+	return fmt.Sprintf("Section %d is now on the lesson page (target lesson-%d). Teach it without describing what you did: the learner can see it.", section, section), act
 }

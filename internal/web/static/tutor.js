@@ -26,6 +26,7 @@
 
   const tutor = {
     kickoffFailed: {}, // conversation key -> its automatic start failed
+    turnSeq: 0,        // bumped per reply and on Clear; held actions of an older reply are dropped
     status: null,
     model: '',
     prefs: { think: false, speak: false },
@@ -221,6 +222,54 @@
     return out.join('');
   }
 
+  // What the model gets back of the conversation. A reply's words alone
+  // leave out what it showed (sections written, drawings, the question and
+  // its choices), so the model couldn't tell what the learner's answer
+  // answers and asked the same question again. The record goes at the start
+  // of the learner's next message rather than at the end of the reply, so
+  // the model doesn't learn to write such records itself.
+  function historyContent(m, prev) {
+    if (m.role === 'assistant') return m.content === '(done)' ? '' : m.content;
+    if (!prev || prev.role !== 'assistant' || !(prev.actions || []).length) return m.content;
+    const shown = prev.actions.map(a => {
+      switch (a.name) {
+        case 'ask_learner': return `asked "${a.question}" with choices: ${(a.choices || []).join(' | ')}`;
+        case 'write_lesson': return `wrote section ${a.section} "${a.heading}" on the lesson page`;
+        case 'scratchpad_sketch': return `sketched "${a.title || 'a drawing'}" on the scratchpad`;
+        case 'scratchpad_visualize': return `drew "${a.title || 'a diagram'}" on the scratchpad`;
+        case 'scratchpad_code': return 'ran code on the scratchpad';
+        case 'highlight': return a.quote ? `pointed at "${a.quote}"` : `pointed at ${a.label || a.target}`;
+        default: return actionLabel(a);
+      }
+    });
+    return `[Your last reply also showed: ${shown.join('; ')}.]\n\n${m.content}`;
+  }
+
+  // Shown only after a new lesson section has been read aloud.
+  const HELD_FOR_READING = ['scratchpad_code', 'scratchpad_visualize', 'scratchpad_sketch', 'ask_learner'];
+
+  // The record runAction would return for an action shown later.
+  function actionRecord(a) {
+    switch (a.name) {
+      case 'scratchpad_code': return { name: a.name, code: a.code, explanation: a.explanation };
+      case 'scratchpad_visualize': return { name: a.name, title: a.title, frames: a.frames };
+      case 'scratchpad_sketch': return { name: a.name, title: a.title, elements: a.elements, captions: a.captions };
+      case 'ask_learner': return { name: a.name, question: a.question, choices: a.choices };
+    }
+    return { name: a.name };
+  }
+
+  // A lesson section as it is read aloud: the heading, then each part as
+  // its own sentence (takeaway bullets get a full stop so they're read as
+  // sentences, not run together).
+  function sectionSpeech(a) {
+    const lines = [a.heading, ...String(a.body || '').split('\n')]
+      .map(l => l.replace(/^\s*[-*•]\s+/, '').replace(/\*\*/g, '').trim())
+      .filter(Boolean)
+      .map(l => (/[.!?:]$/.test(l) ? l : `${l}.`));
+    return lines.join(' ');
+  }
+
   // Text fit for speaking: no code blocks, no Markdown symbols.
   function speakable(text) {
     return text
@@ -277,6 +326,7 @@
 
     $('tutor-close').onclick = closePanel;
     $('tutor-clear').onclick = async () => {
+      tutor.turnSeq++;
       stopReply();
       stopSpeaking();
       clearSpotlights();
@@ -549,6 +599,9 @@
     // Busy from the first moment, so nothing else (an automatic lesson
     // start) can send while this one is getting ready.
     tutor.busy = true;
+    // Before anything stops the previous reply's speech: its held example
+    // and question must see that this reply has started.
+    const turn = ++tutor.turnSeq;
     const c = syncContext();
     if (!opts.hidden) $('tutor-text').value = '';
     // Hidden messages cue the model (an interviewer starting the interview)
@@ -588,8 +641,12 @@
     setStatus('');
 
     let reply = '';
+    let spoken = ''; // what is read aloud: the reply, with lesson sections read in place
     let thinking = '';
     let failed = '';
+    // Teacher Mode reads a newly written lesson section aloud before the
+    // example and the question appear: those wait on `reading`.
+    let reading = null;
     try {
       const res = await fetch('/api/tutor/chat', {
         method: 'POST',
@@ -598,7 +655,7 @@
         body: JSON.stringify({
           model: tutor.model,
           think: tutor.prefs.think,
-          messages: tutor.messages.map(m => ({ role: m.role, content: m.content })),
+          messages: tutor.messages.map((m, i) => ({ role: m.role, content: historyContent(m, tutor.messages[i - 1]) })),
           context: { ...c.ctx, voice: speak, targets: targetList(), testCount: testCount(), scratchpad: window.dsaScratchpad?.state() || undefined },
         }),
       });
@@ -626,8 +683,9 @@
           const ev = JSON.parse(line);
           if (ev.type === 'delta') {
             reply += ev.text;
+            spoken += ev.text;
             if (reply.trim()) textEl.innerHTML = renderMarkdown(reply);
-            if (speech) speech.push(reply);
+            if (speech) speech.push(spoken);
           } else if (ev.type === 'thinking') {
             thinking += ev.text;
             if (!reply.trim()) textEl.innerHTML = `<p class="tutor-typing">Thinking… <span class="tutor-think-count">${thinking.length} chars of reasoning</span></p>`;
@@ -642,8 +700,31 @@
               bubble.appendChild(st);
             }
             st.textContent = ev.text;
+          } else if (ev.type === 'action' && reading && HELD_FOR_READING.includes(ev.name)) {
+            // Recorded now (so it is saved with the reply), shown once the
+            // section has been read.
+            const rec = actionRecord(ev);
+            actions.push(rec);
+            if (rec.name !== 'ask_learner') {
+              actionsEl.classList.remove('hidden');
+              actionsEl.insertAdjacentHTML('beforeend', chipHtml(rec, ''));
+            }
+            reading.then(() => {
+              if (tutor.turnSeq !== turn) return; // the learner has moved on
+              runAction(ev);
+              if (rec.name === 'ask_learner' && !window.dsaScratchpad?.showQuestion(rec)) {
+                bubble.querySelector('.tutor-asks')?.insertAdjacentHTML('beforeend', askHtml(rec));
+              }
+            });
           } else if (ev.type === 'action') {
             const done = runAction(ev);
+            if (done && done.name === 'write_lesson' && speech) {
+              spoken += `\n\n${sectionSpeech(done)}\n\n`;
+              speech.push(spoken);
+              const section = document.getElementById(`tl-section-${done.section}`);
+              section?.classList.add('tl-reading');
+              reading = speech.until(speakable(spoken).length).then(() => section?.classList.remove('tl-reading'));
+            }
             if (done && done.name === 'ask_learner') {
               actions.push(done);
               const onScratchpad = window.dsaScratchpad?.showQuestion(done);
@@ -672,7 +753,7 @@
     const saved = actions.map(({ undo, ...a }) => a); // undo handles don't survive a reload
     if (reply.trim() || actions.length) {
       tutor.messages.push({ role: 'assistant', content: reply.trim() || '(done)', actions: saved });
-      if (speech) speech.end(reply);
+      if (speech) speech.end(spoken);
     } else {
       bubble.remove();
       if (speech) stopSpeaking();
@@ -1255,8 +1336,23 @@
       audio: null,  // set by playSpeech (tts.js), with finish() to cut it short
       finish: null,
       wake: null,
+      playedTo: 0,  // speakable characters played so far
+      waiters: [],  // { at, resolve }: until() promises
     };
     tutor.speech = s;
+    // until(n) resolves once the first n speakable characters have been
+    // played, or the session ends early (stopped, blocked, failed).
+    s.until = (at) => new Promise(resolve => {
+      if (s.finished || s.playedTo >= at) resolve();
+      else s.waiters.push({ at, resolve });
+    });
+    s.progress = () => {
+      s.waiters = s.waiters.filter(w => {
+        if (!s.finished && s.playedTo < w.at) return true;
+        w.resolve();
+        return false;
+      });
+    };
     s.push = (full) => {
       const text = speakable(full);
       // Queue only finished sentences; the rest may still be growing.
@@ -1265,7 +1361,7 @@
       let m, end = s.spokenUpTo;
       while ((m = re.exec(text)) && m[0].length) end = re.lastIndex;
       if (end - s.spokenUpTo >= 40 || (end > s.spokenUpTo && s.queue.length === 0 && !s.audio)) {
-        s.queue.push(text.slice(s.spokenUpTo, end).trim());
+        s.queue.push({ text: text.slice(s.spokenUpTo, end).trim(), end });
         s.spokenUpTo = end;
         if (s.wake) s.wake();
       }
@@ -1273,7 +1369,7 @@
     s.end = (full) => {
       const text = speakable(full);
       const rest = text.slice(s.spokenUpTo).trim();
-      if (rest) s.queue.push(rest);
+      if (rest) s.queue.push({ text: rest, end: text.length });
       s.spokenUpTo = text.length;
       s.done = true;
       if (s.wake) s.wake();
@@ -1284,7 +1380,7 @@
 
   async function playLoop(s) {
     let next = null; // prefetched { text, blob }
-    const fetchChunk = (text) => ({ text, blob: fetchSpeech(text) });
+    const fetchChunk = ({ text, end }) => ({ text, end, blob: fetchSpeech(text) });
     while (!s.cancelled) {
       if (!next && s.queue.length) next = fetchChunk(s.queue.shift());
       if (!next) {
@@ -1299,13 +1395,21 @@
         setStatus(`Voice unavailable: ${e.message || e}`, true);
         break;
       }
+      const playing = next;
       next = s.queue.length ? fetchChunk(s.queue.shift()) : null;
       if (s.cancelled) break;
       await playSpeech(blob, s);
+      s.playedTo = Math.max(s.playedTo, playing.end);
+      s.progress();
       s.audio = null;
       s.finish = null;
       if (s.blocked) {
         showVoiceBlocked();
+        break;
+      }
+      if (s.playError) {
+        console.error('Tutor speech could not play:', s.playError);
+        setStatus(`Voice couldn't play in this browser${s.playError.message ? `: ${s.playError.message}` : ''}`, true);
         break;
       }
       if (tutor.voiceBlocked) {
@@ -1314,6 +1418,8 @@
       }
     }
     if (next) next.blob.catch(() => {});
+    s.finished = true;
+    s.progress();
     if (tutor.speech === s) tutor.speech = null;
   }
 
@@ -1347,6 +1453,8 @@
     if (!s) return;
     tutor.speech = null;
     s.cancelled = true;
+    s.finished = true;
+    s.progress?.();
     if (s.audio) s.audio.pause();
     if (s.finish) s.finish(); // unblocks playSpeech
     if (s.wake) s.wake();

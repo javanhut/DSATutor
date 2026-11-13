@@ -291,7 +291,12 @@ function playSpeech(blob, session) {
     session.audio = audio;
     session.finish = done; // lets stop and skip unblock the playback loop
     audio.onended = done;
-    audio.onerror = done;
+    audio.onerror = () => {
+      // The browser couldn't decode or load the clip; callers report it
+      // rather than going quiet.
+      session.playError = audio.error || new Error('audio could not be played');
+      done();
+    };
     audio.play().catch(err => {
       // The browser refused to play without a click (autoplay policy):
       // callers can offer a play button instead of staying silent.

@@ -237,23 +237,30 @@ func TestTeacherPromptTeachesItsOwnLesson(t *testing.T) {
 
 func TestLessonSectionDue(t *testing.T) {
 	l := &Lesson{Sections: []LessonSection{{Heading: "a"}, {Heading: "b"}}}
-	if got := l.SectionDue("hi"); got != 0 {
+	if got := l.SectionDue("hi", ""); got != 0 {
 		t.Errorf("unwritten current section: due = %d, want 0", got)
 	}
 	l.Written = []int{0}
-	if got := l.SectionDue("What does index 3 hold?"); got != -1 {
+	if got := l.SectionDue("What does index 3 hold?", ""); got != -1 {
 		t.Errorf("mid-section: due = %d, want -1", got)
 	}
-	if got := l.SectionDue("Got it. Let's move on to the next idea."); got != 1 {
+	if got := l.SectionDue("Got it. Let's move on to the next idea.", ""); got != 1 {
 		t.Errorf("move on: due = %d, want 1", got)
 	}
 	l.Current = 1
 	l.Written = []int{0, 1}
-	if got := l.SectionDue("next"); got != -1 {
+	if got := l.SectionDue("next", ""); got != -1 {
 		t.Errorf("last section: due = %d, want -1", got)
 	}
+	l.Current, l.Written = 0, []int{0}
+	if got := l.SectionDue("100", "Exactly. Now let's move on to how hashing works."); got != 1 {
+		t.Errorf("teacher moved on: due = %d, want 1", got)
+	}
+	if got := l.SectionDue("100", "Exactly, 100 shifts."); got != -1 {
+		t.Errorf("teacher stayed: due = %d, want -1", got)
+	}
 	var none *Lesson
-	if got := none.SectionDue("next"); got != -1 {
+	if got := none.SectionDue("next", ""); got != -1 {
 		t.Errorf("no plan: due = %d, want -1", got)
 	}
 }
@@ -282,6 +289,21 @@ func TestWriteLessonOnlyInTeacherMode(t *testing.T) {
 	}
 	if _, act := ws.Execute(call("write_lesson", map[string]any{"section": 5, "heading": "x", "body": args["body"]})); act != nil {
 		t.Error("section outside the plan accepted")
+	}
+	if res, act := ws.Execute(call("write_lesson", args)); act != nil || !strings.Contains(res, "already on the lesson page") {
+		t.Errorf("rewrite of a written section accepted: %s", res)
+	}
+}
+
+func TestStripStageDirections(t *testing.T) {
+	in := "I'll start with the first section: Arrays vs. Lists. Let me write it onto the lesson page.\n\nReading nums[2] is instant: the index is the address. I'm waiting for your answer.\n\n[Your last reply also showed: asked \"If nums = [1, 2]?\" with choices: a | b.]"
+	got := StripStageDirections(in)
+	if got != "Reading nums[2] is instant: the index is the address." {
+		t.Errorf("got %q", got)
+	}
+	keep := "Let me know if that's unclear. Inserting at the front shifts all n elements, so it's O(n)."
+	if got := StripStageDirections(keep); got != keep {
+		t.Errorf("teaching text changed: %q", got)
 	}
 }
 
@@ -317,5 +339,36 @@ func TestConversationDropsClientSystemMessagesAndCapsHistory(t *testing.T) {
 		if m.Role == "system" {
 			t.Error("client-supplied system message kept")
 		}
+	}
+}
+
+func TestWriteLessonStatesTheConceptFirst(t *testing.T) {
+	lesson := &Lesson{Sections: []LessonSection{{Heading: "Hashing"}}}
+	ws := NewWorkspace(Context{View: "chapter", Teach: true, Lesson: lesson})
+	_, act := ws.Execute(call("write_lesson", map[string]any{
+		"section": 0, "heading": "Hashing",
+		"concept":    "A hash function turns any key into an array index, so a lookup jumps straight to one slot instead of scanning: O(1) on average.",
+		"why":        "The same key always hashes to the same index, so the value is where we put it.",
+		"example":    "If hash('apple') is 2, we store apple's value in slot 2 and read it from slot 2.",
+		"key_points": []any{"Same key, same slot", "Average O(1) lookups"},
+	}))
+	if act == nil {
+		t.Fatal("write_lesson rejected")
+	}
+	body := act["body"].(string)
+	concept := strings.Index(body, "A hash function turns")
+	why := strings.Index(body, "**Why it works.**")
+	example := strings.Index(body, "**Example.**")
+	if concept != 0 || why < concept || example < why || !strings.Contains(body, "- Same key, same slot") {
+		t.Errorf("body not concept, why, example, takeaways:\n%s", body)
+	}
+
+	// An example with no real concept is sent back.
+	ws = NewWorkspace(Context{View: "chapter", Teach: true, Lesson: &Lesson{Sections: []LessonSection{{Heading: "Hashing"}}}})
+	if res, act := ws.Execute(call("write_lesson", map[string]any{
+		"section": 0, "heading": "Hashing", "concept": "Look at apple.",
+		"why": "Because.", "example": "hash('apple') is 2, so apple goes in slot 2, and when we look it up we go to slot 2 again.",
+	})); act != nil || !strings.Contains(res, "concept is too thin") {
+		t.Errorf("thin concept accepted: %s", res)
 	}
 }
