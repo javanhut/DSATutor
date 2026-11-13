@@ -559,6 +559,10 @@
     if (typeof stopLessonAudio === 'function') stopLessonAudio();
 
     const box = $('tutor-messages');
+    // A hidden Teacher Mode kickoff leaves an empty-state placeholder in
+    // the message pane. Remove it before appending the live reply so
+    // "getting the lesson ready" does not remain above a finished lesson.
+    if (!tutor.messages.some(m => !m.hidden)) box.innerHTML = '';
     const bubble = document.createElement('div');
     bubble.className = 'tutor-msg assistant pending';
     bubble.innerHTML = '<div class="tutor-actions hidden"></div><div class="tutor-msg-text"><p class="tutor-typing">Thinking…</p></div><div class="tutor-asks"></div>';
@@ -962,7 +966,7 @@
     pointer.el?.classList.remove('show');
   }
 
-  function pointAt(getRect, kind) {
+  function pointAt(getRect, kind, anchor) {
     if (!kind || kind === 'none') return;
     if (!pointer.el) {
       pointer.el = document.createElement('div');
@@ -991,9 +995,18 @@
         const tip = kind === 'arrow' ? 55 : w;
         const main = document.querySelector('.main-content');
         const floor = main ? main.getBoundingClientRect().left : 0;
-        let x = r.left - tip - 4, y = r.top + Math.min(r.height, 28) / 2 - h / 2, below = false;
-        if (x < floor + 2) { x = r.left + 4; y = r.bottom + 4; below = true; }
+        const ceiling = document.querySelector('.tutor-panel.open')?.getBoundingClientRect().left || window.innerWidth;
+        const ar = anchor && anchor.isConnected ? anchor.getBoundingClientRect() : null;
+        const gutterIsBusy = kind === 'arrow' && ar && r.left - ar.left < w + 8;
+        const mirroredTip = w - tip;
+        let fromRight = gutterIsBusy && r.right + w + 8 < ceiling;
+        let x = fromRight ? r.right + 4 - mirroredTip : r.left - tip - 4;
+        let y = r.top + Math.min(r.height, 28) / 2 - h / 2, below = false;
+        if ((!fromRight && x < floor + 2) || (fromRight && x + w > ceiling - 2)) {
+          x = r.left + 4; y = r.bottom + 4; below = true; fromRight = false;
+        }
         pointer.el.classList.toggle('below', below);
+        pointer.el.classList.toggle('from-right', fromRight);
         pointer.el.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
         // Every half second, make sure the scratchpad isn't covering it.
         const now = performance.now();
@@ -1111,7 +1124,7 @@
           block.scrollIntoView({ block: 'center', behavior: 'smooth' });
           // Point first: the note goes after the range's last block, outside
           // the highlighted text.
-          pointAt(rectOfRange(range), a.pointer || 'hand');
+          pointAt(rectOfRange(range), a.pointer || 'hand', block);
           if (a.note && !target.button) {
             const call = calloutNode(a.note);
             call.querySelector('.tutor-callout-close').onclick = () => call.remove();
@@ -1269,7 +1282,11 @@
         continue;
       }
       let blob;
-      try { blob = await next.blob; } catch (e) { console.error('Tutor speech failed:', e); break; }
+      try { blob = await next.blob; } catch (e) {
+        console.error('Tutor speech failed:', e);
+        setStatus(`Voice unavailable: ${e.message || e}`, true);
+        break;
+      }
       next = s.queue.length ? fetchChunk(s.queue.shift()) : null;
       if (s.cancelled) break;
       await playSpeech(blob, s);

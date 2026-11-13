@@ -159,6 +159,8 @@ func TestScratchpadTools(t *testing.T) {
 		t.Error("unknown structure type accepted")
 	}
 
+	// Exercise the independent sketch format as a fresh teaching turn.
+	ws.ResetDrawings()
 	res, act = ws.Execute(call("scratchpad_sketch", map[string]any{
 		"title":    "window",
 		"captions": []any{"start", "slide"},
@@ -243,9 +245,8 @@ func TestSketchContentAndDrawingCap(t *testing.T) {
 	if act == nil || len(act["elements"].([]any)) != 1 || !strings.Contains(res, "left out") {
 		t.Errorf("mixed sketch: %s %v", res, act)
 	}
-	ws.Execute(call("scratchpad_sketch", mixed))
 	if res, act := ws.Execute(call("scratchpad_sketch", mixed)); act != nil || !strings.Contains(res, "already drawn") {
-		t.Errorf("third drawing allowed: %s", res)
+		t.Errorf("second drawing allowed: %s", res)
 	}
 	ws.ResetDrawings()
 	if _, act := ws.Execute(call("scratchpad_sketch", mixed)); act == nil {

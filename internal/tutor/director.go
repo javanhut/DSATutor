@@ -61,7 +61,10 @@ func (c *Client) Direct(ctx context.Context, model string, base []Message, ch *c
 		// Content is required field by field (a row's values, a note's
 		// text), so constrained decoding can't produce empty elements; the
 		// parts are turned into whiteboard elements below.
-		num := map[string]any{"type": "number"}
+		xPos := map[string]any{"type": "number", "minimum": 4, "maximum": 92}
+		yPos := map[string]any{"type": "number", "minimum": 4, "maximum": 56}
+		boxW := map[string]any{"type": "number", "minimum": 10, "maximum": 36}
+		boxH := map[string]any{"type": "number", "minimum": 6, "maximum": 12}
 		step := map[string]any{"type": "integer", "minimum": 0, "maximum": 5}
 		str := map[string]any{"type": "string", "minLength": 1}
 		props["sketch"] = map[string]any{
@@ -72,32 +75,32 @@ func (c *Client) Direct(ctx context.Context, model string, base []Message, ch *c
 				"rows": map[string]any{"type": "array", "minItems": 1, "maxItems": 6, "items": map[string]any{
 					"type": "object",
 					"properties": map[string]any{
-						"step": step, "x": num, "y": num, "label": map[string]any{"type": "string"},
+						"step": step, "x": xPos, "y": yPos, "label": map[string]any{"type": "string"},
 						"values":   map[string]any{"type": "array", "items": map[string]any{"type": "number"}, "minItems": 2, "maxItems": 10},
 						"pointers": map[string]any{"type": "object", "additionalProperties": map[string]any{"type": "integer"}},
 						"marks":    map[string]any{"type": "array", "items": map[string]any{"type": "integer"}},
 					},
 					"required": []string{"step", "x", "y", "label", "values"},
 				}},
-				"notes": map[string]any{"type": "array", "maxItems": 8, "items": map[string]any{
+				"notes": map[string]any{"type": "array", "maxItems": 4, "items": map[string]any{
 					"type": "object",
 					"properties": map[string]any{
-						"step": step, "x": num, "y": num, "text": str,
+						"step": step, "x": xPos, "y": yPos, "text": str,
 						"color": map[string]any{"type": "string", "enum": sketchColors},
 					},
 					"required": []string{"step", "x", "y", "text", "color"},
 				}},
-				"arrows": map[string]any{"type": "array", "maxItems": 6, "items": map[string]any{
+				"arrows": map[string]any{"type": "array", "maxItems": 3, "items": map[string]any{
 					"type": "object",
 					"properties": map[string]any{
-						"step": step, "x": num, "y": num, "x2": num, "y2": num, "label": map[string]any{"type": "string"},
+						"step": step, "x": xPos, "y": yPos, "x2": xPos, "y2": yPos, "label": map[string]any{"type": "string"},
 					},
 					"required": []string{"step", "x", "y", "x2", "y2", "label"},
 				}},
-				"boxes": map[string]any{"type": "array", "maxItems": 6, "items": map[string]any{
+				"boxes": map[string]any{"type": "array", "maxItems": 2, "items": map[string]any{
 					"type": "object",
 					"properties": map[string]any{
-						"step": step, "x": num, "y": num, "w": num, "h": num, "text": str,
+						"step": step, "x": xPos, "y": yPos, "w": boxW, "h": boxH, "text": str,
 					},
 					"required": []string{"step", "x", "y", "w", "h", "text"},
 				}},
@@ -105,7 +108,7 @@ func (c *Client) Direct(ctx context.Context, model string, base []Message, ch *c
 			"required": []string{"title", "captions", "rows", "notes", "arrows", "boxes"},
 		}
 		required = append(required, "sketch")
-		asks = append(asks, `"sketch": a hand-drawn whiteboard that shows the reply's idea on a concrete small input, built up over 2 to 4 steps (element.step 0, 1, 2...; captions[i] says what step i shows in one short sentence). Coordinates run 0-100 across and 0-60 down. Draw, don't write: "rows" are arrays drawn as cells (values, a label, "pointers" like {"left": 0, "right": 4} for labelled arrows under cells, "marks" to circle cells); "boxes" hold a variable and its value ("sum = 12"); "arrows" connect things; "notes" are short handwritten labels. Rows are 8 units wide per value, so keep x + 8 * len(values) under 100; leave 20 units below a row for its pointers. Redraw the same row (same x and y) in a later step with new pointers or marks to show movement. For growth or counting ideas, show the counts as rows or boxes (e.g. a row of pair counts for n = 1..5). Keep text to short labels (six words or fewer), placed below or to the right of the drawing. Use the reply's own example numbers when it has them; when the reply has no concrete example, take one from the chapter material (its worked example or overview numbers). Always include at least one structural element (a "cells" row, "node"s, or "box"es) — never only text.`)
+		asks = append(asks, `"sketch": one compact hand-drawn whiteboard that shows the reply's single idea on a concrete small input, built up over 2 to 4 steps (element.step 0, 1, 2...; captions[i] says what step i shows in one short sentence). Coordinates run 0-100 across and 0-60 down. Draw, don't write: "rows" are arrays drawn as cells (values, a label, "pointers" like {"left": 0, "right": 4} for labelled arrows under cells, "marks" to circle cells); "boxes" hold one small result ("sum = 12"); "arrows" must visibly connect two drawn things; "notes" are short labels. Prefer one cells row, redrawn at the SAME x and y in later steps, rather than stacking duplicate rows or large result boxes. Rows are 8 units wide per value, so keep x + 8 * len(values) under 96; leave 18 units below a row for pointers. Never draw a floating arrow, never repeat the array as prose beside the cells, and omit any box or note that does not clarify the one idea. Keep text to six words or fewer. Use the reply's exact example numbers. Always include a structural element — never only text.`)
 	}
 	if need.Check {
 		props["check"] = map[string]any{

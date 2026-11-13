@@ -295,7 +295,10 @@ function playSpeech(blob, session) {
     audio.play().catch(err => {
       // The browser refused to play without a click (autoplay policy):
       // callers can offer a play button instead of staying silent.
-      if (err && err.name === 'NotAllowedError') session.blocked = true;
+      // Brave/Safari do not consistently use NotAllowedError here, so every
+      // rejected play promise needs the same visible recovery control.
+      session.blocked = true;
+      session.playError = err;
       done();
     });
   });

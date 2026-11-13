@@ -48,8 +48,10 @@ type ToolCall struct {
 type Action map[string]any
 
 const (
-	maxTargets         = 60
-	maxDrawingsPerTurn = 2
+	maxTargets = 60
+	// More than one board in a teaching beat produces duplicate history
+	// items and makes the learner decide which version to follow.
+	maxDrawingsPerTurn = 1
 )
 
 // Workspace is the page as one request sees it: the regions and the

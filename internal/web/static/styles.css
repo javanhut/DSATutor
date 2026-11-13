@@ -7823,6 +7823,7 @@ body.interview-active #practice-mode :is(
 .tutor-pointer.below .tp-hand { transform: rotate(-90deg); animation-name: tp-tap-up; }
 .tutor-pointer.arrow { color: var(--mark); }
 .tutor-pointer.below.arrow svg { transform: rotate(-60deg); }
+.tutor-pointer.from-right.arrow svg { transform: scaleX(-1); }
 @keyframes tp-tap { 50% { transform: translateX(6px); } }
 @keyframes tp-tap-up { 0%, 100% { transform: rotate(-90deg); } 50% { transform: rotate(-90deg) translateX(6px); } }
 .tutor-stage { margin: 6px 0 0; color: var(--muted); font-style: italic; font-size: var(--fs-xs); }
