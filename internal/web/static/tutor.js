@@ -66,6 +66,14 @@
     return parts.join('\n\n');
   }
 
+  // Whether replies in the conversation on screen are read aloud.
+  function wantsSpeech() {
+    const kind = (tutor.view && tutor.view.kind) || 'chat';
+    const set = tutor.prefs.speakByKind || {};
+    if (kind in set) return !!set[kind];
+    return kind === 'teacher' ? true : !!tutor.prefs.speak;
+  }
+
   // Modes (interview.js, teacher.js) can take over the conversation: the
   // first one whose context() returns something decides the key, persona,
   // quick prompts and placeholder.
@@ -286,6 +294,19 @@
     });
     $('tutor-mic').onclick = toggleRecording;
     $('tutor-messages').addEventListener('click', (e) => {
+      if (e.target.closest('[data-play-voice]')) {
+        tutor.voiceBlocked = false;
+        e.target.closest('[data-play-voice]').remove();
+        const msg = [...tutor.messages].reverse().find(m => m.role === 'assistant' && !m.hidden);
+        if (msg) speakText(msg.content);
+        return;
+      }
+      const speakBtn = e.target.closest('[data-speak]');
+      if (speakBtn) {
+        const m = tutor.messages[+speakBtn.dataset.speak];
+        if (m) speakText(m.content);
+        return;
+      }
       if (e.target.closest('[data-kickoff]')) {
         setStatus('');
         maybeKickoff(true);
@@ -306,7 +327,11 @@
     });
     $('tutor-think').onchange = (e) => { tutor.prefs.think = e.target.checked; save(PREFS_KEY, tutor.prefs); };
     $('tutor-speak').onchange = (e) => {
-      tutor.prefs.speak = e.target.checked;
+      // Remembered per kind of conversation: Teacher Mode speaks by default,
+      // the regular tutor doesn't.
+      const kind = (tutor.view && tutor.view.kind) || 'chat';
+      tutor.prefs.speakByKind = { ...(tutor.prefs.speakByKind || {}), [kind]: e.target.checked };
+      if (kind !== 'teacher') tutor.prefs.speak = e.target.checked;
       save(PREFS_KEY, tutor.prefs);
       if (!e.target.checked) stopSpeaking();
     };
@@ -332,11 +357,15 @@
     ).join('');
     tutor.prefs = { think: false, speak: false, ...(load(PREFS_KEY, {}) || {}) };
     $('tutor-think').checked = tutor.prefs.think;
-    $('tutor-speak').checked = tutor.prefs.speak;
+    $('tutor-speak').checked = wantsSpeech();
     syncThinkToggle();
     $('tutor-mic').classList.toggle('hidden', !tutor.status.transcribe);
     if (typeof ttsStatus === 'function') {
-      ttsStatus().then(st => $('tutor-speak-wrap').classList.toggle('hidden', !st.available));
+      ttsStatus().then(st => {
+        $('tutor-speak-wrap').classList.toggle('hidden', !st.available);
+        // Replies drawn before the voice status arrived get their 🔊 now.
+        if (st.available) renderMessages();
+      });
     }
   }
 
@@ -350,6 +379,7 @@
   function syncContext() {
     const c = currentContext();
     tutor.view = c;
+    if ($('tutor-speak')) $('tutor-speak').checked = wantsSpeech();
     $('tutor-context').textContent = c.contextLine || (c.kind === 'problem' ? `${c.label} · sees your code and runs`
       : c.kind === 'sandbox' ? 'Sandbox · sees your code'
       : c.label);
@@ -463,6 +493,7 @@
       return;
     }
     box.innerHTML = tutor.messages.map((m, i) => (m.hidden ? '' : messageHtml(m, i))).join('');
+    placeVoiceBlockedButton();
     box.scrollTop = box.scrollHeight;
   }
 
@@ -472,7 +503,12 @@
     const chips = acts.map((a, ai) => (a.name === 'ask_learner' ? '' : chipHtml(a, `${idx}:${ai}`))).join('');
     const asks = acts.filter(a => a.name === 'ask_learner').map(askHtml).join('');
     const text = m.content === '(done)' && acts.length ? '' : `<div class="tutor-msg-text">${body}</div>`;
-    return `<div class="tutor-msg ${m.role}">${chips ? `<div class="tutor-actions">${chips}</div>` : ''}${text}${asks}</div>`;
+    const speakBtn = m.role === 'assistant' && text && ttsReady() ? `<button type="button" class="tutor-msg-speak" data-speak="${idx}" title="Read this reply aloud" aria-label="Read this reply aloud">🔊</button>` : '';
+    return `<div class="tutor-msg ${m.role}">${speakBtn}${chips ? `<div class="tutor-actions">${chips}</div>` : ''}${text}${asks}</div>`;
+  }
+
+  function ttsReady() {
+    return !!$('tutor-speak-wrap') && !$('tutor-speak-wrap').classList.contains('hidden');
   }
 
   // A chip records one thing the tutor did. Highlights and scratchpad work
@@ -508,6 +544,9 @@
   async function send(text, opts = {}) {
     text = (text || '').trim();
     if (!text || tutor.busy) return;
+    // Busy from the first moment, so nothing else (an automatic lesson
+    // start) can send while this one is getting ready.
+    tutor.busy = true;
     const c = syncContext();
     if (!opts.hidden) $('tutor-text').value = '';
     // Hidden messages cue the model (an interviewer starting the interview)
@@ -530,7 +569,12 @@
 
     // A question asked by voice gets a spoken answer even with Speak replies
     // off, so a conversation can go back and forth hands-free.
-    const speak = (tutor.prefs.speak || !!opts.voice) && !$('tutor-speak-wrap').classList.contains('hidden');
+    // Ask the voice status itself rather than reading the checkbox's
+    // visibility: the first turn of a session (a lesson starting the moment
+    // the panel opens) used to run before the status arrived, and stayed
+    // silent.
+    const voices = typeof ttsStatus === 'function' ? await ttsStatus().catch(() => null) : null;
+    const speak = (wantsSpeech() || !!opts.voice) && !!(voices && voices.available);
     const speech = speak ? startSpeaking() : null;
     const ctrl = new AbortController();
     tutor.abort = ctrl;
@@ -635,6 +679,10 @@
     else {
       if (reply.trim()) textEl.innerHTML = renderMarkdown(reply);
       else textEl.remove();
+      placeVoiceBlockedButton();
+      if (reply.trim() && ttsReady() && !bubble.querySelector('.tutor-msg-speak')) {
+        bubble.insertAdjacentHTML('afterbegin', `<button type="button" class="tutor-msg-speak" data-speak="${tutor.messages.length - 1}" title="Read this reply aloud" aria-label="Read this reply aloud">🔊</button>`);
+      }
       if (!actionsEl.children.length) actionsEl.classList.add('hidden');
       // Replay chips need their message index now that it is saved.
       const idx = tutor.messages.length - 1;
@@ -1226,9 +1274,42 @@
       await playSpeech(blob, s);
       s.audio = null;
       s.finish = null;
+      if (s.blocked) {
+        showVoiceBlocked();
+        break;
+      }
+      if (tutor.voiceBlocked) {
+        tutor.voiceBlocked = false;
+        document.querySelectorAll('.tutor-voice-blocked').forEach(b => b.remove());
+      }
     }
     if (next) next.blob.catch(() => {});
     if (tutor.speech === s) tutor.speech = null;
+  }
+
+  // The browser refused to start audio without a click. Offer a button on
+  // the latest reply; clicking it is the gesture that unlocks audio.
+  // The flag survives re-renders; renderMessages draws the button on the
+  // latest reply while it's set.
+  function showVoiceBlocked() {
+    tutor.voiceBlocked = true;
+    placeVoiceBlockedButton();
+  }
+
+  function placeVoiceBlockedButton() {
+    if (!tutor.voiceBlocked) return;
+    const bubbles = document.querySelectorAll('#tutor-messages .tutor-msg.assistant');
+    const last = bubbles[bubbles.length - 1];
+    if (!last || last.querySelector('.tutor-voice-blocked')) return;
+    last.insertAdjacentHTML('beforeend', '<button type="button" class="btn-small primary tutor-voice-blocked" data-play-voice title="Your browser blocks sound until you click on the page">🔊 Play voice</button>');
+  }
+
+  // Read one message aloud (the 🔊 button on a reply, or Play voice).
+  function speakText(text) {
+    stopSpeaking();
+    if (typeof stopLessonAudio === 'function') stopLessonAudio();
+    const s = startSpeaking();
+    s.end(text);
   }
 
   function stopSpeaking() {
@@ -1413,6 +1494,7 @@
     // Carry out one action as if the server had sent it (testing, demos).
     act: (a) => runAction(a),
     targets: () => targetList(),
+    speak: (text) => speakText(text),
     clear: () => clearSpotlights(),
   };
   window.openTutor = openPanel;

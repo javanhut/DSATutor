@@ -7757,3 +7757,21 @@ body.interview-active #practice-mode :is(
 /* When the scratchpad is shortened to stay clear of a highlight, its body
    scrolls; its rows must not be squeezed into each other. */
 .sp-body > * { flex-shrink: 0; }
+
+/* Reading tutor replies aloud */
+.tutor-msg.assistant { position: relative; }
+.tutor-msg-speak {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  line-height: 1.4;
+  opacity: 0.45;
+  cursor: pointer;
+}
+.tutor-msg-speak:hover { opacity: 1; background: none; }
+.tutor-voice-blocked { margin-top: 8px; }
+.tutor-msg.assistant { padding-right: 26px; }

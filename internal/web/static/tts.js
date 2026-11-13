@@ -292,7 +292,12 @@ function playSpeech(blob, session) {
     session.finish = done; // lets stop and skip unblock the playback loop
     audio.onended = done;
     audio.onerror = done;
-    audio.play().catch(done);
+    audio.play().catch(err => {
+      // The browser refused to play without a click (autoplay policy):
+      // callers can offer a play button instead of staying silent.
+      if (err && err.name === 'NotAllowedError') session.blocked = true;
+      done();
+    });
   });
 }
 

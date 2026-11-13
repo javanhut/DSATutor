@@ -105,6 +105,13 @@ structured-output call (JSON schema, which every model follows), retrying
 once if its sketch is still thin. The chat shows "Pointing and drawing…"
 meanwhile.
 
+**Voice.** Teacher Mode reads the teacher's replies aloud by default (the
+regular tutor doesn't; **Speak replies** is remembered separately for each).
+Every reply has a 🔊 button to hear it again. Browsers block sound until
+you've clicked on the page, so when a lesson starts on its own (after a
+reload) the first reply shows **🔊 Play voice**; one click plays it, and
+later replies play by themselves.
+
 **Starting the lesson.** A chapter's lesson starts by itself whenever the
 tutor panel shows that chapter in Teacher Mode with nothing said yet: when
 you turn Teacher Mode on, open the panel, press Clear, reload the page, or
