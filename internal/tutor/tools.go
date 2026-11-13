@@ -63,13 +63,17 @@ type Workspace struct {
 	codeID    string // the target holding Code
 	tests     int    // test cases on screen; 0 when no problem is open
 	isProblem bool
-	interview bool // an interviewer only points; it never edits or switches tabs
-	drawn     int  // scratchpad drawings this turn; capped so a model can't spam the board
+	interview bool    // an interviewer only points; it never edits or switches tabs
+	teach     bool    // Teacher Mode: writes its own lesson articles on the pad
+	lesson    *Lesson // Teacher Mode's plan, updated as articles are written
+	drawn     int     // scratchpad drawings this turn; capped so a model can't spam the board
 }
 
 // NewWorkspace validates the browser's targets.
 func NewWorkspace(ctx Context) *Workspace {
 	w := &Workspace{byID: map[string]Target{}, code: ctx.Code, tests: ctx.TestCount, isProblem: ctx.View == "problem", interview: ctx.Interview != nil}
+	w.teach = ctx.Teach && !w.interview
+	w.lesson = ctx.Lesson
 	for _, t := range ctx.Targets {
 		t.ID, t.Label = strings.TrimSpace(t.ID), strings.TrimSpace(t.Label)
 		if t.ID == "" || len(t.ID) > 64 || w.byID[t.ID].ID != "" || len(w.targets) >= maxTargets {
@@ -112,6 +116,13 @@ func (w *Workspace) Tools() []Tool {
 	var tools []Tool
 	if !w.interview {
 		tools = append(tools, scratchpadTools()...)
+	}
+	if w.teach {
+		n := 0
+		if w.lesson.Valid() {
+			n = len(w.lesson.Sections)
+		}
+		tools = append(tools, articleTool(n))
 	}
 	if len(w.targets) == 0 {
 		return tools
@@ -244,6 +255,23 @@ func (w *Workspace) Execute(call ToolCall) (string, Action) {
 
 	case "ask_learner":
 		return executeScratchpad(call)
+
+	case "write_lesson":
+		if !w.teach {
+			return "Error: lesson articles are only for Teacher Mode.", nil
+		}
+		res, act := executeArticle(args, w.lesson)
+		if act != nil {
+			// The section is on the page now: the teacher may point at it
+			// for the rest of this turn.
+			id := fmt.Sprintf("lesson-%d", act["section"])
+			if _, ok := w.byID[id]; !ok && len(w.targets) < maxTargets {
+				t := Target{ID: id, Label: fmt.Sprintf("Lesson page, section %d: %s", act["section"], act["heading"])}
+				w.targets = append(w.targets, t)
+				w.byID[id] = t
+			}
+		}
+		return res, act
 
 	case "open_tab":
 		tab := str(args, "tab")

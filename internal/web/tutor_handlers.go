@@ -59,25 +59,14 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 	if problem == nil {
 		req.Context.Interview = nil
 	}
-	// The page regions become tools only for models that can call them.
-	var ws *tutor.Workspace
-	if s.tutor.SupportsTools(req.Model) {
-		ws = tutor.NewWorkspace(req.Context)
-	}
-	var system string
 	ch := s.tutorChapter(req.Context.ChapterNumber)
-	if req.Context.Interview != nil {
-		system = tutor.InterviewerPrompt(req.Context, problem, ws)
-	} else if req.Context.Teach && ch != nil && problem == nil {
-		system = tutor.TeacherPrompt(req.Context, ch, ws)
-	} else {
-		system = tutor.SystemPrompt(req.Context, problem, ch, ws)
+	teach := req.Context.Teach && ch != nil && problem == nil && req.Context.Interview == nil
+	if !teach {
+		req.Context.Teach, req.Context.Lesson = false, nil
+	} else if req.Context.Lesson != nil {
+		req.Context.Lesson.Clean()
 	}
-	messages := tutor.Conversation(system, req.Messages)
-	var tools []tutor.Tool
-	if ws != nil {
-		tools = ws.Tools()
-	}
+	lastUser := req.Messages[len(req.Messages)-1].Content
 
 	w.Header().Set("Content-Type", "application/x-ndjson")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -105,6 +94,43 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 		return nil
 	}
 
+	// Teacher Mode writes its own lesson: a new lesson (or one restarted with
+	// Clear, which leaves only the kickoff cue) gets a fresh plan first. The
+	// browser keeps the plan and sends it back with every turn.
+	if teach && (!req.Context.Lesson.Valid() || len(req.Messages) == 1) {
+		send(map[string]string{"type": "status", "text": "Planning the lesson…"})
+		lesson, err := s.tutor.PlanLesson(r.Context(), req.Model, ch, req.Context.Learner)
+		if err != nil {
+			if r.Context().Err() != nil {
+				return
+			}
+			send(map[string]string{"type": "error", "error": "couldn't plan the lesson: " + err.Error()})
+			return
+		}
+		req.Context.Lesson = lesson
+		send(map[string]any{"type": "lesson", "lesson": lesson})
+	}
+
+	// The page regions become tools only for models that can call them.
+	var ws *tutor.Workspace
+	if s.tutor.SupportsTools(req.Model) {
+		ws = tutor.NewWorkspace(req.Context)
+	}
+	var system string
+	switch {
+	case req.Context.Interview != nil:
+		system = tutor.InterviewerPrompt(req.Context, problem, ws)
+	case teach:
+		system = tutor.TeacherPrompt(req.Context, ch, ws, lastUser)
+	default:
+		system = tutor.SystemPrompt(req.Context, problem, ch, ws)
+	}
+	messages := tutor.Conversation(system, req.Messages)
+	var tools []tutor.Tool
+	if ws != nil {
+		tools = ws.Tools()
+	}
+
 	// The tool loop: each round streams the model's text; tool calls are
 	// carried out (sent to the page as actions) and their results fed back,
 	// until the model answers without calling a tool.
@@ -114,6 +140,8 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 	for round := 0; ; round++ {
 		if round == maxToolRounds {
 			tools = nil // last round: make it answer in words
+		} else if ws != nil && round > 0 {
+			tools = ws.Tools() // a section written this turn can be pointed at now
 		}
 		reply, err := s.tutor.Chat(r.Context(), req.Model, messages, req.Think, tools, emit)
 		if err != nil {
@@ -170,20 +198,26 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 			send(map[string]string{"type": "delta", "text": "\n\n"})
 		}
 	}
-	// Teacher Mode stages missing checkpoints and pointers. It also supplies a
-	// visual for learners who still need explicit support, then fades that
-	// visual once their evidence reaches the practising level.
-	if req.Context.Teach && ch != nil && ws != nil && req.Context.Interview == nil && strings.TrimSpace(said.String()) != "" {
+	// Teacher Mode stages what a turn left out: the section due on the
+	// lesson page, a checkpoint, and a scratchpad example for learners who
+	// still need explicit support (faded once their evidence reaches the
+	// practising level).
+	if teach && ws != nil && strings.TrimSpace(said.String()) != "" {
 		forceVisual := req.Context.Learner == nil || req.Context.Learner.Level == "starting" || req.Context.Learner.Level == "building" || len(req.Context.Learner.Misconceptions) > 0
-		need := tutor.DirectorNeeds{
-			Highlight: !did["highlight"],
-			Sketch:    forceVisual && !did["scratchpad_sketch"] && !did["scratchpad_visualize"] && !did["scratchpad_code"],
-			Check:     !did["ask_learner"],
+		due := -1
+		if !did["write_lesson"] {
+			due = req.Context.Lesson.SectionDue(lastUser)
 		}
-		if need.Highlight || need.Sketch || need.Check {
-			send(map[string]string{"type": "status", "text": "Setting up the shared board…"})
+		need := tutor.DirectorNeeds{
+			Article: due >= 0,
+			Section: due,
+			Sketch:  forceVisual && !did["scratchpad_sketch"] && !did["scratchpad_visualize"] && !did["scratchpad_code"],
+			Check:   !did["ask_learner"],
+		}
+		if need.Article || need.Sketch || need.Check {
+			send(map[string]string{"type": "status", "text": "Writing up the lesson…"})
 			ws.ResetDrawings()
-			calls, err := s.tutor.Direct(r.Context(), model, messages, ch, ws, said.String(), need)
+			calls, err := s.tutor.Direct(r.Context(), model, messages, ch, req.Context.Lesson, said.String(), need)
 			if err != nil {
 				if r.Context().Err() != nil {
 					return

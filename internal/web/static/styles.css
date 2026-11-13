@@ -7603,6 +7603,48 @@ body.interview-active #practice-mode :is(
   border-color: var(--mark);
 }
 
+/* Teacher Mode's lesson page: the chapter's prewritten content is put away
+   and the teacher writes the lesson here, section by section. */
+.teacher-lesson { display: none; }
+.chapter-content.teaching > :not(#teacher-lesson) { display: none !important; }
+.chapter-content.teaching > #teacher-lesson { display: block; }
+.teacher-lesson {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 8px 0 48px;
+  font-family: var(--serif);
+  line-height: 1.65;
+}
+.tl-head { margin-bottom: 18px; }
+.tl-kicker {
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mark);
+}
+.tl-head h2 { margin: 4px 0 0; font-size: var(--fs-xl); }
+.tl-outline { margin: 0 0 28px; padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--radius); font-size: var(--fs-sm); }
+.tl-outline ol { margin: 0; padding-left: 20px; color: var(--muted); }
+.tl-outline li.done { color: var(--text-dim); }
+.tl-outline li.current { color: var(--text); font-weight: 600; }
+.tl-outline a { color: inherit; }
+.tl-section { margin: 0 0 32px; scroll-margin-top: 16px; }
+.tl-num { font-family: var(--mono); font-size: var(--fs-xs); color: var(--muted); }
+.tl-section h3 { margin: 2px 0 8px; font-size: var(--fs-lg); }
+.tl-body p { margin: 0 0 10px; }
+.tl-body ul, .tl-body ol { margin: 0 0 10px; padding-left: 22px; }
+.tl-code { margin: 8px 0 0; padding: 10px 12px; background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; overflow-x: auto; }
+.tl-empty, .tl-more { color: var(--muted); font-style: italic; }
+.tl-fresh { animation: tl-write 0.9s ease-out; }
+@keyframes tl-write {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tl-fresh { animation: none; }
+}
+
 .scratchpad {
   position: fixed;
   left: calc(var(--sidebar-width) + 24px);

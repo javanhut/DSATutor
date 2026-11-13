@@ -162,11 +162,12 @@ func TestTutorChatToolLoopIsBounded(t *testing.T) {
 	}
 }
 
-// In Teacher Mode, a model that only talks gets its turn staged by the
-// director: one structured call returns a highlight and a sketch, which are
+// In Teacher Mode, a new lesson is planned first, then a model that only
+// talks gets its turn staged by the director: one structured call returns
+// the section's lesson-page text, a sketch and a checkpoint, which are
 // carried out like tool calls.
 func TestTeacherDirectorStagesTextOnlyTurns(t *testing.T) {
-	var formats int
+	var formats, plans int
 	thin := false
 	ollama := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -177,11 +178,18 @@ func TestTeacherDirectorStagesTextOnlyTurns(t *testing.T) {
 		case "/api/chat":
 			var body map[string]any
 			json.NewDecoder(r.Body).Decode(&body)
-			if body["format"] != nil {
+			if f, ok := body["format"].(map[string]any); ok {
+				if props, _ := f["properties"].(map[string]any); props["sections"] != nil {
+					plans++
+					plan := `{"title":"Two Pointers","sections":[{"heading":"Why","goal":"see the slow way"},{"heading":"Walk inward","goal":"trace the pointers"},{"heading":"Invariant","goal":"explain why"},{"heading":"Practice","goal":"solve one"}]}`
+					json.NewEncoder(w).Encode(map[string]any{"message": map[string]string{"content": plan}, "done": true})
+					return
+				}
 				formats++
-				card := `{"highlight":{"target":"section-1","quote":"two pointers","pointer":"hand","note":"here"},"sketch":{"title":"t","captions":["a"],"rows":[{"step":0,"x":10,"y":10,"label":"nums","values":[1,2,3],"pointers":{"left":0}}],"notes":[{"step":0,"x":10,"y":40,"text":"start","color":"ink"}],"arrows":[{"step":1,"x":10,"y":50,"x2":20,"y2":30,"label":"move"}],"boxes":[]},"check":{"question":"Which pointer moves next?","choices":["left","right"]}}`
+				article := `"article":{"heading":"Walk inward","body":"Put one pointer at each end of the sorted array and move the one that brings the sum closer to the target. Each step discards one element for good."},`
+				card := `{` + article + `"sketch":{"title":"t","captions":["a"],"rows":[{"step":0,"x":10,"y":10,"label":"nums","values":[1,2,3],"pointers":{"left":0}}],"notes":[{"step":0,"x":10,"y":40,"text":"start","color":"ink"}],"arrows":[{"step":1,"x":10,"y":50,"x2":20,"y2":30,"label":"move"}],"boxes":[]},"check":{"question":"Which pointer moves next?","choices":["left","right"]}}`
 				if thin {
-					card = `{"highlight":{"target":"section-1","quote":"two pointers","pointer":"hand","note":"here"},"sketch":{"title":"t","captions":["a"],"rows":[],"notes":[{"step":0,"x":10,"y":10,"text":"idea","color":"ink"}],"arrows":[],"boxes":[]},"check":{"question":"Which pointer moves next?","choices":["left","right"]}}`
+					card = `{` + article + `"sketch":{"title":"t","captions":["a"],"rows":[],"notes":[{"step":0,"x":10,"y":10,"text":"idea","color":"ink"}],"arrows":[],"boxes":[]},"check":{"question":"Which pointer moves next?","choices":["left","right"]}}`
 				}
 				json.NewEncoder(w).Encode(map[string]any{"message": map[string]string{"content": card}, "done": true})
 				return
@@ -192,34 +200,43 @@ func TestTeacherDirectorStagesTextOnlyTurns(t *testing.T) {
 	defer ollama.Close()
 	t.Setenv("DSATUTOR_OLLAMA_URL", ollama.URL)
 	t.Setenv("DSATUTOR_TUTOR_MODEL", "")
-	s := NewServer([]chapter.Chapter{{Number: 3, Title: "Two Pointers", Summary: "s"}})
+	s := NewServer([]chapter.Chapter{{Number: 3, Title: "Two Pointers", Summary: "Two pointers walk inward."}})
 
-	req := `{"messages":[{"role":"user","content":"next"}],"context":{"view":"chapter","chapterNumber":3,"teach":true,"targets":[{"id":"section-1","label":"Overview"}]}}`
-	rec := httptest.NewRecorder()
-	s.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/tutor/chat", strings.NewReader(req)))
-
-	var kinds []string
-	var sketch map[string]any
-	for _, line := range strings.Split(strings.TrimSpace(rec.Body.String()), "\n") {
-		var ev map[string]any
-		json.Unmarshal([]byte(line), &ev)
-		k := ev["type"].(string)
-		if k == "action" {
-			k += ":" + ev["name"].(string)
-			if ev["name"] == "scratchpad_sketch" {
-				sketch = ev
+	events := func(body string) ([]string, map[string]map[string]any) {
+		rec := httptest.NewRecorder()
+		s.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/tutor/chat", strings.NewReader(body)))
+		var kinds []string
+		byName := map[string]map[string]any{}
+		for _, line := range strings.Split(strings.TrimSpace(rec.Body.String()), "\n") {
+			var ev map[string]any
+			json.Unmarshal([]byte(line), &ev)
+			k, _ := ev["type"].(string)
+			if k == "action" {
+				k += ":" + ev["name"].(string)
+				byName[ev["name"].(string)] = ev
 			}
+			if k == "lesson" {
+				byName["lesson"] = ev
+			}
+			kinds = append(kinds, k)
 		}
-		kinds = append(kinds, k)
+		return kinds, byName
 	}
-	if got := strings.Join(kinds, ","); got != "delta,status,action:highlight,action:scratchpad_sketch,action:ask_learner,done" {
-		t.Errorf("events = %s", got)
+
+	// A fresh lesson: plan, then the first section is written.
+	kickoff := `{"messages":[{"role":"user","content":"(Start the lesson)"}],"context":{"view":"chapter","chapterNumber":3,"teach":true}}`
+	kinds, got := events(kickoff)
+	if j := strings.Join(kinds, ","); j != "status,lesson,delta,status,action:write_lesson,action:scratchpad_sketch,action:ask_learner,done" {
+		t.Errorf("events = %s", j)
 	}
-	if formats != 1 {
-		t.Errorf("director called %d times, want 1", formats)
+	if plans != 1 || formats != 1 {
+		t.Errorf("plans = %d, director calls = %d; want 1 and 1", plans, formats)
+	}
+	if got["write_lesson"]["section"] != float64(0) || got["write_lesson"]["total"] != float64(4) {
+		t.Errorf("write_lesson = %v", got["write_lesson"])
 	}
 	// Director rows become cells elements with real values and pointers.
-	el := sketch["elements"].([]any)[0].(map[string]any)
+	el := got["scratchpad_sketch"]["elements"].([]any)[0].(map[string]any)
 	if _, ok := el["values"].([]any); !ok {
 		t.Errorf("values not decoded: %#v", el["values"])
 	}
@@ -229,39 +246,35 @@ func TestTeacherDirectorStagesTextOnlyTurns(t *testing.T) {
 
 	// A thin sketch from the director gets exactly one retry.
 	formats, thin = 0, true
-	rec = httptest.NewRecorder()
-	s.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/tutor/chat", strings.NewReader(req)))
+	events(kickoff)
 	if formats != 2 {
 		t.Errorf("thin sketch: director called %d times, want 2 (one retry)", formats)
 	}
 	thin = false
 
-	// A learner with secure evidence still gets a precise pointer and a
-	// checkpoint, but the director no longer forces another explanatory sketch.
-	formats = 0
-	secureReq := `{"messages":[{"role":"user","content":"next"}],"context":{"view":"chapter","chapterNumber":3,"teach":true,"learner":{"level":"secure","mastery":82},"targets":[{"id":"section-1","label":"Overview"}]}}`
-	rec = httptest.NewRecorder()
-	s.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/tutor/chat", strings.NewReader(secureReq)))
-	kinds = nil
-	for _, line := range strings.Split(strings.TrimSpace(rec.Body.String()), "\n") {
-		var ev map[string]any
-		json.Unmarshal([]byte(line), &ev)
-		kind := ev["type"].(string)
-		if kind == "action" {
-			kind += ":" + ev["name"].(string)
-		}
-		kinds = append(kinds, kind)
+	// Moving on with a plan in hand writes the next section, without
+	// replanning; a secure learner gets no forced sketch.
+	formats, plans = 0, 0
+	lesson := `{"title":"Two Pointers","sections":[{"heading":"Why","goal":"g"},{"heading":"Walk inward","goal":"g"}],"current":0,"written":[0]}`
+	next := `{"messages":[{"role":"user","content":"(Start)"},{"role":"assistant","content":"ok"},{"role":"user","content":"Got it. Let's move on to the next idea."}],"context":{"view":"chapter","chapterNumber":3,"teach":true,"lesson":` + lesson + `,"learner":{"level":"secure","mastery":82}}}`
+	kinds, got = events(next)
+	if j := strings.Join(kinds, ","); j != "delta,status,action:write_lesson,action:ask_learner,done" {
+		t.Errorf("move-on events = %s", j)
 	}
-	if got := strings.Join(kinds, ","); got != "delta,status,action:highlight,action:ask_learner,done" {
-		t.Errorf("secure learner events = %s", got)
+	if plans != 0 || got["write_lesson"]["section"] != float64(1) {
+		t.Errorf("plans = %d, write_lesson = %v", plans, got["write_lesson"])
 	}
 
-	// Outside Teacher Mode there is no director.
-	formats = 0
-	rec = httptest.NewRecorder()
-	s.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/tutor/chat",
-		strings.NewReader(`{"messages":[{"role":"user","content":"hi"}],"context":{"view":"chapter","chapterNumber":3,"targets":[{"id":"section-1","label":"Overview"}]}}`)))
-	if formats != 0 {
-		t.Error("director ran outside Teacher Mode")
+	// Mid-section, nothing new is written; only the checkpoint is staged.
+	mid := strings.Replace(next, "Got it. Let's move on to the next idea.", "Is it O(n)?", 1)
+	if kinds, _ = events(mid); strings.Join(kinds, ",") != "delta,status,action:ask_learner,done" {
+		t.Errorf("mid-section events = %s", strings.Join(kinds, ","))
+	}
+
+	// Outside Teacher Mode there is no planning and no director.
+	formats, plans = 0, 0
+	events(`{"messages":[{"role":"user","content":"hi"}],"context":{"view":"chapter","chapterNumber":3,"targets":[{"id":"section-1","label":"Overview"}]}}`)
+	if formats != 0 || plans != 0 {
+		t.Error("director or planner ran outside Teacher Mode")
 	}
 }

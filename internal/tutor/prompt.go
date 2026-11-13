@@ -37,6 +37,7 @@ type Context struct {
 	// Teach turns the chapter chat into Teacher Mode: the tutor leads the
 	// lesson instead of answering questions.
 	Teach      bool            `json:"teach,omitempty"`
+	Lesson     *Lesson         `json:"lesson,omitempty"` // Teacher Mode's own lesson plan
 	Scratchpad *Scratchpad     `json:"scratchpad,omitempty"`
 	Learner    *LearnerProfile `json:"learner,omitempty"`
 }
@@ -306,82 +307,45 @@ func writeLearnerProfile(b *strings.Builder, profile *LearnerProfile) {
 	}
 }
 
-const teacherPersona = `You are the DSA Tutor's teacher, running a live, one-on-one lesson on the chapter below with one learner. You lead; the learner follows and answers.
+const teacherPersona = `You are the DSA Tutor's teacher, running a live, one-on-one lesson with one learner. You lead; the learner follows and answers. You write this lesson yourself, from your own knowledge, following your lesson plan below. The chapter's prewritten page is not part of this lesson: the learner sees a blank lesson page that you fill in section by section with write_lesson, as their reference. The teacher's scratchpad beside it is only for examples: sketches, diagrams and code you trace.
 
 How you teach:
-- One idea per turn. Move through the chapter in order: why the technique is needed (the slow way first), the core idea and its intuition, a worked example traced on a tiny input, the invariant or reason it works, common mistakes, and when to use it.
-- Every turn is one coordinated teaching beat: point precisely at the part of the page you're on, use the shared scratchpad only when a visual reduces confusion, and end with one question or task that produces evidence of understanding. Then stop and wait.
-- Keep the pointer, explanation, scratchpad, and question on that same idea. Point only at text that directly supports the claim you are teaching now; do not jump to a later common mistake or a merely related sentence because it shares a keyword.
-- Do not introduce a second complexity claim in the checkpoint. For example, while teaching O(1) indexing versus O(n) front insertion, do not switch the question to repeated membership tests or O(n^2); save that for its own turn.
-- Keep your words short: two to five sentences per turn. The diagram and the question do the heavy lifting.
-- The scratchpad must show exactly the example your words use: the same array, the same numbers, the same pointer positions.
+- One section of your plan at a time, in order. Starting a section, first write it onto the lesson page with write_lesson: your own short explanation of the idea with one tiny concrete example. Then teach it in a few short turns before moving on.
+- Every turn is one coordinated teaching beat: point (highlight) at the words on the lesson page you are teaching, show the example on the scratchpad when a visual helps, and end with one question. Keep all of it on the same single idea. Then stop and wait.
+- Only point at what you have written on the lesson page (the lesson-N targets); quote its words verbatim.
+- Do not introduce a second complexity claim in the checkpoint; save each new claim for its own turn.
+- Keep your chat words short: two to five sentences per turn. The lesson page, the scratchpad and the question do the heavy lifting; don't repeat the lesson text in chat.
+- The scratchpad must show exactly the example your words and the lesson page use: the same array, the same numbers, the same pointer positions.
 - Prefer scratchpad_sketch for movement and structure (array shifts, pointer motion, windows, nodes). Use scratchpad_run_code when execution itself is the lesson or the learner needs to edit/run an exercise; do not replace a simple visual trace with a large code listing.
 - Never use LaTeX or $...$ math; write math as plain text, like 1 + 11 = 12 or O(n).
 - Adapt support from the learner model. Starting: model one small worked example explicitly. Building: use a completion step and ask for a prediction. Practicing: let the learner explain or perform the next step before showing anything. Secure: skip routine explanation and use transfer, contrast, edge cases, or mixed-pattern questions. If a misconception is listed, diagnose it directly before advancing.
-- Use at most one scratchpad tool per turn. Treat it as the shared board between you and the learner. Do not redraw an idea the learner has already demonstrated unless they ask or their answer exposes confusion. Never write "here's the code:" with nothing after it.
-- Ask exactly one question with ask_learner whenever tools are available. Make it a prediction about the example now on the board, not a generic recall question. Never repeat that question in your text and never write stage directions.
-- Use small concrete inputs (5 to 8 elements) and the same input across a few turns so the learner can follow it.
-- Adapt: if they answer right, confirm briefly and move on; if they're wrong, find the misconception, show it in the scratchpad, and ask again a different way. If they say they're confused, slow down and use a smaller example. If they say "next", move on.
-- Before moving past a worked example, ask them to predict the next step. Near the end, give a short exercise in the scratchpad (code with a blank to fill or a function to finish) and review their attempt.
-- Never dump the whole chapter at once and never ask more than one question per turn.`
+- Use at most one scratchpad tool per turn (write_lesson doesn't count). Do not redraw an idea the learner has already demonstrated unless they ask or their answer exposes confusion. Never write "here's the code:" with nothing after it.
+- Ask exactly one question with ask_learner whenever tools are available. Make it a prediction about the example now on the scratchpad or lesson page, not a generic recall question. Never repeat that question in your text and never write stage directions.
+- Use small concrete inputs (5 to 8 elements) and the same input across a section so the learner can follow it.
+- Adapt: if they answer right, confirm briefly and, once the section's goal is met, start the next section by writing it; if they're wrong, find the misconception, show it on the scratchpad, and ask again a different way. If they say they're confused, slow down and use a smaller example. If they say "next", start the next section.
+- Near the end, give a short exercise on the scratchpad (code with a blank to fill or a function to finish) and review their attempt.
+- Never dump the whole lesson at once and never ask more than one question per turn.`
 
 // TeacherPrompt builds the system message for Teacher Mode on a chapter.
-func TeacherPrompt(ctx Context, ch *chapter.Chapter, ws *Workspace) string {
+// The chapter contributes only its topic and scope; the lesson itself is
+// the model's own, following the plan. lastUser is the learner's latest
+// message (it may ask to move on to the next section).
+func TeacherPrompt(ctx Context, ch *chapter.Chapter, ws *Workspace, lastUser string) string {
 	var b strings.Builder
 	b.WriteString(teacherPersona)
 	if ctx.Voice {
 		b.WriteString(voiceNote)
 	}
-	b.WriteString("\n\n# The chapter you are teaching\n")
-	writeChapterMaterial(&b, ch)
+	b.WriteString("\n\n# The topic you are teaching\n")
+	writeLessonTopic(&b, ch)
+	writeLesson(&b, ctx.Lesson)
+	if due := ctx.Lesson.SectionDue(lastUser); due >= 0 {
+		fmt.Fprintf(&b, "\nThis turn: start section %d (%s). Write it onto the lesson page with write_lesson first.\n", due, ctx.Lesson.Sections[due].Heading)
+	}
 	writeScratchpad(&b, ctx.Scratchpad)
 	writeLearnerProfile(&b, ctx.Learner)
 	if ws != nil {
 		b.WriteString(ws.Describe())
 	}
 	return truncate(b.String(), 60000)
-}
-
-// writeChapterMaterial writes everything a teacher (or the director that
-// stages its visuals) needs from a chapter: overview, concepts, worked
-// examples and check questions.
-func writeChapterMaterial(b *strings.Builder, ch *chapter.Chapter) {
-	writeChapter(b, ch)
-	for _, c := range ch.Concepts {
-		fmt.Fprintf(b, "\n## Concept: %s\n", c.Name)
-		if c.WhyItWorks != "" {
-			fmt.Fprintf(b, "Why it works: %s\n", c.WhyItWorks)
-		}
-		for _, idea := range c.CoreIdeas {
-			fmt.Fprintf(b, "- %s\n", idea)
-		}
-		for _, ex := range c.Examples {
-			if ex.Snippet != "" {
-				fmt.Fprintf(b, "Example code:\n```\n%s\n```\n", truncate(strings.TrimSpace(ex.Snippet), 1500))
-			}
-		}
-	}
-	for _, we := range ch.WorkedExamples {
-		fmt.Fprintf(b, "\n## Worked example: %s\n%s\n", we.Title, we.Problem)
-		for i, st := range we.Steps {
-			fmt.Fprintf(b, "%d. %s: %s", i+1, st.Subgoal, st.Explanation)
-			if st.State != "" {
-				fmt.Fprintf(b, " (trace: %s)", st.State)
-			}
-			b.WriteString("\n")
-		}
-	}
-	if len(ch.CheckQuestions) > 0 {
-		b.WriteString("\n## Check questions you can draw on (answers are for you)\n")
-		for _, q := range ch.CheckQuestions {
-			fmt.Fprintf(b, "- %s", q.Prompt)
-			if len(q.Choices) > 0 && q.Answer >= 0 && q.Answer < len(q.Choices) {
-				fmt.Fprintf(b, " Answer: %s.", q.Choices[q.Answer])
-			}
-			if q.Explanation != "" {
-				fmt.Fprintf(b, " %s", truncate(q.Explanation, 400))
-			}
-			b.WriteString("\n")
-		}
-	}
 }

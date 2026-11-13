@@ -1,18 +1,23 @@
 // Teacher Mode: on a chapter page, the AI tutor stops waiting for questions
-// and teaches the chapter one idea at a time. Each turn it points at the
-// section it's on, shows the idea in the Teacher's Scratchpad (a diagram or
-// a traced program), and asks the learner something, often with clickable
-// answers. It adapts to the answers: right moves on, wrong gets another
-// angle, "I'm confused" gets a smaller example. The persona and the full
-// chapter content it teaches from are in internal/tutor/prompt.go.
+// and teaches the chapter's topic one idea at a time, from a lesson it plans
+// and writes itself. The chapter's prewritten page is put away: the lesson
+// page starts blank and the teacher writes each section onto it as it
+// teaches (write_lesson), pointing at what it wrote as reference. The
+// Teacher's Scratchpad holds only the examples (sketches, traced code). Each
+// turn ends with a question, often with clickable answers, and the lesson
+// adapts to the answers. Normal chapter view and the regular tutor keep
+// using the prewritten pages.
 //
-// Each chapter keeps its own lesson conversation, so leaving and coming
-// back resumes where it stopped. Loaded after tutor.js and scratchpad.js.
+// The plan comes from the server (internal/tutor/lesson.go) when a lesson
+// starts. Each chapter keeps its own plan, written sections and lesson
+// conversation, so leaving and coming back resumes where it stopped. Loaded
+// after tutor.js and scratchpad.js.
 
 (function () {
   'use strict';
 
   const ON_KEY = 'dsatutor_teacher_mode';
+  const LESSON_KEY = (n) => `dsatutor_teacher_lesson:${n}`;
   const teach = { on: false };
   const $ = (id) => document.getElementById(id);
 
@@ -21,6 +26,133 @@
     if (!detail || detail.classList.contains('hidden')) return null;
     return (typeof state !== 'undefined' && state.current) || null;
   }
+
+  // ---------------------------------------------------------------------
+  // The lesson for one chapter: { plan: {title, sections}, current,
+  // sections: {index: {heading, body, code}} }.
+
+  function load(n) {
+    try { return JSON.parse(localStorage.getItem(LESSON_KEY(n)) || 'null') || {}; } catch (e) { return {}; }
+  }
+  function save(n, lesson) {
+    try { localStorage.setItem(LESSON_KEY(n), JSON.stringify(lesson)); } catch (e) { /* private mode */ }
+  }
+
+  // What the server sees of the lesson: the plan and where it stands.
+  function lessonContext(n) {
+    const l = load(n);
+    if (!l.plan || !(l.plan.sections || []).length) return undefined;
+    return {
+      title: l.plan.title,
+      sections: l.plan.sections,
+      current: l.current || 0,
+      written: Object.keys(l.sections || {}).map(Number),
+    };
+  }
+
+  function setLesson(plan) {
+    const ch = chapterOnScreen();
+    if (!ch || !plan) return;
+    save(ch.number, { plan: { title: plan.title, sections: plan.sections || [] }, current: 0, sections: {} });
+    render();
+  }
+
+  function writeSection(a) {
+    const ch = chapterOnScreen();
+    if (!ch) return false;
+    const l = load(ch.number);
+    l.sections = l.sections || {};
+    l.sections[a.section] = { heading: a.heading, body: a.body, code: a.code || '' };
+    l.current = a.section;
+    save(ch.number, l);
+    render();
+    const el = $(`tl-section-${a.section}`);
+    if (el) {
+      el.classList.remove('tl-fresh');
+      void el.offsetWidth; // restart the "just written" animation
+      el.classList.add('tl-fresh');
+      el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }
+    return true;
+  }
+
+  // ---------------------------------------------------------------------
+  // The lesson page, shown in place of the chapter's content.
+
+  function page() {
+    let el = $('teacher-lesson');
+    if (el) return el;
+    const host = document.querySelector('#detail .chapter-content');
+    if (!host) return null;
+    el = document.createElement('article');
+    el.id = 'teacher-lesson';
+    el.className = 'teacher-lesson';
+    el.setAttribute('aria-live', 'polite');
+    host.prepend(el);
+    return el;
+  }
+
+  function md(text) {
+    return window.dsaTutor?.renderMarkdown ? window.dsaTutor.renderMarkdown(text || '') : `<p>${escapeHtml(text || '')}</p>`;
+  }
+
+  function render() {
+    const host = document.querySelector('#detail .chapter-content');
+    const ch = chapterOnScreen();
+    const showing = teach.on && !!ch;
+    if (host) host.classList.toggle('teaching', showing);
+    if (!showing) return;
+    const el = page();
+    if (!el) return;
+    const l = load(ch.number);
+    const plan = l.plan;
+    const written = l.sections || {};
+    if (!plan || !(plan.sections || []).length) {
+      el.innerHTML = `<header class="tl-head"><span class="tl-kicker">Teacher mode · Ch. ${ch.number}</span><h2>${escapeHtml(ch.title)}</h2></header>
+        <p class="tl-empty">Your teacher is planning this lesson. It will be written here as you go.</p>`;
+      return;
+    }
+    const current = l.current || 0;
+    const outline = plan.sections.map((s, i) => {
+      const cls = [written[i] ? 'done' : '', i === current ? 'current' : ''].filter(Boolean).join(' ');
+      return `<li class="${cls}">${written[i] ? `<a href="#tl-section-${i}" data-tl-jump="${i}">${escapeHtml(s.heading)}</a>` : escapeHtml(s.heading)}</li>`;
+    }).join('');
+    const sections = plan.sections.map((s, i) => {
+      const w = written[i];
+      if (!w) return '';
+      return `<section class="tl-section" id="tl-section-${i}" data-section="${i}">
+          <span class="tl-num">Part ${i + 1} of ${plan.sections.length}</span>
+          <h3>${escapeHtml(w.heading || s.heading)}</h3>
+          <div class="tl-body">${md(w.body)}</div>
+          ${w.code ? `<pre class="tl-code"><code>${escapeHtml(w.code)}</code></pre>` : ''}
+        </section>`;
+    }).join('');
+    const remaining = plan.sections.length - Object.keys(written).length;
+    el.innerHTML = `<header class="tl-head"><span class="tl-kicker">Teacher mode · Ch. ${ch.number} · written live</span><h2>${escapeHtml(plan.title || ch.title)}</h2></header>
+      <nav class="tl-outline" aria-label="Lesson plan"><ol>${outline}</ol></nav>
+      ${sections || '<p class="tl-empty">Your teacher will write the first part here in a moment.</p>'}
+      ${sections && remaining > 0 ? `<p class="tl-more">${remaining} more part${remaining === 1 ? '' : 's'} to come.</p>` : ''}`;
+    el.querySelectorAll('[data-tl-jump]').forEach(a => {
+      a.onclick = (e) => { e.preventDefault(); $(`tl-section-${a.dataset.tlJump}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' }); };
+    });
+  }
+
+  // The parts of the lesson page the teacher may point at.
+  function targets() {
+    const out = [];
+    document.querySelectorAll('#teacher-lesson .tl-section').forEach(sec => {
+      const i = sec.dataset.section;
+      const heading = sec.querySelector('h3')?.textContent.trim() || '';
+      out.push({ id: `lesson-${i}`, label: `Lesson page, section ${i}: ${heading}`, get: () => $(`tl-section-${i}`) });
+      if (sec.querySelector('.tl-code')) {
+        out.push({ id: `lesson-${i}-code`, label: `Code in lesson page section ${i}: ${heading}`, get: () => $(`tl-section-${i}`)?.querySelector('.tl-code'), lines: true });
+      }
+    });
+    return out;
+  }
+
+  // ---------------------------------------------------------------------
+  // The tutor mode
 
   window.tutorModes = window.tutorModes || [];
   window.tutorModes.push({
@@ -37,8 +169,8 @@
         emptyHtml: '<p>Your teacher is getting the lesson ready…</p>',
         // Sent (hidden) whenever this chapter's lesson has nothing in it yet:
         // on turning Teacher Mode on, opening the panel, Clear, reloads and
-        // chapter changes alike.
-        kickoff: '(Start the lesson on this chapter from the beginning. Keep it to one idea, then ask me a question.)',
+        // chapter changes alike. The server plans a fresh lesson for it.
+        kickoff: '(Start the lesson on this topic from the beginning. Write the first part on the lesson page, keep it to one idea, then ask me a question.)',
         kickoffLabel: 'Start the lesson',
         quick: [
           ['Next', "Got it. Let's move on to the next idea."],
@@ -47,24 +179,10 @@
           ['Quiz me', 'Quiz me on this before we move on.'],
           ['Let me try', 'Give me a small exercise to try in the scratchpad.'],
         ],
-        ctx: { view: 'chapter', chapterNumber: ch.number, teach: true, learner: window.dsaLearning?.chapterProfile(ch) },
+        ctx: { view: 'chapter', chapterNumber: ch.number, teach: true, lesson: lessonContext(ch.number), learner: window.dsaLearning?.chapterProfile(ch) },
       };
     },
   });
-
-  // Some chapters open on a full-page view (Chapter 1's Runtime Shapes)
-  // that hides the lesson sections. The teacher teaches from — and points
-  // at — the lesson, so switch to a topic that shows it.
-  function showLessonContent() {
-    const standard = $('standard-chapter-content');
-    const select = $('storyboard-select');
-    if (!standard || !standard.classList.contains('hidden') || !select) return;
-    for (const opt of select.options) {
-      select.value = opt.value;
-      select.dispatchEvent(new Event('change'));
-      if (!standard.classList.contains('hidden')) return;
-    }
-  }
 
   // Open the lesson for the chapter on screen. A chapter with nothing yet
   // starts its lesson (the tutor sends the kickoff); a chapter taught before
@@ -72,7 +190,7 @@
   async function begin(force) {
     const ch = chapterOnScreen();
     if (!ch) return;
-    showLessonContent();
+    render();
     await window.dsaTutor.open();
     if (force) window.dsaTutor.kickoff();
     else window.dsaTutor.sync();
@@ -87,8 +205,9 @@
       btn.setAttribute('aria-pressed', on ? 'true' : 'false');
       btn.textContent = on ? 'Teacher mode: on' : 'Teacher mode';
     }
+    render();
     if (on) begin(true);
-    else window.dsaTutor.sync();
+    else { window.dsaTutor.clear(); window.dsaTutor.sync(); }
   }
 
   // Moving to another chapter with Teacher Mode on starts or resumes that
@@ -103,6 +222,7 @@
       const n = ch ? ch.number : null;
       if (n === shownChapter) return;
       shownChapter = n;
+      render();
       if (teach.on && ch) begin(false);
     }, 300);
   };
@@ -120,7 +240,7 @@
     btn.id = 'teacher-mode';
     btn.className = 'btn-small teacher-btn';
     btn.textContent = 'Teacher mode';
-    btn.title = 'Have the AI tutor teach this chapter interactively, with visualizations in a scratchpad';
+    btn.title = 'Have the AI tutor teach this topic live: it writes the lesson as it goes, with examples in a scratchpad';
     btn.setAttribute('aria-pressed', 'false');
     btn.onclick = () => setOn(!teach.on);
     group.prepend(btn);
@@ -131,9 +251,17 @@
       btn.classList.add('active');
       btn.setAttribute('aria-pressed', 'true');
       btn.textContent = 'Teacher mode: on';
+      render();
     }
   }
 
-  window.dsaTeacher = { start: () => setOn(true), stop: () => setOn(false), isOn: () => teach.on };
+  window.dsaTeacher = {
+    start: () => setOn(true),
+    stop: () => setOn(false),
+    isOn: () => teach.on,
+    setLesson,
+    writeSection,
+    targets,
+  };
   init();
 })();

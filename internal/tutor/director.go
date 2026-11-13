@@ -10,52 +10,50 @@ import (
 )
 
 // The director makes Teacher Mode dependable. Whether a model actually calls
-// highlight or draws in the scratchpad varies by model and by run (gemma4
-// often only talks about it). So after a teacher turn, whatever is missing —
-// a precise pointer at the page, a whiteboard sketch, or a checkpoint — is requested in one
-// structured-output call, which every model follows, and then executed
+// its tools varies by model and by run (gemma4 often only talks about
+// drawing). So after a teacher turn, whatever is missing — the section's
+// text on the lesson page, a whiteboard sketch, or a checkpoint — is requested in
+// one structured-output call, which every model follows, and then executed
 // like ordinary tool calls.
 
-// DirectorNeeds says which parts a turn is missing.
+// DirectorNeeds says which parts a turn is missing. Article is set when the
+// turn should have written the article for plan section Section.
 type DirectorNeeds struct {
-	Highlight bool
-	Sketch    bool
-	Check     bool
+	Article bool
+	Section int
+	Sketch  bool
+	Check   bool
 }
 
-// Direct returns tool calls that stage the teacher's reply: a highlight with
-// a verbatim quote and a pointer, a whiteboard sketch, and/or a checkpoint. base is the
-// conversation the teacher's turn was generated from (system prompt with
-// the chapter, history, tool calls); the request reuses it word for word
-// and only appends the staging instructions, so Ollama's prompt cache
-// covers the chapter instead of re-reading it.
-func (c *Client) Direct(ctx context.Context, model string, base []Message, ch *chapter.Chapter, ws *Workspace, reply string, need DirectorNeeds) ([]ToolCall, error) {
-	if !need.Highlight && !need.Sketch && !need.Check {
+// Direct returns tool calls that stage the teacher's reply: the section's
+// lesson-page text, a whiteboard sketch, and/or a checkpoint. base is the
+// conversation the teacher's turn was generated from (system prompt, history,
+// tool calls); the request reuses it word for word and only appends the
+// staging instructions, so Ollama's prompt cache covers it.
+func (c *Client) Direct(ctx context.Context, model string, base []Message, ch *chapter.Chapter, lesson *Lesson, reply string, need DirectorNeeds) ([]ToolCall, error) {
+	if need.Article && (!lesson.Valid() || need.Section < 0 || need.Section >= len(lesson.Sections)) {
+		need.Article = false
+	}
+	if !need.Article && !need.Sketch && !need.Check {
 		return nil, nil
 	}
 	props := map[string]any{}
 	var required []string
 	var asks []string
 
-	if need.Highlight && ws != nil && len(ws.targets) > 0 {
-		ids := make([]string, len(ws.targets))
-		for i, t := range ws.targets {
-			ids[i] = t.ID
-		}
-		props["highlight"] = map[string]any{
+	if need.Article {
+		sec := lesson.Sections[need.Section]
+		props["article"] = map[string]any{
 			"type": "object",
 			"properties": map[string]any{
-				"target":     map[string]any{"type": "string", "enum": ids},
-				"quote":      map[string]any{"type": "string"},
-				"start_line": map[string]any{"type": "integer"},
-				"end_line":   map[string]any{"type": "integer"},
-				"pointer":    map[string]any{"type": "string", "enum": []string{"hand", "arrow"}},
-				"note":       map[string]any{"type": "string"},
+				"heading": map[string]any{"type": "string", "minLength": 1},
+				"body":    map[string]any{"type": "string", "minLength": 200},
+				"code":    map[string]any{"type": "string"},
 			},
-			"required": []string{"target", "quote", "pointer", "note"},
+			"required": []string{"heading", "body"},
 		}
-		required = append(required, "highlight")
-		asks = append(asks, `"highlight": the exact spot on the page that DIRECTLY SUPPORTS the single claim taught in the reply. Pick the target id of the region that contains it, and set quote to 3 to 15 words copied VERBATIM from that sentence or code line, so it can be found on the page. Do not select a later "common mistake", a related topic, or another sentence merely because it shares a keyword. For a code block target you may also give start_line/end_line. pointer: "hand" if the reply walks through that sentence or line, "arrow" if it just says look here. note: one short sentence shown beside the highlight.`)
+		required = append(required, "article")
+		asks = append(asks, fmt.Sprintf(`"article": the lesson text for section %d of your plan (%q: %s), written by you onto the lesson page as the learner's reference text. heading: the section heading. body: 80 to 200 words of Markdown (short paragraphs and a bullet list of key facts, inline code allowed, no headings, no code fences, no LaTeX) explaining the idea in plain language around one tiny concrete example: the same example as your reply. No question in the article. code: optional short Python snippet (under 20 lines), or an empty string.`, need.Section, sec.Heading, sec.Goal))
 	}
 	if need.Sketch {
 		// Content is required field by field (a row's values, a note's
@@ -131,18 +129,18 @@ func (c *Client) Direct(ctx context.Context, model string, base []Message, ch *c
 	for _, a := range asks {
 		ask.WriteString("- " + a + "\n")
 	}
-	ask.WriteString("Be faithful to your reply: the highlight, sketch, and check must all teach the same single idea. The check may not introduce a different operation or complexity. Quotes must be copied verbatim from the chapter material in the system prompt.\n\nYour reply was:\n" + truncate(reply, 6000))
+	ask.WriteString("Be faithful to your reply: the article, sketch, and check must all teach the same single idea. The check may not introduce a different operation or complexity.\n\nYour reply was:\n" + truncate(reply, 6000))
 
 	messages := append(append([]Message{}, base...), Message{Role: "user", Content: ask.String()})
 	if len(base) == 0 {
 		// No conversation to build on (tests, odd callers): carry the
-		// chapter material ourselves.
+		// topic and plan ourselves.
 		var sys strings.Builder
-		writeChapterMaterial(&sys, ch)
-		if ws != nil {
-			sys.WriteString(ws.Describe())
+		if ch != nil {
+			writeLessonTopic(&sys, ch)
 		}
-		messages = []Message{{Role: "system", Content: truncate(sys.String(), 60000)}, messages[0]}
+		writeLesson(&sys, lesson)
+		messages = []Message{{Role: "system", Content: sys.String()}, messages[0]}
 	}
 
 	schema := map[string]any{"type": "object", "properties": props, "required": required}
@@ -155,14 +153,15 @@ func (c *Client) Direct(ctx context.Context, model string, base []Message, ch *c
 		return nil, fmt.Errorf("director sent malformed JSON: %w", err)
 	}
 	var calls []ToolCall
-	if h := out["highlight"]; h != nil && need.Highlight {
-		calls = append(calls, newCall("highlight", h))
+	if art := out["article"]; art != nil && need.Article {
+		art["section"] = need.Section
+		calls = append(calls, newCall("write_lesson", art))
 	}
 	if sk := out["sketch"]; sk != nil && need.Sketch {
 		sk = sketchFromParts(sk)
 		if WeakSketch(Action{"elements": sk["elements"]}) && !strings.Contains(reply, retryMarker) {
 			// One retry, asking only for the sketch, with the reason.
-			if more, err := c.Direct(ctx, model, base, ch, ws, reply+retryMarker, DirectorNeeds{Sketch: true}); err == nil && len(more) > 0 {
+			if more, err := c.Direct(ctx, model, base, ch, lesson, reply+retryMarker, DirectorNeeds{Sketch: true}); err == nil && len(more) > 0 {
 				sk = more[0].Function.Arguments
 			}
 		}

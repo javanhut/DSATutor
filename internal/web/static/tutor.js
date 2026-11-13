@@ -515,7 +515,7 @@
 
   // A chip records one thing the tutor did. Highlights and scratchpad work
   // can be shown again; edits can't be replayed from history.
-  const REPLAYABLE = ['highlight', 'scratchpad_code', 'scratchpad_visualize', 'scratchpad_sketch'];
+  const REPLAYABLE = ['highlight', 'write_lesson', 'scratchpad_code', 'scratchpad_visualize', 'scratchpad_sketch'];
   function chipHtml(a, ref) {
     const replay = REPLAYABLE.includes(a.name) ? ` data-replay="${ref}" title="Show it again"` : '';
     return `<button type="button" class="tutor-action-chip ${a.name}"${replay}>${escapeHtml(actionLabel(a))}</button>`;
@@ -631,6 +631,9 @@
           } else if (ev.type === 'thinking') {
             thinking += ev.text;
             if (!reply.trim()) textEl.innerHTML = `<p class="tutor-typing">Thinking… <span class="tutor-think-count">${thinking.length} chars of reasoning</span></p>`;
+          } else if (ev.type === 'lesson') {
+            // Teacher Mode planned a fresh lesson for this chapter.
+            window.dsaTeacher?.setLesson(ev.lesson);
           } else if (ev.type === 'status') {
             let st = bubble.querySelector('.tutor-stage');
             if (!st) {
@@ -740,7 +743,11 @@
     } else if (kind === 'sandbox') {
       add('code', "The learner's sandbox code editor", () => $('sandbox-editor-container'), { lines: true, writable: true, editor: 'sandbox-editor-container', textarea: 'sandbox-code' });
       if (hasText($('sandbox-output'))) add('output', 'Output of their last run', () => $('sandbox-output'));
-    } else if (kind === 'chapter' || kind === 'teacher') {
+    } else if (kind === 'teacher') {
+      // Teacher Mode points only at the lesson it has written; the
+      // chapter's prewritten page is put away.
+      (window.dsaTeacher?.targets() || []).forEach(x => add(x.id, x.label, x.get, { lines: x.lines }));
+    } else if (kind === 'chapter') {
       const cards = [...document.querySelectorAll('#standard-chapter-content :is(.overview-card, .tutorial-card, .lesson-card, .memory-card)')]
         .filter(card => card.offsetParent && card.querySelector('h2'));
       cards.forEach((card, i) => {
@@ -765,7 +772,7 @@
         });
       });
     }
-    if (kind === 'chapter' || kind === 'teacher') {
+    if (kind === 'chapter') {
       // A full-page topic view (Chapter 1's Runtime Shapes) replaces the
       // lesson; its panels are what's on screen then.
       const topic = $('topic-full-page');
@@ -1076,6 +1083,7 @@
       case 'scratchpad_code': return `Ran code in the scratchpad${a.explanation ? `: ${a.explanation}` : ''}`;
       case 'scratchpad_visualize': return `Drew “${a.title || 'a diagram'}” in the scratchpad`;
       case 'scratchpad_sketch': return `Sketched “${a.title || 'a drawing'}” on the whiteboard`;
+      case 'write_lesson': return `Wrote “${a.heading || 'a section'}” on the lesson page`;
       case 'select_test': return `Selected test case ${a.case}`;
     }
     return a.name;
@@ -1113,7 +1121,7 @@
         // lines of a lesson code block.
         let range = null;
         if (a.quote) {
-          const view = node.closest('#standard-chapter-content, #topic-full-page, #practice-mode, #sandbox-mode') || document.body;
+          const view = node.closest('#teacher-lesson, #standard-chapter-content, #topic-full-page, #practice-mode, #sandbox-mode') || document.body;
           range = findQuote(node, a.quote) || findQuote(view, a.quote);
         }
         if (!range && a.start_line && node.tagName === 'PRE') range = preLinesRange(node, a.start_line, a.end_line);
@@ -1201,6 +1209,10 @@
         if (!window.dsaScratchpad) return null;
         window.dsaScratchpad.showSketch(a);
         return { name: 'scratchpad_sketch', title: a.title, elements: a.elements, captions: a.captions };
+      }
+      case 'write_lesson': {
+        if (!window.dsaTeacher || !window.dsaTeacher.writeSection(a)) return null;
+        return { name: 'write_lesson', section: a.section, heading: a.heading, body: a.body, code: a.code, total: a.total };
       }
       case 'ask_learner':
         return { name: 'ask_learner', question: a.question, choices: a.choices };
@@ -1530,6 +1542,7 @@
     targets: () => targetList(),
     speak: (text) => speakText(text),
     clear: () => clearSpotlights(),
+    renderMarkdown: (text) => renderMarkdown(text),
   };
   window.openTutor = openPanel;
   init();

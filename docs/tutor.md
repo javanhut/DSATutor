@@ -66,12 +66,29 @@ remembered), or set `DSATUTOR_TUTOR_MODEL=ornith`.
 ## Teacher Mode and the Teacher's Scratchpad
 
 On a chapter page, press **Teacher mode**. Instead of waiting for
-questions, the tutor teaches the chapter one idea at a time. Each turn it:
+questions, the tutor teaches the chapter's topic one idea at a time, from a
+lesson it plans and writes itself. The chapter's prewritten page is put away
+while Teacher Mode is on (turn it off to get it back); the normal chapter
+view and the regular tutor still use the prewritten pages.
 
-1. points at the section it's on (`highlight`),
-2. makes the idea visible in the **Teacher's Scratchpad**, as a hand-drawn
-   whiteboard sketch, an exact step-by-step diagram, or a small program it
-   runs and traces, and
+**A lesson written live.** When a lesson starts (or restarts with Clear), the
+server asks the model for a fresh plan of 4 to 8 sections (`PlanLesson` in
+`internal/tutor/lesson.go`, streamed to the page as `{"type":"lesson"}`). The
+chapter contributes only the topic and its scope (title, summary,
+objectives, concept names), never its prewritten explanations, worked
+examples or check questions. The lesson page starts blank, with the plan as
+an outline, and the teacher writes each section onto it when it starts that
+section (`write_lesson`: a heading, 80 to 200 words of Markdown around one
+tiny example, optional code). That text is the learner's reference for the
+lesson. The plan and written sections are kept per chapter in localStorage
+(`dsatutor_teacher_lesson:<n>`) and sent back with each turn, so the server
+knows which section is current and which are written. Each turn the teacher:
+
+1. writes the section on the lesson page when it starts one, and points at
+   the words it's teaching there (`highlight`, targets `lesson-N`),
+2. shows the example in the **Teacher's Scratchpad**, which holds only
+   examples: a hand-drawn whiteboard sketch, an exact step-by-step diagram,
+   or a small program it runs and traces, and
 3. lets the example unfold automatically, then asks one prediction question
    directly on the scratchpad (`ask_learner`) and waits there for your answer.
 
@@ -92,18 +109,18 @@ sketch with nothing visible is rejected with the reason so the model redraws,
 and a model may draw at most twice per turn. The director's own sketch uses a
 schema where every row, note, arrow and box has its content as a required
 field, and it reuses the turn's exact conversation so Ollama's prompt cache
-skips re-reading the chapter (about 25 s per turn instead of 90 s with
-ornith-1.5). On a chapter that opens on a full-page view (Chapter 1's
-Runtime Shapes), Teacher Mode switches to the lesson it teaches from.
+skips re-reading the prompt (about 25 s per turn instead of 90 s with
+ornith-1.5).
 
-**Every turn is staged.** Whether a model calls highlight, draws, or creates
-a checkpoint varies
-by model and run, so after each Teacher Mode turn the server checks: if the
-turn didn't point at a precise spot, or drew nothing substantial (a sketch
+**Every turn is staged.** Whether a model writes the section, draws, or
+creates a checkpoint varies by model and run, so after each Teacher Mode turn
+the server checks: if a section was due and not written (the current one
+until it has text, or the next one when you asked to move on), or it drew
+nothing substantial (a sketch
 with fewer than three elements or no cells, nodes, boxes, circles or
 arrows), or omitted the question, a "director" asks the same model for the missing parts with one
 structured-output call (JSON schema, which every model follows), retrying
-once if its sketch is still thin. The chat shows "Setting up the shared board…"
+once if its sketch is still thin. The chat shows "Writing up the lesson…"
 meanwhile.
 
 **Voice.** Teacher Mode reads the teacher's replies aloud by default (the
@@ -125,9 +142,7 @@ conversation.
 It adapts: a right answer moves on; a wrong one gets the misconception shown
 in the scratchpad and the question asked another way. The quick prompts
 **Next**, **Show me**, **I'm confused**, **Quiz me** and **Let me try** steer
-it. Each chapter keeps its own lesson, so you can leave and resume. The
-teacher works from the whole chapter: concepts with why they work, worked
-examples with their traces, and the check questions.
+it. Each chapter keeps its own lesson, so you can leave and resume.
 
 **Learner model.** Every tutor request carries durable learning evidence for
 the current chapter: retrieval questions, completion exercises, practice
@@ -263,7 +278,7 @@ The microphone needs a secure page: `http://localhost` works, but a plain
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/tutor/status` | GET | `{"available", "default", "models": [{"name", "thinking", "cloud"}], "transcribe", "reason"}` |
-| `/api/tutor/chat` | POST | `{"model", "think", "messages": [{"role", "content"}], "context": {"view", "problemId", "chapterNumber", "language", "code", "lastRun", "hintsRevealed", "solutionUnlocked", "voice", "targets": [{"id", "label", "lines", "writable"}], "testCount", "interview": {"elapsedSeconds", "durationSeconds", "level"}, "teach", "scratchpad": {"code", "output"}}}` → NDJSON stream of `{"type":"thinking"\|"delta","text"}` and `{"type":"action","name":"highlight"\|"write_code"\|"open_tab"\|"select_test"\|"scratchpad_code"\|"scratchpad_visualize"\|"scratchpad_sketch"\|"ask_learner", ...}`, then `{"type":"done","model"}` or `{"type":"error","error"}` |
+| `/api/tutor/chat` | POST | `{"model", "think", "messages": [{"role", "content"}], "context": {"view", "problemId", "chapterNumber", "language", "code", "lastRun", "hintsRevealed", "solutionUnlocked", "voice", "targets": [{"id", "label", "lines", "writable"}], "testCount", "interview": {"elapsedSeconds", "durationSeconds", "level"}, "teach", "lesson": {"title", "sections": [{"heading", "goal"}], "current", "written"}, "scratchpad": {"code", "output"}}}` → NDJSON stream of `{"type":"thinking"\|"delta","text"}` and `{"type":"action","name":"highlight"\|"write_code"\|"open_tab"\|"select_test"\|"scratchpad_code"\|"scratchpad_visualize"\|"scratchpad_sketch"\|"write_lesson"\|"ask_learner", ...}`, `{"type":"lesson","lesson"}` (Teacher Mode's new plan), `{"type":"status","text"}`, then `{"type":"done","model"}` or `{"type":"error","error"}` |
 | `/api/tutor/interview/score` | POST | `{"model", "problemId", "language", "code", "messages", "elapsedSeconds", "durationSeconds", "level"}` → `{"scorecard", "tests": {"status", "passed", "total", "failures"}, "model"}` (`error` instead of `scorecard` if the write-up failed) |
 | `/api/tutor/transcribe` | POST | body: a WAV recording, `?model=` names the chat model in use → `{"text"}` |
 

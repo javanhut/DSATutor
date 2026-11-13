@@ -205,17 +205,83 @@ func TestScratchpadPromptKeepsEditableCode(t *testing.T) {
 	}
 }
 
-func TestTeacherPromptKeepsTeachingBeatCoordinated(t *testing.T) {
-	prompt := TeacherPrompt(Context{View: "chapter"}, &chapter.Chapter{Number: 2, Title: "Arrays"}, nil)
+func TestTeacherPromptTeachesItsOwnLesson(t *testing.T) {
+	ch := chapter.DefaultChapters()[1]
+	lesson := &Lesson{Title: "Arrays", Sections: []LessonSection{{Heading: "Why arrays", Goal: "explain O(1) indexing"}, {Heading: "Shifting", Goal: "trace front insertion"}}}
+	prompt := TeacherPrompt(Context{View: "chapter", Teach: true, Lesson: lesson}, &ch, nil, "(Start the lesson)")
 	for _, want := range []string{
-		"pointer, explanation, scratchpad, and question on that same idea",
-		"do not jump to a later common mistake",
-		"do not switch the question to repeated membership tests",
-		"Prefer scratchpad_sketch for movement and structure",
+		"blank lesson page that you fill in",
+		"scratchpad beside it is only for examples",
+		"Your lesson plan: Arrays",
+		"0. Why arrays: explain O(1) indexing [CURRENT, not written yet]",
+		"This turn: start section 0 (Why arrays)",
+		"Concepts to cover:",
 	} {
 		if !strings.Contains(prompt, want) {
-			t.Errorf("teacher prompt missing coordination rule %q", want)
+			t.Errorf("teacher prompt missing %q", want)
 		}
+	}
+	// The prewritten lesson text (intuitions, worked examples, check
+	// answers) stays out of Teacher Mode.
+	for _, c := range ch.Concepts {
+		if c.Intuition != "" && strings.Contains(prompt, c.Intuition) {
+			t.Errorf("teacher prompt carries the chapter's prewritten intuition %q", c.Intuition)
+		}
+	}
+	for _, we := range ch.WorkedExamples {
+		if strings.Contains(prompt, we.Problem) {
+			t.Errorf("teacher prompt carries the chapter's worked example %q", we.Title)
+		}
+	}
+}
+
+func TestLessonSectionDue(t *testing.T) {
+	l := &Lesson{Sections: []LessonSection{{Heading: "a"}, {Heading: "b"}}}
+	if got := l.SectionDue("hi"); got != 0 {
+		t.Errorf("unwritten current section: due = %d, want 0", got)
+	}
+	l.Written = []int{0}
+	if got := l.SectionDue("What does index 3 hold?"); got != -1 {
+		t.Errorf("mid-section: due = %d, want -1", got)
+	}
+	if got := l.SectionDue("Got it. Let's move on to the next idea."); got != 1 {
+		t.Errorf("move on: due = %d, want 1", got)
+	}
+	l.Current = 1
+	l.Written = []int{0, 1}
+	if got := l.SectionDue("next"); got != -1 {
+		t.Errorf("last section: due = %d, want -1", got)
+	}
+	var none *Lesson
+	if got := none.SectionDue("next"); got != -1 {
+		t.Errorf("no plan: due = %d, want -1", got)
+	}
+}
+
+func TestWriteLessonOnlyInTeacherMode(t *testing.T) {
+	lesson := &Lesson{Sections: []LessonSection{{Heading: "a"}, {Heading: "b"}}}
+	args := map[string]any{"section": 1, "heading": "Shifting", "body": strings.Repeat("Inserting at the front moves every element one step right. ", 3)}
+
+	plain := NewWorkspace(Context{View: "chapter"})
+	for _, tool := range plain.Tools() {
+		if tool.Function.Name == "write_lesson" {
+			t.Fatal("write_lesson offered outside Teacher Mode")
+		}
+	}
+	if _, act := plain.Execute(call("write_lesson", args)); act != nil {
+		t.Error("write_lesson ran outside Teacher Mode")
+	}
+
+	ws := NewWorkspace(Context{View: "chapter", Teach: true, Lesson: lesson})
+	res, act := ws.Execute(call("write_lesson", args))
+	if act == nil {
+		t.Fatalf("write_lesson rejected: %s", res)
+	}
+	if act["section"] != 1 || act["total"] != 2 || lesson.Current != 1 || !lesson.HasArticle(1) {
+		t.Errorf("action %v, lesson %+v", act, lesson)
+	}
+	if _, act := ws.Execute(call("write_lesson", map[string]any{"section": 5, "heading": "x", "body": args["body"]})); act != nil {
+		t.Error("section outside the plan accepted")
 	}
 }
 
