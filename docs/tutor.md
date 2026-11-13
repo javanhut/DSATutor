@@ -137,7 +137,11 @@ director's rather than shown beside it, so the scratchpad gets one drawing
 per turn. With speech on, the page reads a newly written section aloud first
 (marked while it's read), and the drawing and question appear once that
 reading is done (`speech.until` in `tutor.js`); stopping the voice shows them
-at once. When the server writes a later section, the same call
+at once. The teacher then talks through the example: drawings carry an
+`explanation` (said as the drawing appears) and per-step captions (sketch
+`captions`, diagram frame captions), and the scratchpad steps along with the
+narration instead of playing on a timer (`manual`, `dsaScratchpad.step`).
+Finally the question appears and is read aloud with its choices. When the server writes a later section, the same call
 also produces a one-sentence transition from the previous section, appended
 to the reply (and spoken) before the section appears.
 

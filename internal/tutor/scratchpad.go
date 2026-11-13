@@ -64,13 +64,14 @@ func scratchpadTools() []Tool {
 		fn("scratchpad_visualize",
 			"Draw a step-by-step diagram in the teacher's scratchpad: a list of frames the learner steps through, each with a caption and one or more data structures. Use it to show how an algorithm changes a structure (pointers moving, a window sliding, a tree being built) without running code.",
 			map[string]any{
-				"title": map[string]any{"type": "string"},
+				"title":       map[string]any{"type": "string"},
+				"explanation": map[string]any{"type": "string", "description": "what you say about this example, spoken to the learner as it appears: what it shows and how it illustrates the concept, 1 to 3 sentences"},
 				"frames": map[string]any{
 					"type": "array",
 					"items": map[string]any{
 						"type": "object",
 						"properties": map[string]any{
-							"caption":    map[string]any{"type": "string", "description": "what happens in this frame, one sentence"},
+							"caption":    map[string]any{"type": "string", "description": "what happens in this frame and why, one sentence; it is read aloud as the frame appears"},
 							"structures": map[string]any{"type": "array", "items": structure},
 						},
 						"required": []string{"caption", "structures"},
@@ -80,8 +81,9 @@ func scratchpadTools() []Tool {
 		fn("scratchpad_sketch",
 			"Draw on the scratchpad's whiteboard in a hand-drawn style, like a teacher at a board: handwritten notes, boxes, circles, arrows and rows of array cells, drawn stroke by stroke. Coordinates run 0-100 across and 0-60 down. Give elements a step number to build the drawing up over several steps the learner clicks through (step 0 first); captions[i] explains step i. Use it for intuition: why an idea works, a pointer moving, what a recurrence means. Draw, don't just write: a row of cells for an array, arrows for pointers, circles or marks on the cells that matter, boxes for variables; keep text to short labels (six words or fewer). To move pointers over steps, redraw the same cells with new pointers in the next step. Example: [{\"type\":\"cells\",\"x\":15,\"y\":12,\"values\":[2,1,5,1,3],\"text\":\"nums\",\"pointers\":{\"left\":0,\"right\":2}}, {\"type\":\"cells\",\"step\":1,\"x\":15,\"y\":12,\"values\":[2,1,5,1,3],\"marks\":[0],\"pointers\":{\"left\":1,\"right\":3}}, {\"type\":\"text\",\"step\":1,\"x\":15,\"y\":48,\"text\":\"drop 2, add 1\",\"color\":\"red\"}]. Cells are 8 wide, so values[i] sits at x + 8*i; leave 20 units below a row of cells for its pointers, and put notes below that or to the right of the row.",
 			map[string]any{
-				"title":    map[string]any{"type": "string"},
-				"captions": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "one short caption per step"},
+				"title":       map[string]any{"type": "string"},
+				"explanation": map[string]any{"type": "string", "description": "what you say about this example, spoken to the learner as it appears: what it shows and how it illustrates the concept, 1 to 3 sentences"},
+				"captions":    map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "one sentence per step saying what it shows and why; read aloud as the step is drawn"},
 				"elements": map[string]any{
 					"type":  "array",
 					"items": sketchElementSchema(),
@@ -164,7 +166,7 @@ func executeScratchpad(call ToolCall) (string, Action) {
 			return "Error: the diagram is too large; use smaller inputs or fewer frames.", nil
 		}
 		return fmt.Sprintf("Drew %d frames in the scratchpad; the learner can step through them.", len(clean)),
-			Action{"name": "scratchpad_visualize", "title": truncate(str(args, "title"), 120), "frames": clean}
+			withExplanation(Action{"name": "scratchpad_visualize", "title": truncate(str(args, "title"), 120), "frames": clean}, args)
 
 	case "scratchpad_sketch":
 		raw := listArg(args, "elements")
@@ -218,7 +220,7 @@ func executeScratchpad(call ToolCall) (string, Action) {
 			note = fmt.Sprintf(" (%d elements had no content and were left out: text needs text, cells need values)", dropped)
 		}
 		return fmt.Sprintf("Sketched %d elements over %d steps on the whiteboard%s; the learner can step through them.", len(raw), steps, note),
-			Action{"name": "scratchpad_sketch", "title": truncate(str(args, "title"), 120), "elements": raw, "captions": captions}
+			withExplanation(Action{"name": "scratchpad_sketch", "title": truncate(str(args, "title"), 120), "elements": raw, "captions": captions}, args)
 
 	case "ask_learner":
 		q := strings.TrimSpace(str(args, "question"))
@@ -235,6 +237,14 @@ func executeScratchpad(call ToolCall) (string, Action) {
 		return "Asked. Stop here and wait for the learner's answer.", Action{"name": "ask_learner", "question": truncate(q, 400), "choices": choices}
 	}
 	return "Error: unknown tool", nil
+}
+
+// withExplanation carries the teacher's spoken words about a drawing.
+func withExplanation(act Action, args map[string]any) Action {
+	if e := strings.TrimSpace(str(args, "explanation")); e != "" {
+		act["explanation"] = truncate(e, 400)
+	}
+	return act
 }
 
 func validType(t string) bool { return contains(structureTypes, t) }

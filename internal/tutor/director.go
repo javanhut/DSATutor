@@ -88,8 +88,9 @@ func (c *Client) Direct(ctx context.Context, model string, base []Message, ch *c
 		props["sketch"] = map[string]any{
 			"type": "object",
 			"properties": map[string]any{
-				"title":    str,
-				"captions": map[string]any{"type": "array", "items": str, "minItems": 1, "maxItems": 6},
+				"title":       str,
+				"explanation": map[string]any{"type": "string", "minLength": 40},
+				"captions":    map[string]any{"type": "array", "items": str, "minItems": 1, "maxItems": 6},
 				"rows": map[string]any{"type": "array", "minItems": 1, "maxItems": 6, "items": map[string]any{
 					"type": "object",
 					"properties": map[string]any{
@@ -123,10 +124,10 @@ func (c *Client) Direct(ctx context.Context, model string, base []Message, ch *c
 					"required": []string{"step", "x", "y", "w", "h", "text"},
 				}},
 			},
-			"required": []string{"title", "captions", "rows", "notes", "arrows", "boxes"},
+			"required": []string{"title", "explanation", "captions", "rows", "notes", "arrows", "boxes"},
 		}
 		required = append(required, "sketch")
-		asks = append(asks, `"sketch": one compact hand-drawn whiteboard that shows the reply's single idea on a concrete small input, built up over 2 to 4 steps (element.step 0, 1, 2...; captions[i] says what step i shows in one short sentence). Coordinates run 0-100 across and 0-60 down. Draw, don't write: "rows" are arrays drawn as cells (values, a label, "pointers" like {"left": 0, "right": 4} for labelled arrows under cells, "marks" to circle cells); "boxes" hold one small result ("sum = 12"); "arrows" must visibly connect two drawn things; "notes" are short labels. Prefer one cells row, redrawn at the SAME x and y in later steps, rather than stacking duplicate rows or large result boxes. Rows are 8 units wide per value, so keep x + 8 * len(values) under 96; leave 18 units below a row for pointers. Never draw a floating arrow, never repeat the array as prose beside the cells, and omit any box or note that does not clarify the one idea. Keep text to six words or fewer. Use the reply's exact example numbers. Always include a structural element — never only text.`)
+		asks = append(asks, `"sketch": one compact hand-drawn whiteboard that shows the reply's single idea on a concrete small input, built up over 2 to 4 steps (element.step 0, 1, 2...). You talk the learner through it aloud: "explanation" is what you say as it appears (1 to 2 sentences: what the example is and which part of the concept it shows), and captions[i] is the sentence you say as step i is drawn (what changes and why, in terms of the concept, under 20 words). Coordinates run 0-100 across and 0-60 down. Draw, don't write: "rows" are arrays drawn as cells (values, a label, "pointers" like {"left": 0, "right": 4} for labelled arrows under cells, "marks" to circle cells); "boxes" hold one small result ("sum = 12"); "arrows" must visibly connect two drawn things; "notes" are short labels. Prefer one cells row, redrawn at the SAME x and y in later steps, rather than stacking duplicate rows or large result boxes. Rows are 8 units wide per value, so keep x + 8 * len(values) under 96; leave 18 units below a row for pointers. Never draw a floating arrow, never repeat the array as prose beside the cells, and omit any box or note that does not clarify the one idea. Keep text to six words or fewer. Use the reply's exact example numbers. Always include a structural element — never only text.`)
 	}
 	if need.Check {
 		props["check"] = map[string]any{
@@ -287,5 +288,5 @@ func sketchFromParts(sk map[string]any) map[string]any {
 	add("text", sk["notes"], func(m map[string]any) map[string]any {
 		return map[string]any{"step": m["step"], "x": m["x"], "y": m["y"], "text": m["text"], "color": m["color"], "size": "m"}
 	})
-	return map[string]any{"title": sk["title"], "captions": sk["captions"], "elements": els}
+	return map[string]any{"title": sk["title"], "explanation": sk["explanation"], "captions": sk["captions"], "elements": els}
 }

@@ -270,6 +270,31 @@
     return lines.join(' ');
   }
 
+  // What the teacher says about an example it shows: its explanation, then
+  // one sentence per step (sketch captions, diagram frame captions).
+  function exampleSpeech(a) {
+    const steps = a.name === 'scratchpad_sketch' ? (a.captions || [])
+      : a.name === 'scratchpad_visualize' ? (a.frames || []).map(f => f.caption || '')
+      : [];
+    const intro = (a.explanation || '').trim();
+    if (!intro && !steps.some(t => t && t.trim())) return null;
+    // "Step 0:" labels are for the eye, not the ear.
+    return { intro, steps: steps.map(t => (t || '').replace(/^\s*(step|frame)\s*\d+\s*[:.)-]\s*/i, '').trim()) };
+  }
+
+  // The question as it is read aloud, with its choices.
+  function questionSpeech(q) {
+    const choices = (q.choices || []).map(c => c.trim().replace(/[.!?]+$/, ''));
+    if (!choices.length) return sentence(q.question);
+    const list = choices.length === 1 ? choices[0] : `${choices.slice(0, -1).join('; ')}; or ${choices[choices.length - 1]}`;
+    return `${sentence(q.question)} Your choices: ${list}.`;
+  }
+
+  function sentence(text) {
+    const t = String(text || '').trim();
+    return !t || /[.!?:…]$/.test(t) ? t : `${t}.`;
+  }
+
   // Text fit for speaking: no code blocks, no Markdown symbols.
   function speakable(text) {
     return text
@@ -644,9 +669,41 @@
     let spoken = ''; // what is read aloud: the reply, with lesson sections read in place
     let thinking = '';
     let failed = '';
-    // Teacher Mode reads a newly written lesson section aloud before the
-    // example and the question appear: those wait on `reading`.
-    let reading = null;
+    // With speech on, Teacher Mode talks through its turn in order: it reads
+    // a newly written lesson section, says its reply, then shows the example
+    // and talks it through step by step, then shows and reads the question.
+    // `chain` sequences the held parts behind what has been said.
+    let chain = speech && c.kind === 'teacher' ? Promise.resolve() : null;
+    const present = async (ev, rec) => {
+      if (tutor.turnSeq !== turn) return; // the learner has moved on
+      const live = !speech.finished;
+      if (rec.name === 'ask_learner') {
+        if (!window.dsaScratchpad?.showQuestion(rec)) bubble.querySelector('.tutor-asks')?.insertAdjacentHTML('beforeend', askHtml(rec));
+        if (live) {
+          spoken += `\n\n${questionSpeech(rec)}\n\n`;
+          speech.flush(spoken);
+        }
+        return;
+      }
+      const talk = exampleSpeech(ev);
+      if (!live || !talk) { runAction(ev); return; }
+      runAction({ ...ev, manual: true });
+      const say = (text) => {
+        spoken += ` ${sentence(text)}`;
+        speech.flush(spoken);
+        return speakable(spoken).length;
+      };
+      if (talk.intro) say(talk.intro);
+      const ends = talk.steps.map(say);
+      // Step k is drawn as its caption starts, i.e. once caption k-1 is said.
+      for (let k = 1; k < ends.length; k++) {
+        await speech.until(ends[k - 1]);
+        if (tutor.turnSeq !== turn) return;
+        window.dsaScratchpad?.step(k);
+      }
+      await speech.until(speakable(spoken).length);
+      if (tutor.turnSeq === turn) window.dsaScratchpad?.step(9999); // any steps without a caption
+    };
     try {
       const res = await fetch('/api/tutor/chat', {
         method: 'POST',
@@ -700,30 +757,27 @@
               bubble.appendChild(st);
             }
             st.textContent = ev.text;
-          } else if (ev.type === 'action' && reading && HELD_FOR_READING.includes(ev.name)) {
-            // Recorded now (so it is saved with the reply), shown once the
-            // section has been read.
+          } else if (ev.type === 'action' && chain && HELD_FOR_READING.includes(ev.name)) {
+            // Recorded now (so it is saved with the reply), shown once
+            // everything before it has been said.
             const rec = actionRecord(ev);
             actions.push(rec);
             if (rec.name !== 'ask_learner') {
               actionsEl.classList.remove('hidden');
               actionsEl.insertAdjacentHTML('beforeend', chipHtml(rec, ''));
             }
-            reading.then(() => {
-              if (tutor.turnSeq !== turn) return; // the learner has moved on
-              runAction(ev);
-              if (rec.name === 'ask_learner' && !window.dsaScratchpad?.showQuestion(rec)) {
-                bubble.querySelector('.tutor-asks')?.insertAdjacentHTML('beforeend', askHtml(rec));
-              }
-            });
+            speech.flush(spoken); // queue a short or unfinished last sentence too
+            const at = speakable(spoken).length;
+            chain = chain.then(() => speech.until(at)).then(() => present(ev, rec)).catch(e => console.error('Teacher narration:', e));
           } else if (ev.type === 'action') {
             const done = runAction(ev);
-            if (done && done.name === 'write_lesson' && speech) {
+            if (done && done.name === 'write_lesson' && chain) {
               spoken += `\n\n${sectionSpeech(done)}\n\n`;
-              speech.push(spoken);
+              speech.flush(spoken);
               const section = document.getElementById(`tl-section-${done.section}`);
               section?.classList.add('tl-reading');
-              reading = speech.until(speakable(spoken).length).then(() => section?.classList.remove('tl-reading'));
+              const at = speakable(spoken).length;
+              chain = chain.then(() => speech.until(at)).then(() => section?.classList.remove('tl-reading'));
             }
             if (done && done.name === 'ask_learner') {
               actions.push(done);
@@ -753,7 +807,8 @@
     const saved = actions.map(({ undo, ...a }) => a); // undo handles don't survive a reload
     if (reply.trim() || actions.length) {
       tutor.messages.push({ role: 'assistant', content: reply.trim() || '(done)', actions: saved });
-      if (speech) speech.end(spoken);
+      // Ended once the held parts have queued what they say.
+      if (speech) (chain || Promise.resolve()).then(() => speech.end(spoken));
     } else {
       bubble.remove();
       if (speech) stopSpeaking();
@@ -1365,6 +1420,16 @@
         s.spokenUpTo = end;
         if (s.wake) s.wake();
       }
+    };
+    // flush queues everything said so far, finished sentence or not, as
+    // its own chunk, so until() can tell when exactly that much was played.
+    s.flush = (full) => {
+      const text = speakable(full);
+      if (text.length <= s.spokenUpTo) return;
+      const piece = text.slice(s.spokenUpTo).trim();
+      if (piece) s.queue.push({ text: piece, end: text.length });
+      s.spokenUpTo = text.length;
+      if (s.wake) s.wake();
     };
     s.end = (full) => {
       const text = speakable(full);

@@ -156,7 +156,9 @@
     }
   }
 
-  function showFrames({ title, frames }) {
+  // A drawing the teacher talks through (manual) steps along with its
+  // narration (step()) instead of playing on a timer.
+  function showFrames({ title, frames, manual }) {
     open();
     stopPlay();
     clearQuestion();
@@ -172,7 +174,7 @@
     sp.ran = false;
     sp.idx = 0;
     render();
-    autoPlay();
+    if (!manual) autoPlay();
   }
 
   // Each showCode/showFrames becomes an item; the current one's live state
@@ -210,7 +212,7 @@
 
   // A whiteboard sketch: elements revealed step by step (element.step), so
   // frame k shows everything up to step k and draws step k's strokes live.
-  function showSketch({ title, elements, captions }) {
+  function showSketch({ title, elements, captions, manual }) {
     open();
     stopPlay();
     clearQuestion();
@@ -229,7 +231,13 @@
     sp.idx = 0;
     sp.lastDrawn = -1;
     render();
-    autoPlay();
+    if (!manual) autoPlay();
+  }
+
+  // Move the current drawing to step i (the teacher's narration reached it).
+  function step(i) {
+    stopPlay();
+    go(i);
   }
 
   function setExplanation(text) {
@@ -833,5 +841,5 @@
     return out;
   }
 
-  window.dsaScratchpad = { showCode, showFrames, showSketch, showQuestion, open, close, state, setHandwritten, avoid };
+  window.dsaScratchpad = { showCode, showFrames, showSketch, showQuestion, open, close, state, setHandwritten, avoid, step };
 })();
