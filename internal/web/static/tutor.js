@@ -99,6 +99,7 @@
           lastRun: practiceRunText(),
           hintsRevealed: Math.max(practiceState.hintsRevealed || 0, prog.hintsUsed || 0),
           solutionUnlocked: !!(prog.solved || prog.solutionViewed),
+          learner: window.dsaLearning?.problemProfile(p),
         },
       };
     }
@@ -122,7 +123,7 @@
         key: `chapter:${ch.number}`,
         label: `Ch. ${ch.number}: ${ch.title}`,
         kind: 'chapter',
-        ctx: { view: 'chapter', chapterNumber: ch.number },
+        ctx: { view: 'chapter', chapterNumber: ch.number, learner: window.dsaLearning?.chapterProfile(ch) },
       };
     }
     return { key: 'home', label: 'General', kind: 'home', ctx: { view: 'home' } };
@@ -501,7 +502,8 @@
     const body = m.role === 'assistant' ? renderMarkdown(m.content) : `<p>${escapeHtml(m.content).replace(/\n/g, '<br>')}</p>`;
     const acts = m.actions || [];
     const chips = acts.map((a, ai) => (a.name === 'ask_learner' ? '' : chipHtml(a, `${idx}:${ai}`))).join('');
-    const asks = acts.filter(a => a.name === 'ask_learner').map(askHtml).join('');
+    const answered = tutor.messages.slice(idx + 1).some(next => next.role === 'user');
+    const asks = acts.filter(a => a.name === 'ask_learner').map(a => askHtml(a, answered)).join('');
     const text = m.content === '(done)' && acts.length ? '' : `<div class="tutor-msg-text">${body}</div>`;
     const speakBtn = m.role === 'assistant' && text && ttsReady() ? `<button type="button" class="tutor-msg-speak" data-speak="${idx}" title="Read this reply aloud" aria-label="Read this reply aloud">🔊</button>` : '';
     return `<div class="tutor-msg ${m.role}">${speakBtn}${chips ? `<div class="tutor-actions">${chips}</div>` : ''}${text}${asks}</div>`;
@@ -520,10 +522,10 @@
   }
 
   // A question from ask_learner: clicking an answer sends it.
-  function askHtml(a) {
-    return `<div class="tutor-ask"><p>${escapeHtml(a.question)}</p><div class="tutor-ask-choices">${
-      (a.choices || []).map(c => `<button type="button" class="tutor-answer" data-answer="${escapeHtml(c)}">${escapeHtml(c)}</button>`).join('')
-    }</div></div>`;
+  function askHtml(a, answered = false) {
+    return `<div class="tutor-ask${answered ? ' answered' : ''}"><p>${escapeHtml(a.question)}</p><div class="tutor-ask-choices">${
+      (a.choices || []).map(c => `<button type="button" class="tutor-answer" data-answer="${escapeHtml(c)}"${answered ? ' disabled' : ''}>${escapeHtml(c)}</button>`).join('')
+    }</div>${answered ? '<span class="tutor-ask-done">Answered on the scratchpad</span>' : ''}</div>`;
   }
 
   // ---------------------------------------------------------------------
@@ -637,7 +639,8 @@
             const done = runAction(ev);
             if (done && done.name === 'ask_learner') {
               actions.push(done);
-              bubble.querySelector('.tutor-asks').insertAdjacentHTML('beforeend', askHtml(done));
+              const onScratchpad = window.dsaScratchpad?.showQuestion(done);
+              if (!onScratchpad) bubble.querySelector('.tutor-asks').insertAdjacentHTML('beforeend', askHtml(done));
             } else if (done) {
               actions.push(done);
               actionsEl.classList.remove('hidden');
@@ -1475,6 +1478,22 @@
       tutor.messages = [];
       renderMessages();
     }
+  });
+
+  // Keep the learner on the shared board: a checkpoint answer in the
+  // scratchpad continues the same tutor conversation without making them
+  // move back to the chat panel first.
+  window.addEventListener('dsatutor:scratchpad-answer', (event) => {
+    const answer = event.detail?.answer;
+    if (!answer) return;
+    const continueLesson = () => {
+      if (tutor.busy) {
+        setTimeout(continueLesson, 80);
+        return;
+      }
+      send(answer);
+    };
+    continueLesson();
   });
 
   // The API the modes use.

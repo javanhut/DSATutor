@@ -147,23 +147,88 @@ const CHAPTER_PROGRESS_KEY = 'dsatutor_chapter_progress';
 
 function chapterProgress(num) {
   const all = loadJSON(CHAPTER_PROGRESS_KEY, {});
-  return all[num] || { checks: {}, completions: {} };
+  return all[num] || { checks: {}, completions: {}, checkAttempts: {}, completionAttempts: {}, misconceptions: [] };
 }
 
 function updateChapterProgress(num, fn) {
   const all = loadJSON(CHAPTER_PROGRESS_KEY, {});
-  const cur = all[num] || { checks: {}, completions: {} };
+  const cur = all[num] || { checks: {}, completions: {}, checkAttempts: {}, completionAttempts: {}, misconceptions: [] };
   fn(cur);
+  cur.lastStudiedAt = Date.now();
   all[num] = cur;
   saveJSON(CHAPTER_PROGRESS_KEY, all);
   markChapterDone();
+  if (state.current?.number === num) renderMastery(state.current);
+}
+
+function rememberMisconception(progress, text) {
+  if (!text) return;
+  progress.misconceptions = Array.isArray(progress.misconceptions) ? progress.misconceptions : [];
+  progress.misconceptions = [{ text: String(text).slice(0, 240), at: Date.now() }, ...progress.misconceptions.filter(item => item.text !== text)].slice(0, 6);
+}
+
+function resolveMisconceptions(progress, prefix) {
+  progress.misconceptions = (progress.misconceptions || []).filter(item => !item.text.startsWith(prefix));
+}
+
+function chapterLearningProfile(ch) {
+  const progress = chapterProgress(ch.number);
+  const checksTotal = (ch.checkQuestions || []).length;
+  const checksCorrect = (ch.checkQuestions || []).filter((_, index) => progress.checks[index] === true).length;
+  const completionsTotal = (ch.completions || []).length;
+  const completionsCorrect = (ch.completions || []).filter((_, index) => progress.completions[index] === true).length;
+  const problems = (typeof practiceState !== 'undefined' ? practiceState.problems : []).filter(problem => problem.category === ch.category);
+  const solved = problems.filter(problem => practiceState.progress[problem.id]?.solved).length;
+  const attempted = problems.filter(problem => (practiceState.progress[problem.id]?.attempts || 0) > 0).length;
+  const hintsUsed = problems.reduce((sum, problem) => sum + (practiceState.progress[problem.id]?.hintsUsed || 0), 0);
+  const reviewReps = problems.reduce((sum, problem) => sum + (practiceState.progress[problem.id]?.review?.completed || 0), 0);
+  const reviewsDue = problems.filter(problem => {
+    const review = practiceState.progress[problem.id]?.review;
+    return review && review.due <= Date.now();
+  }).length;
+  const checkRate = checksTotal ? checksCorrect / checksTotal : 0;
+  const completionRate = completionsTotal ? completionsCorrect / completionsTotal : checkRate;
+  const practiceRate = ch.category ? Math.min(1, solved / 2) : Math.min(checkRate, completionRate);
+  const retentionRate = reviewReps ? (reviewsDue ? 0.35 : Math.min(1, reviewReps / Math.max(1, solved))) : 0;
+  const mastery = Math.round(checkRate * 35 + completionRate * 20 + practiceRate * 30 + retentionRate * 15);
+  const secureThreshold = ch.category ? 90 : 80;
+  const level = mastery < 25 ? 'starting' : mastery < 50 ? 'building' : mastery < secureThreshold ? 'practicing' : 'secure';
+  const misconceptions = (progress.misconceptions || []).map(item => item.text).slice(0, 4);
+  let nextStep = 'Study the worked example, then predict each next step.';
+  if (checksCorrect < checksTotal) nextStep = 'Answer the retrieval questions without looking back.';
+  else if (completionsCorrect < completionsTotal) nextStep = 'Finish the completion exercise without revealing an answer.';
+  else if (ch.category && solved === 0) nextStep = 'Solve the first practice problem without the solution.';
+  else if (ch.category && solved < 2) nextStep = 'Solve one more problem to prove you can transfer the pattern.';
+  else if (reviewsDue) nextStep = 'Complete the due review from memory.';
+  else if (reviewReps === 0 && ch.category) nextStep = 'Return for the scheduled review to make this durable.';
+  else nextStep = 'Use mixed practice to keep pattern recognition sharp.';
+  return {
+    chapterNumber: ch.number, level, mastery, checksCorrect, checksTotal,
+    completionsCorrect, completionsTotal, practiceSolved: solved, practiceAttempted: attempted,
+    hintsUsed, reviewReps, reviewsDue, misconceptions, nextStep,
+    lastStudiedAt: progress.lastStudiedAt || 0,
+  };
+}
+
+function problemLearningProfile(problem) {
+  const chapter = (state.chapters || []).find(ch => ch.category === problem.category);
+  const progress = practiceState.progress[problem.id] || {};
+  return {
+    ...(chapter ? chapterLearningProfile(chapter) : {}),
+    problemId: problem.id,
+    problemAttempts: progress.attempts || 0,
+    problemSolved: !!progress.solved,
+    problemHintsUsed: progress.hintsUsed || 0,
+    solutionViewed: !!progress.solutionViewed,
+    problemReviewReps: progress.review?.reps || 0,
+  };
 }
 
 function isChapterDone(ch) {
-  const qs = ch.checkQuestions || [];
-  if (!qs.length) return false;
-  const prog = chapterProgress(ch.number);
-  return qs.every((_, i) => prog.checks[i] === true);
+  const profile = chapterLearningProfile(ch);
+  return profile.checksTotal > 0 && profile.checksCorrect === profile.checksTotal &&
+    profile.completionsCorrect === profile.completionsTotal &&
+    (!ch.category || profile.practiceSolved > 0);
 }
 
 function markChapterDone() {
@@ -205,7 +270,15 @@ function renderLessonPath(ch) {
   const prereqs = (ch.prerequisites || [])
     .map(n => state.chapters.find(c => c.number === n))
     .filter(Boolean);
-  let html = '';
+  const profile = chapterLearningProfile(ch);
+  let html = `<div id="lesson-mastery" class="lesson-mastery level-${profile.level}">
+    <div class="mastery-score"><strong>${profile.mastery}%</strong><span>${escapeHtml(profile.level)} mastery</span></div>
+    <div class="mastery-detail">
+      <div class="mastery-bar"><span style="width:${profile.mastery}%"></span></div>
+      <p><strong>Next:</strong> ${escapeHtml(profile.nextStep)}</p>
+      <span>${profile.checksCorrect}/${profile.checksTotal} recall · ${profile.completionsCorrect}/${profile.completionsTotal} completion${ch.category ? ` · ${profile.practiceSolved} practice solved · ${profile.reviewReps} reviews` : ''}</span>
+    </div>
+  </div>`;
   if (prereqs.length) {
     html += `<div class="lesson-prereqs"><span>Before this:</span> ${prereqs.map(p =>
       `<a href="#" class="chapter-link${isChapterDone(p) ? ' done' : ''}" data-chapter="${p.number}">${pad(p.number)}. ${escapeHtml(p.title)}</a>`).join(' ')}</div>`;
@@ -224,6 +297,20 @@ function renderLessonPath(ch) {
       goToChapter(Number(a.dataset.chapter));
     };
   });
+}
+
+function renderMastery(ch) {
+  const current = el('lesson-mastery');
+  if (!current || !ch) return;
+  const profile = chapterLearningProfile(ch);
+  current.className = `lesson-mastery level-${profile.level}`;
+  current.innerHTML = `
+    <div class="mastery-score"><strong>${profile.mastery}%</strong><span>${escapeHtml(profile.level)} mastery</span></div>
+    <div class="mastery-detail">
+      <div class="mastery-bar"><span style="width:${profile.mastery}%"></span></div>
+      <p><strong>Next:</strong> ${escapeHtml(profile.nextStep)}</p>
+      <span>${profile.checksCorrect}/${profile.checksTotal} recall · ${profile.completionsCorrect}/${profile.completionsTotal} completion${ch.category ? ` · ${profile.practiceSolved} practice solved · ${profile.reviewReps} reviews` : ''}</span>
+    </div>`;
 }
 
 function renderWhenToUse(ch) {
@@ -340,9 +427,17 @@ function renderCompletions(ch) {
         if (ok) right++;
       });
       result.textContent = `${right} of ${inputs.length} correct`;
+      updateChapterProgress(ch.number, progress => {
+        progress.completionAttempts = progress.completionAttempts || {};
+        progress.completionAttempts[idx] = (progress.completionAttempts[idx] || 0) + 1;
+        if (right < inputs.length) rememberMisconception(progress, `${item.title}: ${inputs.length - right} completion blank${inputs.length - right === 1 ? '' : 's'} still incorrect`);
+      });
       if (right === inputs.length) {
         explanation.classList.remove('hidden');
-        updateChapterProgress(ch.number, p => { p.completions[idx] = true; });
+        updateChapterProgress(ch.number, p => {
+          p.completions[idx] = true;
+          resolveMisconceptions(p, item.title);
+        });
       }
     };
     block.querySelector('.completion-reveal').onclick = () => {
@@ -355,6 +450,11 @@ function renderCompletions(ch) {
       });
       explanation.classList.remove('hidden');
       result.textContent = 'Compare each answer with what you wrote, then try the next one without peeking.';
+      updateChapterProgress(ch.number, progress => {
+        progress.completionRevealed = progress.completionRevealed || {};
+        progress.completionRevealed[idx] = true;
+        rememberMisconception(progress, `${item.title}: needed the completion answer revealed`);
+      });
     };
     target.appendChild(block);
   });
@@ -390,9 +490,17 @@ function renderCheckQuestions(ch) {
           btn.classList.add(correct ? 'right' : 'wrong');
           explanation.innerHTML = `<strong>${correct ? 'Correct.' : 'Not quite.'}</strong> ${correct ? renderMarkdown(q.explanation) : 'Think about why that choice fails, then try again.'}`;
           explanation.classList.remove('hidden');
+          updateChapterProgress(ch.number, progress => {
+            progress.checkAttempts = progress.checkAttempts || {};
+            progress.checkAttempts[idx] = (progress.checkAttempts[idx] || 0) + 1;
+            if (!correct) rememberMisconception(progress, `${q.prompt} Chose: ${q.choices[i]}`);
+          });
           if (correct) {
             block.classList.add('answered-right');
-            updateChapterProgress(ch.number, p => { p.checks[idx] = true; });
+            updateChapterProgress(ch.number, p => {
+              p.checks[idx] = true;
+              resolveMisconceptions(p, q.prompt);
+            });
           }
         };
       });
@@ -421,11 +529,21 @@ function renderCheckQuestions(ch) {
       };
       block.querySelector('.check-self-yes').onclick = () => {
         block.classList.add('answered-right');
-        updateChapterProgress(ch.number, p => { p.checks[idx] = true; });
+        updateChapterProgress(ch.number, p => {
+          p.checks[idx] = true;
+          p.checkAttempts = p.checkAttempts || {};
+          p.checkAttempts[idx] = (p.checkAttempts[idx] || 0) + 1;
+          resolveMisconceptions(p, q.prompt);
+        });
       };
       block.querySelector('.check-self-no').onclick = () => {
         block.classList.remove('answered-right');
-        updateChapterProgress(ch.number, p => { p.checks[idx] = false; });
+        updateChapterProgress(ch.number, p => {
+          p.checks[idx] = false;
+          p.checkAttempts = p.checkAttempts || {};
+          p.checkAttempts[idx] = (p.checkAttempts[idx] || 0) + 1;
+          rememberMisconception(p, `${q.prompt} Self-assessed: key idea missing`);
+        });
         textarea.value = '';
         explanation.classList.add('hidden');
         textarea.placeholder = 'Reread the concept above, then try again without looking.';
@@ -447,6 +565,8 @@ async function renderPracticeLadder(ch) {
   target.innerHTML = '<p class="placeholder">Loading problems...</p>';
   await ensureProblemsLoaded();
   if (state.current !== ch) return; // the learner moved on while loading
+  renderMastery(ch);
+  markChapterDone();
   const problems = practiceState.problems.filter(p => p.category === ch.category);
   const progress = practiceState.progress;
   target.innerHTML = `
@@ -484,7 +604,7 @@ function scheduleReview(problemId, rating, base) {
   }
   interval = Math.min(interval, 180);
   updateProblemProgress(problemId, {
-    review: { interval, due: Date.now() + interval * DAY_MS, reps: (prog.review?.reps || 0) + (base !== undefined ? 0 : 1), lastRating: rating },
+    review: { ...(prog.review || {}), interval, due: Date.now() + interval * DAY_MS, reps: (prog.review?.reps || 0) + (base !== undefined ? 0 : 1), lastRating: rating },
   });
   return interval;
 }
@@ -669,3 +789,15 @@ function renderAfterSolve(problem) {
     updateProblemProgress(problem.id, { review: { ...practiceState.progress[problem.id].review, reps: (prior?.reps || 0) + 1 } });
   }
 }
+
+window.dsaLearning = {
+  chapterProfile: chapterLearningProfile,
+  problemProfile: problemLearningProfile,
+};
+
+window.addEventListener('dsatutor:progress-updated', () => {
+  if (state.current) {
+    renderMastery(state.current);
+    markChapterDone();
+  }
+});

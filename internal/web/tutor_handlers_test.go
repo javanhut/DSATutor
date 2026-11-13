@@ -179,9 +179,9 @@ func TestTeacherDirectorStagesTextOnlyTurns(t *testing.T) {
 			json.NewDecoder(r.Body).Decode(&body)
 			if body["format"] != nil {
 				formats++
-				card := `{"highlight":{"target":"section-1","quote":"two pointers","pointer":"hand","note":"here"},"sketch":{"title":"t","captions":["a"],"rows":[{"step":0,"x":10,"y":10,"label":"nums","values":[1,2,3],"pointers":{"left":0}}],"notes":[{"step":0,"x":10,"y":40,"text":"start","color":"ink"}],"arrows":[{"step":1,"x":10,"y":50,"x2":20,"y2":30,"label":"move"}],"boxes":[]}}`
+				card := `{"highlight":{"target":"section-1","quote":"two pointers","pointer":"hand","note":"here"},"sketch":{"title":"t","captions":["a"],"rows":[{"step":0,"x":10,"y":10,"label":"nums","values":[1,2,3],"pointers":{"left":0}}],"notes":[{"step":0,"x":10,"y":40,"text":"start","color":"ink"}],"arrows":[{"step":1,"x":10,"y":50,"x2":20,"y2":30,"label":"move"}],"boxes":[]},"check":{"question":"Which pointer moves next?","choices":["left","right"]}}`
 				if thin {
-					card = `{"highlight":{"target":"section-1","quote":"two pointers","pointer":"hand","note":"here"},"sketch":{"title":"t","captions":["a"],"rows":[],"notes":[{"step":0,"x":10,"y":10,"text":"idea","color":"ink"}],"arrows":[],"boxes":[]}}`
+					card = `{"highlight":{"target":"section-1","quote":"two pointers","pointer":"hand","note":"here"},"sketch":{"title":"t","captions":["a"],"rows":[],"notes":[{"step":0,"x":10,"y":10,"text":"idea","color":"ink"}],"arrows":[],"boxes":[]},"check":{"question":"Which pointer moves next?","choices":["left","right"]}}`
 				}
 				json.NewEncoder(w).Encode(map[string]any{"message": map[string]string{"content": card}, "done": true})
 				return
@@ -212,7 +212,7 @@ func TestTeacherDirectorStagesTextOnlyTurns(t *testing.T) {
 		}
 		kinds = append(kinds, k)
 	}
-	if got := strings.Join(kinds, ","); got != "delta,status,action:highlight,action:scratchpad_sketch,done" {
+	if got := strings.Join(kinds, ","); got != "delta,status,action:highlight,action:scratchpad_sketch,action:ask_learner,done" {
 		t.Errorf("events = %s", got)
 	}
 	if formats != 1 {
@@ -235,6 +235,26 @@ func TestTeacherDirectorStagesTextOnlyTurns(t *testing.T) {
 		t.Errorf("thin sketch: director called %d times, want 2 (one retry)", formats)
 	}
 	thin = false
+
+	// A learner with secure evidence still gets a precise pointer and a
+	// checkpoint, but the director no longer forces another explanatory sketch.
+	formats = 0
+	secureReq := `{"messages":[{"role":"user","content":"next"}],"context":{"view":"chapter","chapterNumber":3,"teach":true,"learner":{"level":"secure","mastery":82},"targets":[{"id":"section-1","label":"Overview"}]}}`
+	rec = httptest.NewRecorder()
+	s.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/tutor/chat", strings.NewReader(secureReq)))
+	kinds = nil
+	for _, line := range strings.Split(strings.TrimSpace(rec.Body.String()), "\n") {
+		var ev map[string]any
+		json.Unmarshal([]byte(line), &ev)
+		kind := ev["type"].(string)
+		if kind == "action" {
+			kind += ":" + ev["name"].(string)
+		}
+		kinds = append(kinds, kind)
+	}
+	if got := strings.Join(kinds, ","); got != "delta,status,action:highlight,action:ask_learner,done" {
+		t.Errorf("secure learner events = %s", got)
+	}
 
 	// Outside Teacher Mode there is no director.
 	formats = 0

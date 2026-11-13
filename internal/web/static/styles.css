@@ -6668,6 +6668,30 @@ input[type="range"] { accent-color: var(--accent); }
 .solution-section p + p { margin-top: 8px; }
 
 .lesson-path { margin-top: 24px; font-size: 14px; }
+.lesson-mastery {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 18px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--panel-alt);
+}
+.mastery-score { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.mastery-score strong { color: var(--accent); font-family: var(--serif); font-size: 28px; line-height: 1; }
+.mastery-score span { margin-top: 5px; color: var(--text-dim); font-family: var(--mono); font-size: 10px; text-transform: uppercase; }
+.mastery-detail p { margin: 7px 0 3px; color: var(--text); font-size: var(--fs-sm); }
+.mastery-detail > span { color: var(--text-dim); font-size: var(--fs-xs); }
+.mastery-bar { height: 7px; overflow: hidden; border-radius: 999px; background: var(--border); }
+.mastery-bar span { display: block; height: 100%; border-radius: inherit; background: var(--accent); transition: width 0.35s ease; }
+.lesson-mastery.level-secure .mastery-score strong { color: var(--accent-2); }
+.lesson-mastery.level-secure .mastery-bar span { background: var(--accent-2); }
+@media (max-width: 560px) {
+  .lesson-mastery { grid-template-columns: 1fr; }
+  .mastery-score { align-items: flex-start; text-align: left; }
+}
 .lesson-prereqs { margin-bottom: 10px; color: var(--text-dim); }
 .lesson-prereqs .chapter-link { margin-right: 10px; }
 .chapter-link.done::after { content: " \2713"; color: var(--accent-2); }
@@ -7595,6 +7619,17 @@ body.interview-active #practice-mode :is(
   box-shadow: var(--shadow), 0 12px 40px rgba(0, 0, 0, 0.18);
   overflow: hidden;
 }
+.scratchpad.teaching {
+  border-color: rgba(var(--accent-rgb), 0.65);
+  box-shadow: var(--shadow), 0 0 0 3px rgba(var(--accent-rgb), 0.1), 0 16px 48px rgba(0, 0, 0, 0.2);
+}
+.scratchpad.teaching .sp-title strong::after {
+  content: ' · teaching';
+  color: var(--accent);
+  font-family: var(--sans);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
 .scratchpad.minimized { height: auto !important; }
 .scratchpad.minimized .sp-body, .scratchpad.minimized .sp-resize { display: none; }
 .sp-head {
@@ -7631,6 +7666,32 @@ body.interview-active #practice-mode :is(
 .sp-vars td { padding: 2px 0; }
 .sp-output { margin: 0; padding: 8px 10px; background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); font-size: 12px; max-height: 140px; overflow: auto; white-space: pre-wrap; }
 .sp-output.error { color: var(--error); }
+.sp-checkpoint {
+  margin-top: 4px;
+  padding: 12px;
+  border: 1px solid rgba(var(--accent-rgb), 0.45);
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, rgba(var(--accent-rgb), 0.08), rgba(var(--mark-rgb), 0.05));
+  transition: opacity 0.2s ease, border-color 0.2s ease;
+}
+.sp-checkpoint.waiting { opacity: 0.68; border-style: dashed; }
+.sp-checkpoint-label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.sp-checkpoint p { margin: 0; }
+.sp-checkpoint #sp-question { font-weight: 600; }
+.sp-checkpoint-choices { display: grid; gap: 6px; margin-top: 10px; }
+.sp-answer { padding: 7px 10px; text-align: left; background: var(--panel); }
+.sp-answer:not(:disabled):hover { border-color: var(--accent); color: var(--accent); }
+.sp-answer.chosen { border-color: var(--accent); background: rgba(var(--accent-rgb), 0.14); color: var(--accent); }
+.sp-checkpoint-status { margin-top: 8px !important; color: var(--text-dim); font-size: var(--fs-xs); }
 .sp-resize { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize; touch-action: none;
   background: linear-gradient(135deg, transparent 50%, var(--border-light) 50%, var(--border-light) 60%, transparent 60%, transparent 75%, var(--border-light) 75%, var(--border-light) 85%, transparent 85%); }
 
@@ -7652,6 +7713,8 @@ body.interview-active #practice-mode :is(
 .tutor-answer { text-align: left; font-size: var(--fs-sm); padding: 6px 10px; background: var(--panel); }
 .tutor-answer:hover { border-color: var(--accent); color: var(--accent); }
 .tutor-answer.chosen { border-color: var(--accent); background: rgba(var(--accent-rgb), 0.12); }
+.tutor-ask.answered { opacity: 0.7; }
+.tutor-ask-done { display: block; margin-top: 7px; color: var(--text-dim); font-size: var(--fs-xs); }
 .tutor-action-chip.scratchpad_code, .tutor-action-chip.scratchpad_visualize { color: var(--accent); border-color: rgba(var(--accent-rgb), 0.5); cursor: pointer; }
 
 @media (max-width: 900px) {

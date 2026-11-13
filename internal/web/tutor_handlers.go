@@ -170,15 +170,18 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 			send(map[string]string{"type": "delta", "text": "\n\n"})
 		}
 	}
-	// Teacher Mode: stage whatever the model left out — a precise pointer at
-	// the page and a whiteboard sketch — so every lesson turn has both.
+	// Teacher Mode stages missing checkpoints and pointers. It also supplies a
+	// visual for learners who still need explicit support, then fades that
+	// visual once their evidence reaches the practising level.
 	if req.Context.Teach && ch != nil && ws != nil && req.Context.Interview == nil && strings.TrimSpace(said.String()) != "" {
+		forceVisual := req.Context.Learner == nil || req.Context.Learner.Level == "starting" || req.Context.Learner.Level == "building" || len(req.Context.Learner.Misconceptions) > 0
 		need := tutor.DirectorNeeds{
 			Highlight: !did["highlight"],
-			Sketch:    !did["scratchpad_sketch"] && !did["scratchpad_visualize"] && !did["scratchpad_code"],
+			Sketch:    forceVisual && !did["scratchpad_sketch"] && !did["scratchpad_visualize"] && !did["scratchpad_code"],
+			Check:     !did["ask_learner"],
 		}
-		if need.Highlight || need.Sketch {
-			send(map[string]string{"type": "status", "text": "Pointing and drawing…"})
+		if need.Highlight || need.Sketch || need.Check {
+			send(map[string]string{"type": "status", "text": "Setting up the shared board…"})
 			ws.ResetDrawings()
 			calls, err := s.tutor.Direct(r.Context(), model, messages, ch, ws, said.String(), need)
 			if err != nil {

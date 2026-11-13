@@ -23,6 +23,13 @@ learner's Submit uses.
 | **Mastery and prerequisites** (Bloom 1968; Kulik et al. 1990) | Chapters list prerequisites. Each category is a ladder ordered easy → hard, where each step adds one new idea. |
 | **Narrated, segmented animation** (Mayer 2009) | Storyboards are learner-paced (Step/Back), with narration per step and code highlighting synchronized to the visual. |
 
+The UI combines those signals into a learner model rather than treating
+progress as a page visit. Recall contributes 35%, completion work 20%,
+transfer problems 30%, and successful delayed reviews 15%. The score controls
+how much support Teacher Mode gives. For categorized pattern chapters,
+"Secure" is intentionally unavailable from same-session work alone: it
+requires retrieval after a delay.
+
 ## Curriculum
 
 Chapters are numbered in learning order. A chapter with a `Category` teaches

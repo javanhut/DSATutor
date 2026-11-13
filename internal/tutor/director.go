@@ -12,7 +12,7 @@ import (
 // The director makes Teacher Mode dependable. Whether a model actually calls
 // highlight or draws in the scratchpad varies by model and by run (gemma4
 // often only talks about it). So after a teacher turn, whatever is missing —
-// a precise pointer at the page, a whiteboard sketch — is requested in one
+// a precise pointer at the page, a whiteboard sketch, or a checkpoint — is requested in one
 // structured-output call, which every model follows, and then executed
 // like ordinary tool calls.
 
@@ -20,16 +20,17 @@ import (
 type DirectorNeeds struct {
 	Highlight bool
 	Sketch    bool
+	Check     bool
 }
 
 // Direct returns tool calls that stage the teacher's reply: a highlight with
-// a verbatim quote and a pointer, and/or a whiteboard sketch. base is the
+// a verbatim quote and a pointer, a whiteboard sketch, and/or a checkpoint. base is the
 // conversation the teacher's turn was generated from (system prompt with
 // the chapter, history, tool calls); the request reuses it word for word
 // and only appends the staging instructions, so Ollama's prompt cache
 // covers the chapter instead of re-reading it.
 func (c *Client) Direct(ctx context.Context, model string, base []Message, ch *chapter.Chapter, ws *Workspace, reply string, need DirectorNeeds) ([]ToolCall, error) {
-	if !need.Highlight && !need.Sketch {
+	if !need.Highlight && !need.Sketch && !need.Check {
 		return nil, nil
 	}
 	props := map[string]any{}
@@ -106,6 +107,18 @@ func (c *Client) Direct(ctx context.Context, model string, base []Message, ch *c
 		required = append(required, "sketch")
 		asks = append(asks, `"sketch": a hand-drawn whiteboard that shows the reply's idea on a concrete small input, built up over 2 to 4 steps (element.step 0, 1, 2...; captions[i] says what step i shows in one short sentence). Coordinates run 0-100 across and 0-60 down. Draw, don't write: "rows" are arrays drawn as cells (values, a label, "pointers" like {"left": 0, "right": 4} for labelled arrows under cells, "marks" to circle cells); "boxes" hold a variable and its value ("sum = 12"); "arrows" connect things; "notes" are short handwritten labels. Rows are 8 units wide per value, so keep x + 8 * len(values) under 100; leave 20 units below a row for its pointers. Redraw the same row (same x and y) in a later step with new pointers or marks to show movement. For growth or counting ideas, show the counts as rows or boxes (e.g. a row of pair counts for n = 1..5). Keep text to short labels (six words or fewer), placed below or to the right of the drawing. Use the reply's own example numbers when it has them; when the reply has no concrete example, take one from the chapter material (its worked example or overview numbers). Always include at least one structural element (a "cells" row, "node"s, or "box"es) — never only text.`)
 	}
+	if need.Check {
+		props["check"] = map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"question": map[string]any{"type": "string", "minLength": 1},
+				"choices":  map[string]any{"type": "array", "items": map[string]any{"type": "string", "minLength": 1}, "minItems": 2, "maxItems": 4},
+			},
+			"required": []string{"question", "choices"},
+		}
+		required = append(required, "check")
+		asks = append(asks, `"check": one prediction question about the concrete example in the reply or sketch, with 2 to 4 short answer choices. Wrong choices should be plausible misconceptions. Do not ask a generic definition question.`)
+	}
 	if len(required) == 0 {
 		return nil, nil
 	}
@@ -151,6 +164,9 @@ func (c *Client) Direct(ctx context.Context, model string, base []Message, ch *c
 			}
 		}
 		calls = append(calls, newCall("scratchpad_sketch", sk))
+	}
+	if check := out["check"]; check != nil && need.Check {
+		calls = append(calls, newCall("ask_learner", check))
 	}
 	return calls, nil
 }

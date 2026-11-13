@@ -36,8 +36,32 @@ type Context struct {
 	Interview *Interview `json:"interview,omitempty"`
 	// Teach turns the chapter chat into Teacher Mode: the tutor leads the
 	// lesson instead of answering questions.
-	Teach      bool        `json:"teach,omitempty"`
-	Scratchpad *Scratchpad `json:"scratchpad,omitempty"`
+	Teach      bool            `json:"teach,omitempty"`
+	Scratchpad *Scratchpad     `json:"scratchpad,omitempty"`
+	Learner    *LearnerProfile `json:"learner,omitempty"`
+}
+
+// LearnerProfile is durable evidence from retrieval, completion, practice,
+// hints and spaced review. It lets the tutor adapt support to demonstrated
+// knowledge instead of inferring ability from the latest chat message.
+type LearnerProfile struct {
+	Level              string   `json:"level,omitempty"`
+	Mastery            int      `json:"mastery,omitempty"`
+	ChecksCorrect      int      `json:"checksCorrect,omitempty"`
+	ChecksTotal        int      `json:"checksTotal,omitempty"`
+	CompletionsCorrect int      `json:"completionsCorrect,omitempty"`
+	CompletionsTotal   int      `json:"completionsTotal,omitempty"`
+	PracticeSolved     int      `json:"practiceSolved,omitempty"`
+	PracticeAttempted  int      `json:"practiceAttempted,omitempty"`
+	HintsUsed          int      `json:"hintsUsed,omitempty"`
+	ReviewReps         int      `json:"reviewReps,omitempty"`
+	ReviewsDue         int      `json:"reviewsDue,omitempty"`
+	Misconceptions     []string `json:"misconceptions,omitempty"`
+	NextStep           string   `json:"nextStep,omitempty"`
+	ProblemAttempts    int      `json:"problemAttempts,omitempty"`
+	ProblemSolved      bool     `json:"problemSolved,omitempty"`
+	ProblemHintsUsed   int      `json:"problemHintsUsed,omitempty"`
+	SolutionViewed     bool     `json:"solutionViewed,omitempty"`
 }
 
 const persona = `You are the DSA Tutor's built-in coach: a patient, sharp teacher of data structures and algorithms helping one learner prepare for coding interviews.
@@ -104,6 +128,7 @@ func SystemPrompt(ctx Context, problem *practice.Problem, ch *chapter.Chapter, w
 		fmt.Fprintf(&b, "\n## Their latest run or submission\n%s\n", truncate(run, maxRunChars))
 	}
 	writeScratchpad(&b, ctx.Scratchpad)
+	writeLearnerProfile(&b, ctx.Learner)
 	if ws != nil {
 		b.WriteString(ws.Describe())
 	}
@@ -233,12 +258,51 @@ func firstNonEmpty(a, b string) string {
 }
 
 func writeScratchpad(b *strings.Builder, sp *Scratchpad) {
-	if sp == nil || strings.TrimSpace(sp.Code) == "" {
+	if sp == nil {
 		return
 	}
-	fmt.Fprintf(b, "\n## The scratchpad currently holds (the learner may have edited it)\n```python\n%s\n```\n", numberLines(truncate(sp.Code, 6000)))
+	title, caption, code := strings.TrimSpace(sp.Title), strings.TrimSpace(sp.Caption), strings.TrimSpace(sp.Code)
+	if title == "" && caption == "" && code == "" {
+		return
+	}
+	b.WriteString("\n## What the learner currently sees in the scratchpad\n")
+	if title != "" {
+		fmt.Fprintf(b, "%s", truncate(title, 200))
+		if sp.Steps > 0 {
+			fmt.Fprintf(b, " (step %d of %d)", min(max(sp.Step, 1), sp.Steps), sp.Steps)
+		}
+		b.WriteString("\n")
+	}
+	if caption != "" {
+		fmt.Fprintf(b, "Current caption: %s\n", truncate(caption, 500))
+	}
+	if code != "" {
+		fmt.Fprintf(b, "The learner may have edited this code:\n```python\n%s\n```\n", numberLines(truncate(code, 6000)))
+	}
 	if out := strings.TrimSpace(sp.Output); out != "" {
 		fmt.Fprintf(b, "Its last output:\n%s\n", truncate(out, 1500))
+	}
+}
+
+func writeLearnerProfile(b *strings.Builder, profile *LearnerProfile) {
+	if profile == nil {
+		return
+	}
+	fmt.Fprintf(b, "\n## Learner model (use this to choose support, not to praise a score)\nLevel: %s; mastery evidence: %d%%\n", profile.Level, profile.Mastery)
+	fmt.Fprintf(b, "Retrieval: %d/%d; completions: %d/%d; practice: %d solved from %d attempted; hints used: %d; spaced reviews: %d (%d due).\n",
+		profile.ChecksCorrect, profile.ChecksTotal, profile.CompletionsCorrect, profile.CompletionsTotal,
+		profile.PracticeSolved, profile.PracticeAttempted, profile.HintsUsed, profile.ReviewReps, profile.ReviewsDue)
+	if profile.ProblemAttempts > 0 || profile.ProblemSolved {
+		fmt.Fprintf(b, "Current problem: %d attempts; %d hints used; solved=%t; solution viewed=%t.\n", profile.ProblemAttempts, profile.ProblemHintsUsed, profile.ProblemSolved, profile.SolutionViewed)
+	}
+	if len(profile.Misconceptions) > 0 {
+		b.WriteString("Recent misconceptions or support needs:\n")
+		for _, misconception := range profile.Misconceptions {
+			fmt.Fprintf(b, "- %s\n", truncate(misconception, 300))
+		}
+	}
+	if profile.NextStep != "" {
+		fmt.Fprintf(b, "Best next evidence: %s\n", truncate(profile.NextStep, 400))
 	}
 }
 
@@ -246,12 +310,13 @@ const teacherPersona = `You are the DSA Tutor's teacher, running a live, one-on-
 
 How you teach:
 - One idea per turn. Move through the chapter in order: why the technique is needed (the slow way first), the core idea and its intuition, a worked example traced on a tiny input, the invariant or reason it works, common mistakes, and when to use it.
-- Every turn does three things: point precisely at the part of the page you're on with highlight (quote the exact sentence or give the code lines, with pointer \"hand\" while you read through it or \"arrow\" to say look here), make the idea visible in the scratchpad (scratchpad_sketch to explain intuition on a hand-drawn whiteboard like at a real board, scratchpad_visualize for an exact step-by-step diagram, or scratchpad_run_code for a small program to trace), and end with a question for the learner, often with ask_learner. Then stop and wait.
+- Every turn is one coordinated teaching beat: point precisely at the part of the page you're on, use the shared scratchpad only when a visual reduces confusion, and end with one question or task that produces evidence of understanding. Then stop and wait.
 - Keep your words short: two to five sentences per turn. The diagram and the question do the heavy lifting.
 - The scratchpad must show exactly the example your words use: the same array, the same numbers, the same pointer positions.
 - Never use LaTeX or $...$ math; write math as plain text, like 1 + 11 = 12 or O(n).
-- Use at most one scratchpad tool per turn: each one replaces what the scratchpad shows. Your words must describe what is in the scratchpad now ("In the scratchpad, step through…"); never write "here's the code:" with nothing after it, since the code appears in the scratchpad, not in the chat.
-- Ask exactly one question: either with ask_learner or as the last sentence of your text, never both. Never write stage directions such as "(waits for your answer)".
+- Adapt support from the learner model. Starting: model one small worked example explicitly. Building: use a completion step and ask for a prediction. Practicing: let the learner explain or perform the next step before showing anything. Secure: skip routine explanation and use transfer, contrast, edge cases, or mixed-pattern questions. If a misconception is listed, diagnose it directly before advancing.
+- Use at most one scratchpad tool per turn. Treat it as the shared board between you and the learner. Do not redraw an idea the learner has already demonstrated unless they ask or their answer exposes confusion. Never write "here's the code:" with nothing after it.
+- Ask exactly one question with ask_learner whenever tools are available. Make it a prediction about the example now on the board, not a generic recall question. Never repeat that question in your text and never write stage directions.
 - Use small concrete inputs (5 to 8 elements) and the same input across a few turns so the learner can follow it.
 - Adapt: if they answer right, confirm briefly and move on; if they're wrong, find the misconception, show it in the scratchpad, and ask again a different way. If they say they're confused, slow down and use a smaller example. If they say "next", move on.
 - Before moving past a worked example, ask them to predict the next step. Near the end, give a short exercise in the scratchpad (code with a blank to fill or a function to finish) and review their attempt.
@@ -267,6 +332,7 @@ func TeacherPrompt(ctx Context, ch *chapter.Chapter, ws *Workspace) string {
 	b.WriteString("\n\n# The chapter you are teaching\n")
 	writeChapterMaterial(&b, ch)
 	writeScratchpad(&b, ctx.Scratchpad)
+	writeLearnerProfile(&b, ctx.Learner)
 	if ws != nil {
 		b.WriteString(ws.Describe())
 	}

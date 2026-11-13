@@ -18,8 +18,13 @@ import (
 
 // Scratchpad is what the learner's scratchpad holds, sent with each message.
 type Scratchpad struct {
-	Code   string `json:"code,omitempty"`
-	Output string `json:"output,omitempty"`
+	Kind    string `json:"kind,omitempty"`
+	Title   string `json:"title,omitempty"`
+	Step    int    `json:"step,omitempty"`
+	Steps   int    `json:"steps,omitempty"`
+	Caption string `json:"caption,omitempty"`
+	Code    string `json:"code,omitempty"`
+	Output  string `json:"output,omitempty"`
 }
 
 const (

@@ -27,6 +27,7 @@
     ran: false,      // the code shown has been run (output belongs to it)
     items: [],       // everything shown so far, so a second diagram in one turn doesn't erase the first
     cur: -1,
+    question: null,
   };
   const MAX_ITEMS = 20;
 
@@ -73,6 +74,12 @@
         <div class="sp-viz" id="sp-viz"></div>
         <div class="sp-vars hidden" id="sp-vars"></div>
         <pre class="sp-output hidden" id="sp-output"></pre>
+        <section class="sp-checkpoint hidden" id="sp-checkpoint" aria-live="polite">
+          <span class="sp-checkpoint-label">Your turn</span>
+          <p id="sp-question"></p>
+          <div class="sp-checkpoint-choices" id="sp-question-choices"></div>
+          <p class="sp-checkpoint-status" id="sp-question-status"></p>
+        </section>
       </div>
       <div class="sp-resize" id="sp-resize" aria-hidden="true"></div>`;
     document.body.appendChild(box);
@@ -128,6 +135,7 @@
   function showCode({ code, explanation, steps, output, error }) {
     open();
     stopPlay();
+    clearQuestion();
     pushItem();
     sp.explanation = explanation || '';
     sp.kind = 'code';
@@ -151,6 +159,7 @@
   function showFrames({ title, frames }) {
     open();
     stopPlay();
+    clearQuestion();
     pushItem();
     sp.explanation = '';
     sp.kind = 'diagram';
@@ -163,6 +172,7 @@
     sp.ran = false;
     sp.idx = 0;
     render();
+    autoPlay();
   }
 
   // Each showCode/showFrames becomes an item; the current one's live state
@@ -203,6 +213,7 @@
   function showSketch({ title, elements, captions }) {
     open();
     stopPlay();
+    clearQuestion();
     pushItem();
     sp.explanation = '';
     sp.kind = 'sketch';
@@ -218,6 +229,7 @@
     sp.idx = 0;
     sp.lastDrawn = -1;
     render();
+    autoPlay();
   }
 
   function setExplanation(text) {
@@ -274,22 +286,84 @@
     if (!sp.frames.length) return;
     sp.idx = Math.max(0, Math.min(sp.frames.length - 1, i));
     render();
+    if (sp.idx === sp.frames.length - 1 && !sp.playing) syncQuestion();
   }
 
   function togglePlay() {
     if (sp.playing) { stopPlay(); return; }
     if (sp.idx >= sp.frames.length - 1) sp.idx = 0;
     $('sp-play').textContent = 'Pause';
+    setTeachingState(true);
     sp.playing = setInterval(() => {
-      if (sp.idx >= sp.frames.length - 1) { stopPlay(); return; }
+      if (sp.idx >= sp.frames.length - 1) { stopPlay(true); return; }
       go(sp.idx + 1);
     }, sp.kind === 'diagram' ? 1600 : 450);
   }
 
-  function stopPlay() {
+  function autoPlay() {
+    if (sp.frames.length < 2 || sp.frames.length > 8 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      syncQuestion();
+      return;
+    }
+    setTeachingState(true);
+    sp.playing = setTimeout(() => {
+      sp.playing = null;
+      togglePlay();
+    }, 650);
+  }
+
+  function stopPlay(finished = false) {
     if (sp.playing) clearInterval(sp.playing);
     sp.playing = null;
     if ($('sp-play')) $('sp-play').textContent = 'Play';
+    setTeachingState(false);
+    if (finished || sp.idx >= sp.frames.length - 1) syncQuestion();
+  }
+
+  function setTeachingState(active) {
+    const box = $('scratchpad');
+    if (!box) return;
+    box.classList.toggle('teaching', active);
+    box.setAttribute('aria-busy', active ? 'true' : 'false');
+  }
+
+  function clearQuestion() {
+    sp.question = null;
+    const checkpoint = $('sp-checkpoint');
+    if (checkpoint) checkpoint.classList.add('hidden');
+  }
+
+  function showQuestion(question) {
+    if (!question || !question.question || !(question.choices || []).length) return false;
+    open();
+    sp.question = { question: question.question, choices: question.choices, answered: false };
+    $('sp-question').textContent = question.question;
+    $('sp-question-choices').innerHTML = question.choices.map(choice =>
+      `<button type="button" class="sp-answer" data-sp-answer="${escapeHtml(choice)}">${escapeHtml(choice)}</button>`).join('');
+    $('sp-question-choices').onclick = (event) => {
+      const answer = event.target.closest('[data-sp-answer]');
+      if (!answer || answer.disabled || sp.question?.answered) return;
+      sp.question.answered = true;
+      $('sp-question-choices').querySelectorAll('button').forEach(button => {
+        button.disabled = true;
+        button.classList.toggle('chosen', button === answer);
+      });
+      $('sp-question-status').textContent = 'Listening to your reasoning…';
+      window.dispatchEvent(new CustomEvent('dsatutor:scratchpad-answer', { detail: { answer: answer.dataset.spAnswer } }));
+    };
+    $('sp-checkpoint').classList.remove('hidden');
+    syncQuestion();
+    return true;
+  }
+
+  function syncQuestion() {
+    const checkpoint = $('sp-checkpoint');
+    if (!checkpoint || !sp.question) return;
+    const waiting = !!sp.playing || (sp.frames.length > 1 && sp.idx < sp.frames.length - 1);
+    checkpoint.classList.toggle('waiting', waiting);
+    $('sp-question-status').textContent = waiting ? 'Watch the example unfold, then make your prediction.' : (sp.question.answered ? 'Listening to your reasoning…' : 'Choose an answer to continue the lesson.');
+    $('sp-question-choices').querySelectorAll('button').forEach(button => { button.disabled = waiting || sp.question.answered; });
+    if (!waiting) checkpoint.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
 
   function render() {
@@ -735,11 +809,21 @@
 
   // What the tutor sees of the scratchpad.
   function state() {
-    if (!$('scratchpad') || sp.kind !== 'code') return null;
-    const code = editor() ? editor().getValue() : '';
-    if (!code.trim()) return null;
-    return { code, output: sp.ran ? `${sp.output}${sp.error ? `\n${sp.error}` : ''}`.trim() : '' };
+    if (!$('scratchpad') || !sp.kind) return null;
+    const frame = sp.frames[sp.idx] || {};
+    const out = {
+      kind: sp.kind,
+      title: sp.title,
+      step: sp.frames.length ? sp.idx + 1 : 0,
+      steps: sp.frames.length,
+      caption: frame.caption || '',
+    };
+    if (sp.kind === 'code') {
+      out.code = editor() ? editor().getValue() : '';
+      out.output = sp.ran ? `${sp.output}${sp.error ? `\n${sp.error}` : ''}`.trim() : '';
+    }
+    return out;
   }
 
-  window.dsaScratchpad = { showCode, showFrames, showSketch, open, close, state, setHandwritten, avoid };
+  window.dsaScratchpad = { showCode, showFrames, showSketch, showQuestion, open, close, state, setHandwritten, avoid };
 })();

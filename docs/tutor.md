@@ -72,8 +72,8 @@ questions, the tutor teaches the chapter one idea at a time. Each turn it:
 2. makes the idea visible in the **Teacher's Scratchpad**, as a hand-drawn
    whiteboard sketch, an exact step-by-step diagram, or a small program it
    runs and traces, and
-3. asks you one question, often with clickable answers (`ask_learner`), and
-   waits.
+3. lets the example unfold automatically, then asks one prediction question
+   directly on the scratchpad (`ask_learner`) and waits there for your answer.
 
 **Precise pointing.** `highlight` takes a `quote` (the exact words on the
 page) or a line range (the editor, a lesson code block, an exercise, or the
@@ -96,13 +96,14 @@ skips re-reading the chapter (about 25 s per turn instead of 90 s with
 ornith-1.5). On a chapter that opens on a full-page view (Chapter 1's
 Runtime Shapes), Teacher Mode switches to the lesson it teaches from.
 
-**Every turn is staged.** Whether a model calls highlight or draws varies
+**Every turn is staged.** Whether a model calls highlight, draws, or creates
+a checkpoint varies
 by model and run, so after each Teacher Mode turn the server checks: if the
 turn didn't point at a precise spot, or drew nothing substantial (a sketch
 with fewer than three elements or no cells, nodes, boxes, circles or
-arrows), a "director" asks the same model for the missing parts with one
+arrows), or omitted the question, a "director" asks the same model for the missing parts with one
 structured-output call (JSON schema, which every model follows), retrying
-once if its sketch is still thin. The chat shows "Pointing and drawing…"
+once if its sketch is still thin. The chat shows "Setting up the shared board…"
 meanwhile.
 
 **Voice.** Teacher Mode reads the teacher's replies aloud by default (the
@@ -128,6 +129,17 @@ it. Each chapter keeps its own lesson, so you can leave and resume. The
 teacher works from the whole chapter: concepts with why they work, worked
 examples with their traces, and the check questions.
 
+**Learner model.** Every tutor request carries durable learning evidence for
+the current chapter: retrieval questions, completion exercises, practice
+attempts and solves, hint use, completed spaced reviews, and recent
+misconceptions. Teacher Mode fades support from a worked example for a
+starting learner, to completion and prediction while building, to learner-led
+steps and transfer questions while practising. A chapter can be completed
+only after its recall and completion work plus at least one transfer problem;
+the stronger **secure** level for categorized pattern chapters additionally
+requires a successful delayed review. When a learner later demonstrates a previously missed idea, that
+misconception is removed from the model.
+
 The **scratchpad** is a floating window that you can drag, resize and minimize:
 
 - **Programs** (`scratchpad_run_code`) run on the server through the same
@@ -138,6 +150,10 @@ The **scratchpad** is a floating window that you can drag, resize and minimize:
   (array, bar chart, grid, linked list, tree, hash map, set, graph or a
   single value, with pointers and windows highlighted). They use the same
   renderer as the visualizer.
+- Short diagrams and sketches play automatically. A **Your turn** checkpoint
+  stays disabled until the final step, so the question and the visual form
+  one teaching beat instead of competing for attention. Answering there
+  continues the tutor conversation immediately.
 - **Whiteboard sketches** (`scratchpad_sketch`) are hand-drawn: rough.js
   draws boxes, circles, arrows and rows of array cells in a pen style, with
   text in the Caveat handwriting font on grid paper. Each step's strokes
@@ -150,8 +166,9 @@ The **scratchpad** is a floating window that you can drag, resize and minimize:
   look too (handwriting font, pen-wobble lines, grid paper). It's
   remembered per browser.
 - You can edit the code and press **Run** yourself; **Code** opens the
-  editor over a diagram. The tutor sees the scratchpad's code and output
-  with every message, so "Let me try" exercises get reviewed.
+  editor over a diagram. With every message the tutor sees the current board
+  title, step and caption, plus editable code and output, so it can continue
+  from exactly what you are looking at.
 - Everything shown stays in the scratchpad's history (‹ 2 of 3 ›), and each
   chip in the chat reopens its diagram or reruns its program.
 

@@ -47,7 +47,7 @@
           ['Quiz me', 'Quiz me on this before we move on.'],
           ['Let me try', 'Give me a small exercise to try in the scratchpad.'],
         ],
-        ctx: { view: 'chapter', chapterNumber: ch.number, teach: true },
+        ctx: { view: 'chapter', chapterNumber: ch.number, teach: true, learner: window.dsaLearning?.chapterProfile(ch) },
       };
     },
   });

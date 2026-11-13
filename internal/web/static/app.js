@@ -7727,6 +7727,7 @@ function updateProblemProgress(problemId, data) {
   }
   Object.assign(practiceState.progress[problemId], data);
   saveProgress();
+  window.dispatchEvent(new CustomEvent('dsatutor:progress-updated', { detail: { problemId } }));
 }
 
 async function loadProblems() {
@@ -8424,11 +8425,19 @@ async function submitPracticeCode() {
     }
 
     const prev = practiceState.progress[problem.id] || {};
-    updateProblemProgress(problem.id, {
+    const progressUpdate = {
       attempts: (prev.attempts || 0) + 1,
       solved: allPassed || prev.solved,
       lastAttempt: new Date().toISOString(),
-    });
+    };
+    if (allPassed && practiceState.mode?.review) {
+      progressUpdate.review = {
+        ...(prev.review || {}),
+        completed: (prev.review?.completed || 0) + 1,
+        lastCompletedAt: Date.now(),
+      };
+    }
+    updateProblemProgress(problem.id, progressUpdate);
 
     if (outputEl) {
       outputEl.innerHTML = html;
