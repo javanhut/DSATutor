@@ -55,7 +55,7 @@ func (c *Client) Direct(ctx context.Context, model string, base []Message, ch *c
 			"required": []string{"target", "quote", "pointer", "note"},
 		}
 		required = append(required, "highlight")
-		asks = append(asks, `"highlight": the exact spot on the page the reply is about. Pick the target id of the region that contains it, and set quote to 3 to 15 words copied VERBATIM from the chapter material below (the sentence or code line the reply discusses), so it can be found on the page. For a code block target you may also give start_line/end_line. pointer: "hand" if the reply walks through that sentence or line, "arrow" if it just says look here. note: one short sentence shown beside the highlight.`)
+		asks = append(asks, `"highlight": the exact spot on the page that DIRECTLY SUPPORTS the single claim taught in the reply. Pick the target id of the region that contains it, and set quote to 3 to 15 words copied VERBATIM from that sentence or code line, so it can be found on the page. Do not select a later "common mistake", a related topic, or another sentence merely because it shares a keyword. For a code block target you may also give start_line/end_line. pointer: "hand" if the reply walks through that sentence or line, "arrow" if it just says look here. note: one short sentence shown beside the highlight.`)
 	}
 	if need.Sketch {
 		// Content is required field by field (a row's values, a note's
@@ -128,7 +128,7 @@ func (c *Client) Direct(ctx context.Context, model string, base []Message, ch *c
 	for _, a := range asks {
 		ask.WriteString("- " + a + "\n")
 	}
-	ask.WriteString("Be faithful to your reply: illustrate exactly what it explains. Quotes must be copied verbatim from the chapter material in the system prompt.\n\nYour reply was:\n" + truncate(reply, 6000))
+	ask.WriteString("Be faithful to your reply: the highlight, sketch, and check must all teach the same single idea. The check may not introduce a different operation or complexity. Quotes must be copied verbatim from the chapter material in the system prompt.\n\nYour reply was:\n" + truncate(reply, 6000))
 
 	messages := append(append([]Message{}, base...), Message{Role: "user", Content: ask.String()})
 	if len(base) == 0 {

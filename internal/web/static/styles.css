@@ -7731,7 +7731,9 @@ body.interview-active #practice-mode :is(
 /* Whiteboard sketches and the handwritten style (scratchpad.js) */
 .sp-sketch {
   width: 100%;
-  height: auto;
+  height: 100%;
+  min-height: 0;
+  display: block;
   border-radius: var(--radius);
   background-color: var(--bg-elevated);
   background-image:
@@ -7739,6 +7741,17 @@ body.interview-active #practice-mode :is(
     linear-gradient(90deg, rgba(var(--accent-rgb), 0.08) 1px, transparent 1px);
   background-size: 22px 22px;
 }
+/* A sketch used to size itself from its (sometimes very tall) viewBox.  That
+   made multi-step drawings grow into a long scrollable poster and left the
+   last row underneath the resize grip.  Give the board the space remaining
+   in the scratchpad and let the SVG's viewBox fit the complete drawing into
+   it. */
+.sp-viz.sketch-canvas {
+  flex: 1 1 260px;
+  min-height: 180px;
+  overflow: hidden;
+}
+.sp-body > .sp-viz.sketch-canvas { flex-shrink: 1; }
 .sp-hand-text { font-family: 'Caveat', 'Segoe Print', 'Comic Sans MS', cursive; font-weight: 600; }
 #sp-hand.active { color: var(--mark); border-color: var(--mark); }
 .scratchpad.sketchy .sp-viz,

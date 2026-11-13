@@ -119,7 +119,7 @@ func (w *Workspace) Tools() []Tool {
 		ids[i] = t.ID
 	}
 	tools = append(tools, fn("highlight",
-		"Point at a precise spot on the page: it scrolls there, highlights it, and a hand or an arrow points at it, with your note beside it. Be precise: give quote (the exact words on the page you are talking about) or start_line/end_line (for code), not just a section. Use it whenever you refer to something on screen.",
+		"Point at the precise words that directly support the claim you are teaching now: it scrolls there, highlights them, and a hand or arrow points at them, with your note beside it. Give quote (the exact words on the page) or start_line/end_line (for code), not just a section. Never jump to a merely related sentence or a later common mistake because it shares a keyword.",
 		map[string]any{
 			"target":     map[string]any{"type": "string", "enum": ids, "description": "id of the region that contains the spot"},
 			"quote":      map[string]any{"type": "string", "description": "the exact words from the page to highlight, copied verbatim (3 to 15 words), e.g. a sentence of the lesson or a line of an example"},

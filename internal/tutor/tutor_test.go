@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"dsatutor/internal/chapter"
 	"dsatutor/internal/practice"
 )
 
@@ -200,6 +201,20 @@ func TestScratchpadPromptKeepsEditableCode(t *testing.T) {
 	for _, want := range []string{"learner may have edited", "1 | total = 3", "Its last output:\n3"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("prompt missing %q:\n%s", want, got)
+		}
+	}
+}
+
+func TestTeacherPromptKeepsTeachingBeatCoordinated(t *testing.T) {
+	prompt := TeacherPrompt(Context{View: "chapter"}, &chapter.Chapter{Number: 2, Title: "Arrays"}, nil)
+	for _, want := range []string{
+		"pointer, explanation, scratchpad, and question on that same idea",
+		"do not jump to a later common mistake",
+		"do not switch the question to repeated membership tests",
+		"Prefer scratchpad_sketch for movement and structure",
+	} {
+		if !strings.Contains(prompt, want) {
+			t.Errorf("teacher prompt missing coordination rule %q", want)
 		}
 	}
 }

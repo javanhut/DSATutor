@@ -962,9 +962,7 @@
     pointer.el?.classList.remove('show');
   }
 
-  // anchor: the element whose left edge the pointer stands at, so it sits
-  // in the margin beside the line instead of over the words before a quote.
-  function pointAt(getRect, kind, anchor) {
+  function pointAt(getRect, kind) {
     if (!kind || kind === 'none') return;
     if (!pointer.el) {
       pointer.el = document.createElement('div');
@@ -987,12 +985,13 @@
       } else {
         pointer.el.style.opacity = '';
         const w = kind === 'hand' ? 40 : 64, h = 40;
-        // Stand in the margin left of the anchor, level with the spot; when
-        // there's no room (it would cover the sidebar), point up from below.
-        const edge = anchor && anchor.isConnected ? Math.min(anchor.getBoundingClientRect().left, r.left) : r.left;
+        // Aim at the exact range, not its containing list item or paragraph.
+        // The arrow path's tip is at x=55 inside its 64px SVG; positioning by
+        // the box's right edge left a large visual gap even without a gutter.
+        const tip = kind === 'arrow' ? 55 : w;
         const main = document.querySelector('.main-content');
         const floor = main ? main.getBoundingClientRect().left : 0;
-        let x = edge - w - 6, y = r.top + Math.min(r.height, 28) / 2 - h / 2, below = false;
+        let x = r.left - tip - 4, y = r.top + Math.min(r.height, 28) / 2 - h / 2, below = false;
         if (x < floor + 2) { x = r.left + 4; y = r.bottom + 4; below = true; }
         pointer.el.classList.toggle('below', below);
         pointer.el.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
@@ -1093,7 +1092,7 @@
             if (!cm.getWrapperElement().isConnected) return null;
             const c = cm.charCoords({ line, ch: 0 }, 'window');
             return { left: c.left, top: c.top, bottom: c.bottom, width: 1, height: c.bottom - c.top };
-          }, a.pointer || 'hand', cm.getWrapperElement());
+          }, a.pointer || 'hand');
           return record;
         }
         // Precise: the quoted words (searched in the region, then anywhere
@@ -1112,8 +1111,7 @@
           block.scrollIntoView({ block: 'center', behavior: 'smooth' });
           // Point first: the note goes after the range's last block, outside
           // the highlighted text.
-          const rows = block.closest('pre');
-          pointAt(rectOfRange(range), a.pointer || 'hand', rows || block);
+          pointAt(rectOfRange(range), a.pointer || 'hand');
           if (a.note && !target.button) {
             const call = calloutNode(a.note);
             call.querySelector('.tutor-callout-close').onclick = () => call.remove();

@@ -385,6 +385,7 @@
 
     // A whiteboard frame draws itself; only newly revealed strokes animate.
     const viz = $('sp-viz');
+    viz.classList.toggle('sketch-canvas', !!(f && f.sketch));
     if (f && f.sketch) {
       const animate = sp.lastDrawn === sp.idx - 1;
       sp.lastDrawn = sp.idx;
@@ -528,7 +529,14 @@
       bottom = Math.max(bottom, y + num(e.h, 0) + num(e.r, 0) + (e.type === 'cells' ? 14 + ptrRoom : 6), num(e.y2, 0) + 6);
     });
     const svg = document.createElementNS(NS, 'svg');
-    svg.setAttribute('viewBox', `0 0 ${100 * SCALE} ${bottom * SCALE}`);
+    // The CSS gives sketches a viewport whose size is independent of the
+    // drawing's aspect ratio.  Keep a little board around the model's
+    // 0-100 coordinate system so rough strokes, labels and the resize grip
+    // never cut into the drawing.
+    const padX = 4 * SCALE;
+    const padY = 3 * SCALE;
+    svg.setAttribute('viewBox', `${-padX} ${-padY} ${100 * SCALE + padX * 2} ${bottom * SCALE + padY * 2}`);
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
     svg.setAttribute('class', 'sp-sketch');
     svg.setAttribute('role', 'img');
     const rc = window.rough ? window.rough.svg(svg) : null;
