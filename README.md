@@ -42,6 +42,12 @@ The course is built on well-replicated learning research; see
 - **Teacher Mode**: on a chapter, the tutor teaches one idea at a time,
   pointing at the page, drawing diagrams and running traced code in a
   pop-up Teacher's Scratchpad, and quizzing you with clickable answers
+- **Teach Me**: ask to be taught any DSA topic, not tied to a chapter, and
+  get a quick lesson built for practice: a warm-up question, short explained
+  parts each followed by a check, a step-by-step worked example, a line of
+  code to fill in, an explain-it-back answer with feedback, matching practice
+  problems, and flashcards scheduled for spaced review; see
+  [docs/teachme.md](docs/teachme.md)
 - **Mock interviews**: a timed Google-style interview with the tutor as
   interviewer (no Run, no hints), ending with a scorecard on algorithms,
   coding, communication and problem solving; see [docs/tutor.md](docs/tutor.md)
@@ -218,6 +224,7 @@ See [docs/visualizer-system.md](docs/visualizer-system.md) for detailed document
 | `/api/practice/*` | GET/POST | Practice problems, run and submit; see [docs/practice.md](docs/practice.md) |
 | `/api/tts` | POST | Lesson narration as `audio/wav`; see [docs/tts.md](docs/tts.md) |
 | `/api/tutor/*` | GET/POST | AI tutor chat and voice transcription; see [docs/tutor.md](docs/tutor.md) |
+| `/api/teachme/*` | POST | Teach Me lessons and explain-it-back feedback; see [docs/teachme.md](docs/teachme.md) |
 | `/static/*` | GET | Static assets |
 
 ## Development
