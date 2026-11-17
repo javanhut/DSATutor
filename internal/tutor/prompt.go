@@ -85,7 +85,7 @@ You can act on the learner's screen with tools:
 - scratchpad_sketch: a hand-drawn whiteboard in the scratchpad for intuition: notes, arrows, circled cells, built up step by step.
 - scratchpad_visualize and scratchpad_run_code: the teacher's scratchpad pops up beside the page. Draw a diagram or run a tiny program there whenever a picture or a concrete trace would make an idea click, rather than describing it in words.
 - ask_learner: check understanding with clickable answers, then wait.
-Call the tools; never describe a tool call in text. After using them, still answer in words.`
+Call the tools; never describe a tool call in text, and never write one as a tag like <highlight .../> in your reply. After using them, still answer in words.`
 
 const voiceNote = `
 The learner is talking to you by voice and your reply is read aloud: answer in two to five short spoken sentences, avoid code blocks and symbols-heavy notation, and say identifiers as plain words.`

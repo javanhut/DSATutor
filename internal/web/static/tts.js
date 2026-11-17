@@ -327,7 +327,9 @@ async function speakSection(card, btn, startBlock = 0) {
   // Chunk every block, remembering which block each chunk belongs to, so the
   // highlight and Skip work on paragraphs while requests stay small.
   const chunks = [];
-  blocks.forEach((b, bi) => speechChunks(b.text).forEach(text => chunks.push({ text, block: bi })));
+  // Code in the text (s[right], len(count)) is said as words: speech-text.js.
+  const spoken = typeof spokenText === 'function' ? spokenText : (t) => t;
+  blocks.forEach((b, bi) => speechChunks(spoken(b.text)).forEach(text => chunks.push({ text, block: bi })));
   let pos = chunks.findIndex(c => c.block >= startBlock);
   if (pos < 0) return;
 

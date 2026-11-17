@@ -7367,6 +7367,8 @@ h2 .tts-skip {
   animation: tutor-pulse 1.2s ease-in-out infinite;
 }
 @keyframes tutor-pulse { 50% { box-shadow: 0 0 0 4px rgba(var(--error-rgb), 0.18); } }
+/* Hands-free: the mic stays marked between turns, while the tutor answers. */
+.tutor-mic.loop:not(.recording) { color: var(--accent); border-color: var(--accent); }
 @media (prefers-reduced-motion: reduce) {
   .tutor-panel { transition: none; }
   .tutor-mic.recording { animation: none; }

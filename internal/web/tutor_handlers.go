@@ -142,14 +142,50 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 	// or hears it.
 	var held strings.Builder
 	turn := &teachTurn{}
-	chatEmit := emit
-	if teach {
-		chatEmit = func(d tutor.Delta) error {
-			held.WriteString(d.Content)
-			return emit(tutor.Delta{Thinking: d.Thinking})
+	// Tool calls a model writes as text (<highlight .../>) never reach the
+	// learner: the filter holds them back while streaming, and they are run
+	// below like real calls.
+	var markup tutor.MarkupFilter
+	show := func(text string) error {
+		if teach {
+			held.WriteString(text)
+			return nil
 		}
+		return emit(tutor.Delta{Content: text})
+	}
+	chatEmit := func(d tutor.Delta) error {
+		if err := emit(tutor.Delta{Thinking: d.Thinking}); err != nil {
+			return err
+		}
+		if d.Content == "" {
+			return nil
+		}
+		return show(markup.Write(d.Content))
 	}
 	did := map[string]bool{} // actions carried out this turn
+	// run carries out one of the model's tool calls; the error is set only
+	// when the browser has gone.
+	run := func(call tutor.ToolCall) (string, error) {
+		result, action := ws.Execute(call)
+		if action == nil {
+			// A rejected call is fed back to the model; log it so prompt and
+			// schema problems are visible.
+			args, _ := json.Marshal(call.Function.Arguments)
+			log.Printf("tutor: %s rejected: %s (args %.300s)", call.Function.Name, result, args)
+			return result, nil
+		}
+		// A near-empty sketch doesn't count as the turn's visual, so the
+		// director still draws a real one.
+		if !(action["name"] == "scratchpad_sketch" && tutor.WeakSketch(action)) {
+			did[action["name"].(string)] = true
+		}
+		action["type"] = "action"
+		if teach {
+			turn.add(action, false)
+			return result, nil
+		}
+		return result, send(action)
+	}
 	for round := 0; ; round++ {
 		if round == maxToolRounds {
 			tools = nil // last round: make it answer in words
@@ -178,6 +214,12 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		model = reply.Model
+		if err := show(markup.Flush()); err != nil {
+			return
+		}
+		var textCalls []tutor.ToolCall
+		reply.Content, textCalls = tutor.TextCalls(reply.Content)
+		textCalls = offered(tools, textCalls)
 		raw.WriteString(reply.Content)
 		shown := reply.Content
 		if teach {
@@ -193,29 +235,22 @@ func (s *Server) handleTutorChat(w http.ResponseWriter, r *http.Request) {
 		// round: some models keep emitting tool calls even when no tools are
 		// offered, which would otherwise loop forever.
 		if len(reply.ToolCalls) == 0 || ws == nil || round >= maxToolRounds {
-			break
-		}
-		messages = append(messages, tutor.Message{Role: "assistant", Content: reply.Content, ToolCalls: reply.ToolCalls})
-		for _, call := range reply.ToolCalls {
-			result, action := ws.Execute(call)
-			if action == nil {
-				// A rejected call is fed back to the model; log it so prompt and
-				// schema problems are visible.
-				args, _ := json.Marshal(call.Function.Arguments)
-				log.Printf("tutor: %s rejected: %s (args %.300s)", call.Function.Name, result, args)
-			}
-			if action != nil {
-				// A near-empty sketch doesn't count as the turn's visual, so
-				// the director still draws a real one.
-				if !(action["name"] == "scratchpad_sketch" && tutor.WeakSketch(action)) {
-					did[action["name"].(string)] = true
-				}
-				action["type"] = "action"
-				if teach {
-					turn.add(action, false)
-				} else if err := send(action); err != nil {
+			// Calls written as text in a reply that is otherwise finished
+			// are carried out without another round: the model has already
+			// said everything, and asked again it would repeat itself.
+			for _, call := range textCalls {
+				if _, err := run(call); err != nil {
 					return
 				}
+			}
+			break
+		}
+		reply.ToolCalls = append(reply.ToolCalls, textCalls...)
+		messages = append(messages, tutor.Message{Role: "assistant", Content: reply.Content, ToolCalls: reply.ToolCalls})
+		for _, call := range reply.ToolCalls {
+			result, err := run(call)
+			if err != nil {
+				return
 			}
 			messages = append(messages, tutor.Message{Role: "tool", ToolName: call.Function.Name, Content: result})
 		}
@@ -484,4 +519,22 @@ func (s *Server) tutorChapter(number int) *chapter.Chapter {
 		}
 	}
 	return nil
+}
+
+// offered keeps the text-written calls to tools this round offered; the
+// rest were already cut from the text and are only logged.
+func offered(tools []tutor.Tool, calls []tutor.ToolCall) []tutor.ToolCall {
+	var out []tutor.ToolCall
+	for _, c := range calls {
+		ok := false
+		for _, t := range tools {
+			ok = ok || t.Function.Name == c.Function.Name
+		}
+		if ok {
+			out = append(out, c)
+		} else {
+			log.Printf("tutor: dropped %s written as text (tool not offered)", c.Function.Name)
+		}
+	}
+	return out
 }

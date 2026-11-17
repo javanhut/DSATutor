@@ -36,6 +36,8 @@
     busy: false,
     abort: null,      // AbortController of the streaming reply
     recorder: null,   // the active microphone recording
+    handsFree: false, // a hands-free conversation is running: listen, answer, listen again
+    misses: 0,        // hands-free turns in a row with no words made out
     speech: null,     // the active spoken reply
   };
 
@@ -295,10 +297,12 @@
     return !t || /[.!?:…]$/.test(t) ? t : `${t}.`;
   }
 
-  // Text fit for speaking: no code blocks, no Markdown symbols.
+  // Text fit for speaking: no code blocks, inline code and bare snippets
+  // like s[right] said as words (speech-text.js), no Markdown symbols.
   function speakable(text) {
+    text = text.replace(/```[\s\S]*?(```|$)/g, ' ');
+    if (typeof spokenText === 'function') text = spokenText(text);
     return text
-      .replace(/```[\s\S]*?(```|$)/g, ' ')
       .replace(/`([^`]*)`/g, '$1')
       .replace(/[*_#>]+/g, '')
       .replace(/^\s*[-•]\s+/gm, '')
@@ -333,13 +337,16 @@
         <label class="tutor-toggle hidden" id="tutor-speak-wrap" title="Read replies aloud with the narration voice">
           <input type="checkbox" id="tutor-speak"> Speak replies
         </label>
+        <label class="tutor-toggle hidden" id="tutor-handsfree-wrap" title="After each spoken answer, listen again automatically, so you can just talk. Esc ends it.">
+          <input type="checkbox" id="tutor-handsfree"> Hands-free
+        </label>
       </div>
       <div class="tutor-messages" id="tutor-messages" aria-live="polite"></div>
       <div class="tutor-quick" id="tutor-quick"></div>
       <form class="tutor-input" id="tutor-form">
         <textarea id="tutor-text" rows="2" placeholder="Ask about this problem, your code, complexity..."></textarea>
         <div class="tutor-input-actions">
-          <button type="button" class="btn-small ghost tutor-mic hidden" id="tutor-mic" title="Ask by voice (click to start, click again to send)" aria-label="Record a question">
+          <button type="button" class="btn-small ghost tutor-mic hidden" id="tutor-mic" title="Ask by voice (click to start; pause or click again to send)" aria-label="Record a question">
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><path d="M12 18v4"/></svg>
           </button>
           <button type="submit" class="btn-small primary" id="tutor-send">Send</button>
@@ -402,6 +409,11 @@
       if (a) { clearSpotlights(); runAction(a); }
     });
     $('tutor-think').onchange = (e) => { tutor.prefs.think = e.target.checked; save(PREFS_KEY, tutor.prefs); };
+    $('tutor-handsfree').onchange = (e) => {
+      tutor.prefs.handsFree = e.target.checked;
+      save(PREFS_KEY, tutor.prefs);
+      if (!e.target.checked) endHandsFree();
+    };
     $('tutor-speak').onchange = (e) => {
       // Remembered per kind of conversation: Teacher Mode speaks by default,
       // the regular tutor doesn't.
@@ -418,7 +430,8 @@
     };
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && tutor.open && !e.defaultPrevented) {
-        if (tutor.recorder) cancelRecording();
+        if (tutor.recorder) { cancelRecording(); endHandsFree(); }
+        else if (tutor.handsFree) { endHandsFree(); stopSpeaking(); setStatus('Hands-free ended.'); }
         else closePanel();
       }
     });
@@ -433,12 +446,15 @@
     ).join('');
     tutor.prefs = { think: false, speak: false, ...(load(PREFS_KEY, {}) || {}) };
     $('tutor-think').checked = tutor.prefs.think;
+    $('tutor-handsfree').checked = !!tutor.prefs.handsFree;
     $('tutor-speak').checked = wantsSpeech();
     syncThinkToggle();
     $('tutor-mic').classList.toggle('hidden', !tutor.status.transcribe);
     if (typeof ttsStatus === 'function') {
       ttsStatus().then(st => {
         $('tutor-speak-wrap').classList.toggle('hidden', !st.available);
+        // Hands-free needs both ears and a voice.
+        $('tutor-handsfree-wrap').classList.toggle('hidden', !(st.available && tutor.status.transcribe));
         // Replies drawn before the voice status arrived get their 🔊 now.
         if (st.available) renderMessages();
       });
@@ -530,6 +546,7 @@
     $('tutor-panel')?.classList.remove('open');
     $('tutor-toggle')?.classList.remove('active');
     if (tutor.recorder) cancelRecording();
+    endHandsFree();
     stopSpeaking();
   }
 
@@ -1394,6 +1411,8 @@
       playedTo: 0,  // speakable characters played so far
       waiters: [],  // { at, resolve }: until() promises
     };
+    // over resolves when the session has played everything or was stopped.
+    s.over = new Promise(resolve => { s.markOver = resolve; });
     tutor.speech = s;
     // until(n) resolves once the first n speakable characters have been
     // played, or the session ends early (stopped, blocked, failed).
@@ -1485,6 +1504,7 @@
     if (next) next.blob.catch(() => {});
     s.finished = true;
     s.progress();
+    s.markOver();
     if (tutor.speech === s) tutor.speech = null;
   }
 
@@ -1520,6 +1540,7 @@
     s.cancelled = true;
     s.finished = true;
     s.progress?.();
+    s.markOver?.();
     if (s.audio) s.audio.pause();
     if (s.finish) s.finish(); // unblocks playSpeech
     if (s.wake) s.wake();
@@ -1528,10 +1549,30 @@
   // ---------------------------------------------------------------------
   // Microphone: record 16 kHz mono WAV, transcribe on the server, send.
 
+  // Turn-taking: a pause this long after speaking ends the learner's turn
+  // (a little longer than in casual chat: people stop to think mid-way
+  // through explaining code), and a turn with no speech at all gives up.
+  const TURN_PAUSE_SECS = 1.5;
+  const NO_SPEECH_SECS = 8;
+  const CALIBRATE_SECS = 0.25; // the room's noise floor is measured first
+
+  // Clicking the mic sends what was said so far, or interrupts the tutor
+  // (talking or still writing) and listens. With Hands-free on, it then
+  // keeps going: after each spoken answer it listens again, until Esc, the
+  // toggle, or a long silence.
   async function toggleRecording() {
     if (tutor.recorder) return finishRecording();
+    if (tutor.busy) stopReply();
+    tutor.handsFree = !!tutor.prefs.handsFree && visible('tutor-handsfree-wrap');
+    tutor.misses = 0;
+    $('tutor-mic').classList.toggle('loop', tutor.handsFree);
+    return startListening();
+  }
+
+  async function startListening() {
     if (!navigator.mediaDevices?.getUserMedia) {
       setStatus('The microphone needs a secure page: open the tutor at http://localhost.', true);
+      endHandsFree();
       return;
     }
     stopSpeaking();
@@ -1540,6 +1581,7 @@
       stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
     } catch (e) {
       setStatus('Microphone access was denied.', true);
+      endHandsFree();
       return;
     }
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1548,13 +1590,46 @@
     // separate worklet file; a question is short, so its cost is irrelevant.
     const node = ctx.createScriptProcessor(4096, 1, 1);
     const chunks = [];
-    node.onaudioprocess = (e) => chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+    const rec = { stream, ctx, node, source, chunks, rate: ctx.sampleRate };
+    // Voice activity from loudness against the room's own noise floor.
+    let elapsed = 0, floorSum = 0, floorN = 0, voiced = 0, quiet = 0, heard = false, fired = false;
+    node.onaudioprocess = (e) => {
+      const data = new Float32Array(e.inputBuffer.getChannelData(0));
+      chunks.push(data);
+      if (fired) return;
+      let sum = 0;
+      for (let i = 0; i < data.length; i++) sum += data[i] * data[i];
+      const rms = Math.sqrt(sum / data.length), dt = data.length / rec.rate;
+      elapsed += dt;
+      if (elapsed <= CALIBRATE_SECS) { floorSum += rms; floorN++; return; }
+      const threshold = Math.max(0.012, Math.min(0.03, floorSum / Math.max(1, floorN)) * 2.5);
+      if (rms > threshold) { voiced += dt; quiet = 0; if (voiced > 0.15) heard = true; }
+      else quiet += dt;
+      if (heard && quiet > TURN_PAUSE_SECS) {
+        fired = true;
+        if (tutor.recorder === rec) finishRecording();
+      } else if (!heard && elapsed > NO_SPEECH_SECS) {
+        fired = true;
+        if (tutor.recorder !== rec) return;
+        const looping = tutor.handsFree;
+        cancelRecording();
+        endHandsFree();
+        setStatus(looping ? "Didn't hear anything, so hands-free stopped." : "Didn't hear anything.");
+      }
+    };
     source.connect(node);
     node.connect(ctx.destination);
-    tutor.recorder = { stream, ctx, node, source, chunks, rate: ctx.sampleRate };
+    tutor.recorder = rec;
     $('tutor-mic').classList.add('recording');
     $('tutor-mic').title = 'Stop and send (Esc cancels)';
-    setStatus('Listening… click the microphone again to send.');
+    setStatus(tutor.handsFree
+      ? 'Listening… pause to send. Esc ends hands-free.'
+      : 'Listening… pause or click the microphone to send (Esc cancels).');
+  }
+
+  function endHandsFree() {
+    tutor.handsFree = false;
+    $('tutor-mic')?.classList.remove('loop');
   }
 
   function releaseRecorder() {
@@ -1566,7 +1641,7 @@
     r.stream.getTracks().forEach(t => t.stop());
     r.ctx.close();
     $('tutor-mic').classList.remove('recording');
-    $('tutor-mic').title = 'Ask by voice (click to start, click again to send)';
+    $('tutor-mic').title = 'Ask by voice (click to start; pause or click again to send)';
     return r;
   }
 
@@ -1579,9 +1654,10 @@
     const r = releaseRecorder();
     if (!r) return;
     const samples = downsample(concat(r.chunks), r.rate, 16000);
-    if (samples.length < 16000 * 0.3) { setStatus('That was too short to hear anything.', true); return; }
+    if (samples.length < 16000 * 0.3) { setStatus('That was too short to hear anything.', true); endHandsFree(); return; }
     setStatus('Transcribing…');
     $('tutor-mic').disabled = true;
+    let text;
     try {
       const res = await fetch(`/api/tutor/transcribe?model=${encodeURIComponent(tutor.model)}`, {
         method: 'POST',
@@ -1589,15 +1665,31 @@
         body: encodeWav(samples, 16000),
       });
       if (!res.ok) throw new Error((await res.text()).trim() || `Transcription failed (${res.status})`);
-      const { text } = await res.json();
+      ({ text } = await res.json());
       setStatus('');
-      if (!text) { setStatus("Couldn't make out any words. Try again closer to the mic.", true); return; }
-      send(text, { voice: true });
     } catch (e) {
       setStatus(e.message, true);
+      endHandsFree();
+      return;
     } finally {
       $('tutor-mic').disabled = false;
     }
+    if (!text) {
+      if (tutor.handsFree && ++tutor.misses < 3) {
+        setStatus("Didn't catch that. Listening again…");
+        return startListening();
+      }
+      setStatus("Couldn't make out any words. Try again closer to the mic.", true);
+      endHandsFree();
+      return;
+    }
+    tutor.misses = 0;
+    await send(text, { voice: true });
+    // Hands-free: listen again once the answer has been said, unless the
+    // learner stopped it or started talking over it meanwhile.
+    const speech = tutor.speech;
+    if (speech) await speech.over;
+    if (tutor.handsFree && tutor.open && !tutor.recorder && !tutor.busy) startListening();
   }
 
   function concat(chunks) {
