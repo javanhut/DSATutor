@@ -47,12 +47,14 @@ model which try it is, so it doesn't repeat itself. After two tries at
 explain-it-back the model answer is shown, but you still have to explain it
 in your own words to finish.
 
-A line-by-line step has one way out: after 3 real attempts ("Explain it
-differently" doesn't count) **Show me the answer and move on** appears. It
-shows the answer and the reason, and adds a flashcard for that line (the
-code and the question on the front) to the review deck, due tomorrow, so
-the line still comes back. The wrap-up shows how many lines were explained
-back and how many were left to review.
+Each gated box has one way out: after 3 real attempts ("Explain it
+differently" doesn't count) a line-by-line step offers **Show me the answer
+and move on** and explain-it-back offers **Show me the answer and finish**.
+Either shows the answer (and, for a line, the reason) and adds a flashcard
+to the review deck, due tomorrow, so it still comes back: for a line, its
+code and question on the front; for explain-it-back, the prompt. The
+wrap-up shows how many lines were explained back and what's left to
+review.
 
 ## Line by line
 

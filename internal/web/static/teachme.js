@@ -777,13 +777,13 @@
       ${kicker('Done')}
       <h2>Lock it in</h2>
       <ul class="tm-score">
-        ${escaped('explain') ? '<li><strong>Explain-it-back</strong> to revisit in review</li>' : ''}
         ${keys.length ? `<li><strong>${right}/${keys.length}</strong> checks right first time</li>` : ''}
         ${l.walkthrough?.length && isAlgorithm(l) ? (() => {
           const out = l.walkthrough.filter((_, i) => escaped(`w${i}`)).length;
           return `<li><strong>${l.walkthrough.length - out}/${l.walkthrough.length}</strong> steps of code explained back</li>${out ? `<li><strong>${out}</strong> ${out === 1 ? 'line' : 'lines'} to revisit in review</li>` : ''}`;
         })() : ''}
         ${l.faded?.code ? `<li><strong>${p.faded === 'right' ? 'Solved' : 'Shown'}</strong> fill-in-the-blank</li>` : ''}
+        ${escaped('explain') ? '<li><strong>Explain-it-back</strong> to revisit in review</li>' : ''}
         <li><strong>${l.flashcards?.length || 0}</strong> flashcards scheduled, first review tomorrow</li>
       </ul>
       ${l.pitfalls?.length ? `<h3>Mistakes people make</h3><ul class="tm-pitfalls">${l.pitfalls.map(x => `<li>${md(x)}</li>`).join('')}</ul>` : ''}
