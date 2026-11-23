@@ -327,3 +327,65 @@
   .tm-rate { justify-content: stretch; }
   .tm-rate button { flex: 1; }
 }
+
+/* Narration: Listen/Skip beside each stage's kicker, Read aloud in the bar. */
+.tm-kicker-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 8px; }
+.tm-kicker-row .tm-kicker { margin: 0; }
+.tm-listen { display: flex; gap: 6px; }
+.tm-listen .tts-btn { padding: 3px 10px; border-color: var(--border-light); }
+.tm-listen .tts-btn.active { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.tm-voicebar { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.tm-voicebar .tts-voice { padding: 4px 8px; }
+.tm-voice-toggle { display: flex; align-items: center; gap: 6px; color: var(--text-dim); cursor: pointer; }
+
+/* Replies to what the learner types */
+.tm-reply { margin-top: 12px; }
+.tm-reply > .tm-input { margin-top: 12px; }
+.tm-exchange { margin-top: 12px; animation: tm-in 0.25s ease; }
+.tm-you {
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  font-size: var(--fs-base);
+  white-space: pre-wrap;
+}
+.tm-you span, .tm-followup span, .tm-tag {
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-right: 8px;
+}
+.tm-grade .tm-claims { list-style: none; padding: 0; margin: 0 0 10px; font-size: var(--fs-base); }
+.tm-claims li { margin-bottom: 6px; line-height: 1.45; }
+.tm-mark { display: inline-block; width: 1.2em; font-weight: 700; }
+.tm-claim-correct .tm-mark { color: var(--accent-2); }
+.tm-claim-partly .tm-mark { color: var(--warning); }
+.tm-claim-wrong .tm-mark { color: var(--error); }
+.tm-grade .tm-muted { margin-top: 8px; }
+.tm-followup { margin-top: 10px !important; font-weight: 500; }
+.tm-followup span { color: var(--accent-3); }
+.tm-say { margin-top: 20px; }
+
+/* Line by line */
+.tm-walk-code { white-space: pre; overflow-x: auto; padding: 12px 0; }
+.tm-line { display: block; padding: 0 14px 0 0; transition: background-color 150ms ease, opacity 150ms ease; }
+.tm-ln { display: inline-block; width: 2.6em; text-align: right; margin-right: 12px; color: var(--muted); user-select: none; }
+.tm-line-later { opacity: 0.35; }
+.tm-line-now { background: rgba(var(--accent-rgb), 0.14); box-shadow: inset 3px 0 0 var(--accent); }
+.tm-walk-step {
+  margin-top: 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--panel);
+}
+.tm-line-head { margin: 0 0 10px; }
+.tm-line-code { white-space: pre-wrap; font-family: var(--mono); font-size: var(--fs-sm); }
+.tm-walk-step .tm-prose p { margin: 0 0 10px; }
+.tm-walk-done { margin-top: 12px; }
+.tm-walk-done summary { cursor: pointer; font-size: var(--fs-sm); color: var(--text-dim); }
+.tm-walk-done ol { padding-left: 22px; margin: 10px 0 0; }
+.tm-walk-done li p { margin: 0 0 4px; }

@@ -20,6 +20,7 @@ import (
 type TeachLesson struct {
 	Title      string         `json:"title"`
 	Topic      string         `json:"topic"`
+	Kind       string         `json:"kind"` // algorithm or concept
 	Warmup     string         `json:"warmup"`
 	BigIdea    string         `json:"big_idea"`
 	Chunks     []TeachChunk   `json:"chunks"`
@@ -198,6 +199,7 @@ func teachSchema() map[string]any {
 	}, "question", "correct", "why", "wrong")
 	return obj(map[string]any{
 		"title":    str,
+		"kind":     map[string]any{"type": "string", "enum": []string{"algorithm", "concept"}},
 		"warmup":   str,
 		"big_idea": str,
 		"chunks": map[string]any{"type": "array", "minItems": 2, "maxItems": 4, "items": obj(map[string]any{
@@ -219,7 +221,7 @@ func teachSchema() map[string]any {
 			"front": str, "back": str,
 		}, "front", "back")},
 		"practice_keywords": strs(1, 6),
-	}, "title", "warmup", "big_idea", "chunks", "worked_example", "complexity", "faded", "pitfalls",
+	}, "title", "kind", "warmup", "big_idea", "chunks", "worked_example", "complexity", "faded", "pitfalls",
 		"explain_prompt", "explain_reference", "flashcards", "practice_keywords")
 }
 
@@ -236,12 +238,13 @@ Teach the way learning research says works:
 - An explain-it-back prompt asking the learner to explain the idea in their own words, plus a model answer ("explain_reference") of 2 to 4 sentences.
 - Flashcards for spaced review: a question on the front that forces recall (when to use it, the invariant, the cost, the key step), a short answer on the back.
 - "practice_keywords": short words a practice problem about this would carry in its title, tags or category (for example "sliding window", "heap", "union find").
-- "code": optionally, a clean reference implementation in Python under 25 lines, no Markdown fences.
+- "kind": "algorithm" when the topic is a procedure the learner would code (binary search, Dijkstra, quicksort, a monotonic stack, union-find), "concept" when it is an idea to understand rather than code (Big-O, amortized cost, recursion vs iteration).
+- "code": for an algorithm, required: a clean, complete, runnable reference implementation in Python, 8 to 25 lines, one statement per line, no comments, no Markdown fences. The learner will be taken through it line by line. For a concept, optional.
 
 If the request is not about data structures, algorithms or coding interviews, teach the closest DSA topic it relates to. Keep it tight: the learner wants to practise quickly.
 
 Respond with JSON only, using exactly these keys and no others:
-{"title", "warmup", "big_idea",
+{"title", "kind", "warmup", "big_idea",
  "chunks": [{"heading", "explanation", "check": {"question", "correct", "why", "wrong": [{"choice", "misconception"}]}}],
  "worked_example": {"problem", "steps": [{"do", "why"}]},
  "code", "complexity",
@@ -299,6 +302,13 @@ func (l *TeachLesson) Clean() {
 	l.Warmup, l.BigIdea = t(l.Warmup, 400), t(l.BigIdea, 400)
 	l.Complexity = t(l.Complexity, 200)
 	l.Code = stripFences(t(l.Code, 2500))
+	if l.Kind != "algorithm" && l.Kind != "concept" {
+		// Cloud models drop keys; a lesson with code is taught as one.
+		l.Kind = "concept"
+		if l.Code != "" {
+			l.Kind = "algorithm"
+		}
+	}
 
 	var chunks []TeachChunk
 	for _, ch := range l.Chunks {
@@ -469,48 +479,4 @@ func stripFences(s string) string {
 		s = s[i+1:]
 	}
 	return strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(s), "```"))
-}
-
-// TeachFeedback is the grade for an explain-it-back answer.
-type TeachFeedback struct {
-	Verdict  string   `json:"verdict"` // solid, partial or missing
-	Feedback string   `json:"feedback"`
-	Missing  []string `json:"missing"`
-}
-
-// GradeExplanation gives targeted feedback on the learner's own explanation.
-func (c *Client) GradeExplanation(ctx context.Context, model, topic, prompt, reference, answer string) (*TeachFeedback, string, error) {
-	answer = truncate(strings.TrimSpace(answer), 3000)
-	if answer == "" {
-		return nil, "", fmt.Errorf("empty answer")
-	}
-	sys := "You give a learner quick, specific feedback on their explanation of a data structures and algorithms idea. Judge understanding, not wording or grammar. Say what they got right in one sentence, then the single most important gap or misconception and how to fix it. 2 to 4 sentences total, speaking to the learner as \"you\". \"verdict\" is solid (the key idea and why it works are there), partial (the idea is there but the reason or cost is missing or shaky) or missing (the key idea is absent or wrong). \"missing\" lists up to 3 short points they left out. Respond with JSON only."
-	user := fmt.Sprintf("Topic: %s\nQuestion: %s\nA model answer: %s\n\nThe learner's answer:\n%s",
-		truncate(topic, 300), truncate(prompt, 300), truncate(reference, 800), answer)
-	str := map[string]any{"type": "string"}
-	schema := map[string]any{
-		"type": "object",
-		"properties": map[string]any{
-			"verdict":  map[string]any{"type": "string", "enum": []string{"solid", "partial", "missing"}},
-			"feedback": str,
-			"missing":  map[string]any{"type": "array", "items": str, "maxItems": 3},
-		},
-		"required": []string{"verdict", "feedback", "missing"},
-	}
-	raw, name, err := c.ChatJSON(ctx, model, []Message{{Role: "system", Content: sys}, {Role: "user", Content: user}}, schema)
-	if err != nil {
-		return nil, name, err
-	}
-	var fb TeachFeedback
-	if err := json.Unmarshal(raw, &fb); err != nil {
-		return nil, name, fmt.Errorf("feedback was malformed JSON: %w", err)
-	}
-	switch fb.Verdict {
-	case "solid", "partial", "missing":
-	default:
-		fb.Verdict = "partial"
-	}
-	fb.Feedback = truncate(strings.TrimSpace(fb.Feedback), 1000)
-	fb.Missing = cleanList(fb.Missing, 3, 200)
-	return &fb, name, nil
 }

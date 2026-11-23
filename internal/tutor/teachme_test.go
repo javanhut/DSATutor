@@ -88,3 +88,35 @@ func TestTeachLessonAcceptsRenamedKeys(t *testing.T) {
 		t.Fatalf("faded not recovered: %+v", l.Faded)
 	}
 }
+
+func TestFitWalkCoversEveryLineOnce(t *testing.T) {
+	lines := []string{"def f(a):", "    lo = 0", "    hi = len(a)", "", "    while lo < hi:", "        lo += 1", "    return lo"}
+	got := fitWalk([]TeachWalkStep{
+		{From: 5, To: 5, What: "loop"},
+		{From: 1, To: 1, What: "def"},
+		{From: 2, To: 3, What: "bounds"},
+		{From: 3, To: 3, What: "dup inside bounds"},
+		{From: 9, To: 9, What: "past the end"},
+		{From: 7, To: 7, What: "return"},
+	}, lines)
+	want := [][2]int{{1, 1}, {2, 3}, {5, 6}, {7, 7}}
+	if len(got) != len(want) {
+		t.Fatalf("got %d steps: %+v", len(got), got)
+	}
+	for i, w := range want {
+		if got[i].From != w[0] || got[i].To != w[1] {
+			t.Errorf("step %d = %d-%d, want %d-%d", i, got[i].From, got[i].To, w[0], w[1])
+		}
+	}
+	if got[2].Code != "    while lo < hi:\n        lo += 1" {
+		t.Errorf("code = %q", got[2].Code)
+	}
+}
+
+func TestTeachLessonKindFromCode(t *testing.T) {
+	l := TeachLesson{Topic: "bs", Code: "def f():\n    return 1", Chunks: []TeachChunk{{Heading: "h", Explanation: "e"}}}
+	l.Clean()
+	if l.Kind != "algorithm" {
+		t.Errorf("kind = %q", l.Kind)
+	}
+}

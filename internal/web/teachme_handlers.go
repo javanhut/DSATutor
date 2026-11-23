@@ -42,8 +42,10 @@ func (s *Server) handleTeachLesson(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]any{"model": model, "lesson": lesson})
 }
 
-// handleTeachFeedback grades the learner's explain-it-back answer.
-func (s *Server) handleTeachFeedback(w http.ResponseWriter, r *http.Request) {
+// handleTeachRespond answers what the learner typed during a lesson,
+// confirming or correcting each claim and asking a follow-up until the
+// answer is solid.
+func (s *Server) handleTeachRespond(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -51,9 +53,12 @@ func (s *Server) handleTeachFeedback(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Model     string `json:"model"`
 		Topic     string `json:"topic"`
+		Kind      string `json:"kind"`
+		Context   string `json:"context"`
 		Prompt    string `json:"prompt"`
 		Reference string `json:"reference"`
 		Answer    string `json:"answer"`
+		Attempt   int    `json:"attempt"`
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 64<<10)).Decode(&req); err != nil {
 		http.Error(w, "Invalid request: "+err.Error(), http.StatusBadRequest)
@@ -63,13 +68,45 @@ func (s *Server) handleTeachFeedback(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "answer is required", http.StatusBadRequest)
 		return
 	}
-	fb, model, err := s.tutor.GradeExplanation(r.Context(), req.Model, req.Topic, req.Prompt, req.Reference, req.Answer)
+	reply, model, err := s.tutor.Respond(r.Context(), req.Model, tutor.TeachRespondInput{
+		Topic: req.Topic, Kind: req.Kind, Context: req.Context, Prompt: req.Prompt,
+		Reference: req.Reference, Answer: req.Answer, Attempt: req.Attempt,
+	})
 	if err != nil {
 		writeTeachError(w, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{"model": model, "feedback": fb})
+	json.NewEncoder(w).Encode(map[string]any{"model": model, "feedback": reply})
+}
+
+// handleTeachWalk builds the line-by-line walkthrough of an algorithm
+// lesson's reference code.
+func (s *Server) handleTeachWalk(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var req struct {
+		Model string `json:"model"`
+		Topic string `json:"topic"`
+		Code  string `json:"code"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 64<<10)).Decode(&req); err != nil {
+		http.Error(w, "Invalid request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	if strings.TrimSpace(req.Code) == "" {
+		http.Error(w, "code is required", http.StatusBadRequest)
+		return
+	}
+	steps, model, err := s.tutor.WalkCode(r.Context(), req.Model, req.Topic, req.Code)
+	if err != nil {
+		writeTeachError(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"model": model, "steps": steps})
 }
 
 func writeTeachError(w http.ResponseWriter, err error) {
