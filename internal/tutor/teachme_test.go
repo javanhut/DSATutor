@@ -1,6 +1,9 @@
 package tutor
 
-import "testing"
+import (
+	"encoding/json"
+	"testing"
+)
 
 func TestTeachLessonCleanKeepsCheckAnswerThroughShuffle(t *testing.T) {
 	for range 20 {
@@ -55,5 +58,33 @@ func TestCutBlankToleratesSpacing(t *testing.T) {
 	}
 	if _, ok := cutBlank(code, "nothing like it"); ok {
 		t.Error("cut a blank that isn't there")
+	}
+}
+
+// deepseek-v4.1-flash renames keys despite the schema; the lesson must survive.
+func TestTeachLessonAcceptsRenamedKeys(t *testing.T) {
+	raw := `{"warmup":"w?","big_idea":"b",
+	"chunks":[{"heading":"H","text":"Explained.","check":{"question":"q?","correct":"yes","why":"y",
+		"wrong":[{"answer":"no","misconception":"m"},{"answer":"maybe","misconception":"m2"}]}}],
+	"worked_example":{"input":"[2,1,3]","steps":[{"do":"d","why":"w"}]},
+	"faded_practice":{"code":"def f(a):\n    return a + 1","blank":"a + 1"},
+	"explain_it_back":"Explain it."}`
+	var l TeachLesson
+	if err := json.Unmarshal([]byte(raw), &l); err != nil {
+		t.Fatal(err)
+	}
+	l.Topic = "t"
+	l.Clean()
+	if len(l.Chunks) != 1 || l.Chunks[0].Explanation != "Explained." {
+		t.Fatalf("chunk lost: %+v", l.Chunks)
+	}
+	if got := len(l.Chunks[0].Check.Choices); got != 3 {
+		t.Fatalf("want 3 choices, got %d", got)
+	}
+	if l.Worked.Problem != "[2,1,3]" || l.Explain != "Explain it." {
+		t.Fatalf("aliases not applied: %q %q", l.Worked.Problem, l.Explain)
+	}
+	if l.Faded.Answer != "a + 1" || l.Faded.Prompt == "" {
+		t.Fatalf("faded not recovered: %+v", l.Faded)
 	}
 }

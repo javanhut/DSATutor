@@ -100,6 +100,83 @@ type TeachProblem struct {
 	Category   string `json:"category"`
 }
 
+// Cloud models served through Ollama don't enforce the format schema, and
+// some rename keys (deepseek sends chunk "text", wrong-choice "answer",
+// "faded_practice", "explain_it_back", worked-example "input"). These
+// decoders accept those aliases so one renamed key doesn't empty the lesson.
+
+func (l *TeachLesson) UnmarshalJSON(b []byte) error {
+	type plain TeachLesson
+	var v struct {
+		plain
+		FadedPractice *TeachFaded `json:"faded_practice"`
+		ExplainItBack string      `json:"explain_it_back"`
+	}
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	*l = TeachLesson(v.plain)
+	if l.Faded.Code == "" && v.FadedPractice != nil {
+		l.Faded = *v.FadedPractice
+	}
+	l.Explain = orAlias(l.Explain, v.ExplainItBack)
+	return nil
+}
+
+func (c *TeachChunk) UnmarshalJSON(b []byte) error {
+	type plain TeachChunk
+	var v struct {
+		plain
+		Text    string `json:"text"`
+		Content string `json:"content"`
+	}
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	*c = TeachChunk(v.plain)
+	c.Explanation = orAlias(c.Explanation, v.Text, v.Content)
+	return nil
+}
+
+func (w *TeachWrong) UnmarshalJSON(b []byte) error {
+	type plain TeachWrong
+	var v struct {
+		plain
+		Answer string `json:"answer"`
+		Text   string `json:"text"`
+	}
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	*w = TeachWrong(v.plain)
+	w.Choice = orAlias(w.Choice, v.Answer, v.Text)
+	return nil
+}
+
+func (w *TeachWorked) UnmarshalJSON(b []byte) error {
+	type plain TeachWorked
+	var v struct {
+		plain
+		Input    string `json:"input"`
+		Question string `json:"question"`
+	}
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	*w = TeachWorked(v.plain)
+	w.Problem = orAlias(w.Problem, v.Input, v.Question)
+	return nil
+}
+
+func orAlias(ss ...string) string {
+	for _, s := range ss {
+		if strings.TrimSpace(s) != "" {
+			return s
+		}
+	}
+	return ""
+}
+
 // FadedBlank marks the gap in faded practice code.
 const FadedBlank = "____"
 
@@ -161,7 +238,16 @@ Teach the way learning research says works:
 - "practice_keywords": short words a practice problem about this would carry in its title, tags or category (for example "sliding window", "heap", "union find").
 - "code": optionally, a clean reference implementation in Python under 25 lines, no Markdown fences.
 
-If the request is not about data structures, algorithms or coding interviews, teach the closest DSA topic it relates to. Keep it tight: the learner wants to practise quickly. Respond with JSON only.`
+If the request is not about data structures, algorithms or coding interviews, teach the closest DSA topic it relates to. Keep it tight: the learner wants to practise quickly.
+
+Respond with JSON only, using exactly these keys and no others:
+{"title", "warmup", "big_idea",
+ "chunks": [{"heading", "explanation", "check": {"question", "correct", "why", "wrong": [{"choice", "misconception"}]}}],
+ "worked_example": {"problem", "steps": [{"do", "why"}]},
+ "code", "complexity",
+ "faded": {"prompt", "code", "blank", "hint"},
+ "pitfalls": [string], "explain_prompt", "explain_reference",
+ "flashcards": [{"front", "back"}], "practice_keywords": [string]}`
 
 // TeachTopic generates a Teach Me lesson on topic.
 func (c *Client) TeachTopic(ctx context.Context, model, topic, level string) (*TeachLesson, string, error) {
@@ -249,6 +335,8 @@ func (l *TeachLesson) Clean() {
 	f.Blank = ""
 	if f.Answer == "" || strings.Count(f.Code, FadedBlank) != 1 {
 		l.Faded = TeachFaded{}
+	} else if f.Prompt == "" {
+		f.Prompt = "Fill in the missing piece."
 	}
 
 	l.Pitfalls = cleanList(l.Pitfalls, 4, 300)
