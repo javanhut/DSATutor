@@ -195,6 +195,28 @@ it builds on.
 move the shorter line?") and what-if transfers ("What changes if the array
 isn't sorted?"), each with a full model answer.
 
+## Writing a foundations drill
+
+A drill (`Kind: "drill"`) practises one structure or core algorithm on its
+own, so a learner can write it from memory before a ladder asks them to
+apply it (deliberate practice of a component skill before the whole task).
+It follows every rule for a practice problem above, except:
+
+- It sits in its own ladder: `Order` 1..n among the category's drills, from
+  building the structure to the hardest core operation.
+- `Number` is the LeetCode number when one exists (Binary Tree Inorder
+  Traversal is 94), otherwise 0.
+- `BruteForce` and `Alternatives` are optional: the drill is the plain
+  algorithm. Ship an alternative when it is worth knowing (the iterative or
+  O(1)-space version).
+- Each mistake in `CommonMistakes` that the tests catch gets a case in
+  an `internal/judge/drills*_test.go` file showing that code with that mistake
+  fails.
+
+Pair the drills with by-hand trace exercises in `static/trace-drills.js`
+(a kit in `KITS[category]`), so the learner predicts the algorithm's visit order
+before coding it.
+
 ## Checking your work
 
 ```sh

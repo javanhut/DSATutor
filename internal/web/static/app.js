@@ -7583,7 +7583,8 @@ loadChapters()
 
 // Practice Mode State and Functions
 const practiceState = {
-  problems: [],
+  problems: [], // ladder problems
+  drills: [], // foundations drills (kind "drill"), kept apart so mixed practice, interviews and counts skip them
   categories: [],
   currentProblem: null,
   progress: {},
@@ -7736,7 +7737,9 @@ async function loadProblems() {
     if (!response.ok) throw new Error('Failed to load problems');
     const data = await response.json();
     // API returns {problems: [...], total: N, stats: {...}}
-    practiceState.problems = data.problems || [];
+    const all = data.problems || [];
+    practiceState.problems = all.filter(p => p.kind !== 'drill');
+    practiceState.drills = all.filter(p => p.kind === 'drill');
     practiceState.stats = data.stats || {};
     return practiceState.problems;
   } catch (e) {
@@ -7812,6 +7815,7 @@ function renderProblemsList() {
           <span class="category-progress">${solved}/${catProblems.length}</span>
         </div>
         <p class="category-desc">${escapeHtml(cat.description || '')}</p>
+        ${foundationsHtml(cat.id, 'card')}
         <div class="category-problems">
     `;
 
@@ -7842,6 +7846,7 @@ function renderProblemsList() {
   container.querySelectorAll('.problem-card').forEach(card => {
     card.onclick = () => openProblem(card.dataset.problemId);
   });
+  wireFoundations(container);
   container.querySelectorAll('.category-learn').forEach(link => {
     link.onclick = (e) => {
       e.preventDefault();
@@ -8044,7 +8049,10 @@ function renderProblemDescription() {
   const diffBadge = el('practice-difficulty');
 
   if (titleEl) {
-    titleEl.innerHTML = `${escapeHtml(problem.title)} <span class="leetcode-number">LeetCode #${problem.number}</span>`;
+    const label = problem.kind === 'drill'
+      ? `Foundations drill${problem.number ? ` · LeetCode #${problem.number}` : ''}`
+      : `LeetCode #${problem.number}`;
+    titleEl.innerHTML = `${escapeHtml(problem.title)} <span class="leetcode-number">${label}</span>`;
   }
 
   if (diffBadge) {
@@ -8460,7 +8468,7 @@ function updateProgressCount() {
   const countEl = el('progress-count');
   if (!countEl) return;
 
-  const solved = Object.values(practiceState.progress).filter(p => p.solved).length;
+  const solved = practiceState.problems.filter(p => practiceState.progress[p.id]?.solved).length;
   const total = practiceState.problems.length;
   countEl.textContent = `${solved} of ${total} solved`;
 }
@@ -9264,7 +9272,8 @@ function filterProblems() {
 
   const cards = document.querySelectorAll('.problem-card');
   cards.forEach(card => {
-    const problem = practiceState.problems.find(p => p.id === card.dataset.problemId);
+    const problem = practiceState.problems.find(p => p.id === card.dataset.problemId) ||
+      practiceState.drills.find(p => p.id === card.dataset.problemId);
     if (!problem) return;
 
     const progress = practiceState.progress[problem.id] || {};

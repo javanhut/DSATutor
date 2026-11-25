@@ -19,3 +19,10 @@ pedagogy.md before it is added.
 - 1-D DP: Min Cost Climbing Stairs (currently used as a chapter 15 completion
   problem)
 - Linked List: Find the Duplicate Number
+
+## Foundations still to add
+
+Trees, Linked List, Graphs, Heap, Tries, Stack, Binary Search, Sliding
+Window, Two Pointers, Backtracking, 1-D DP and Intervals have drills and
+trace exercises (Advanced Graphs has one Dijkstra drill). Still without them:
+Arrays & Hashing, 2-D DP, Greedy, Bit Manipulation and Math & Geometry.

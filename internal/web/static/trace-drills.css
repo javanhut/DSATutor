@@ -1,0 +1,219 @@
+/* Foundations block (practice list and chapter ladder) and the
+   "Trace by hand" trainer from trace-drills.js. */
+
+.foundations {
+  grid-column: 2;
+  margin: 0 0 22px;
+  padding: 14px 16px 6px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-lg, 8px);
+  background: var(--bg-elevated);
+}
+.foundations-head { display: flex; align-items: baseline; gap: 12px; }
+.foundations-label {
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.foundations-progress { font-family: var(--mono); font-size: 12px; color: var(--mark); font-variant-numeric: tabular-nums; }
+.foundations-intro { margin: 6px 0 12px; color: var(--text-dim); font-size: 14px; line-height: 1.55; max-width: var(--measure, 68ch); }
+.foundations-trace {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  text-align: left;
+  font: inherit;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius, 6px);
+  cursor: pointer;
+}
+.foundations-trace:hover { border-color: var(--accent); }
+.foundations-trace-title { font-weight: 600; color: var(--accent); }
+.foundations-trace-desc { font-size: 13px; color: var(--text-dim); }
+.foundations-drills { border-top: 1px solid var(--border); margin: 0; }
+.foundations .problem-card:last-child,
+.foundations .ladder-item:last-child { border-bottom: 0; }
+
+/* The trainer */
+.trace-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 85;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 4vh 16px 16px;
+  background: rgba(0, 0, 0, 0.45);
+  overflow-y: auto;
+}
+.trace-panel {
+  width: min(1080px, 100%);
+  padding: 20px 24px 24px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 8px);
+  box-shadow: var(--shadow);
+}
+.trace-header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.trace-header > div:first-child { flex: 1; }
+.trace-header h2 { margin: 2px 0 0; font-family: var(--serif); font-size: var(--fs-lg); }
+.trace-kicker { font-family: var(--mono); font-size: var(--fs-xs); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); }
+.trace-size { display: flex; gap: 4px; }
+.trace-size .active { border-color: var(--accent); color: var(--accent); }
+
+.trace-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 16px 0 14px; border-bottom: 1px solid var(--border); }
+.trace-tab {
+  padding: 7px 12px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text-dim);
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+}
+.trace-tab:hover { color: var(--text); }
+.trace-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.trace-mastered { color: var(--accent-2); }
+
+.trace-body { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(280px, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 820px) { .trace-body { grid-template-columns: 1fr; } }
+.trace-stage {
+  display: flex;
+  justify-content: center;
+  padding: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 6px);
+  min-height: 240px;
+}
+
+.trace-tree .edges line { stroke: var(--border-light); stroke-width: 2; }
+.trace-tree line.ghost { stroke: var(--accent-2); stroke-dasharray: 5 4; }
+.trace-tree .tnode circle { fill: var(--panel); stroke: var(--text-dim); stroke-width: 1.5; transition: fill 120ms ease, stroke 120ms ease; }
+.trace-tree .tnode text { font-family: var(--mono); font-size: 14px; text-anchor: middle; fill: var(--text); pointer-events: none; }
+.trace-tree .tnode text.badge { font-size: 11px; text-anchor: start; fill: var(--mark); font-weight: 600; }
+.trace-tree .tnode.clickable { cursor: pointer; }
+.trace-tree .tnode.clickable:hover circle,
+.trace-tree .tnode.clickable:focus circle { stroke: var(--accent); stroke-width: 2.5; }
+.trace-tree .tnode:focus { outline: none; }
+.trace-tree .tnode.picked circle { fill: rgba(var(--accent-rgb), 0.16); stroke: var(--accent); }
+.trace-tree .tnode.held circle { stroke: var(--warning); stroke-width: 2.5; stroke-dasharray: 4 3; }
+.trace-tree .tnode.current circle { stroke: var(--mark); stroke-width: 3.5; }
+.trace-tree .tnode.wrong circle { fill: rgba(var(--error-rgb), 0.16); stroke: var(--error); stroke-width: 2.5; }
+.trace-tree .tnode.target circle { stroke: var(--accent-2); stroke-width: 3; }
+.trace-tree .tnode.ghost circle { fill: rgba(var(--accent-2-rgb), 0.14); stroke: var(--accent-2); stroke-dasharray: 5 4; }
+
+.trace-prompt { margin: 0 0 12px; line-height: 1.55; }
+.trace-seq { display: flex; flex-wrap: wrap; gap: 6px; min-height: 32px; margin-bottom: 12px; align-items: center; }
+.trace-seq em, .trace-held em { color: var(--muted); font-size: 13px; }
+.trace-seq b, .trace-held b {
+  display: inline-block;
+  min-width: 30px;
+  padding: 3px 7px;
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: 14px;
+  text-align: center;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.trace-seq.big b { font-size: 16px; padding: 5px 9px; }
+.trace-seq b.wrong { border-color: var(--error); color: var(--error); }
+.trace-held { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 8px 0; }
+.trace-held > span { flex-basis: 100%; font-family: var(--mono); font-size: var(--fs-xs); letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-dim); }
+.trace-held b.out { border-color: var(--accent); }
+.trace-buttons { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.trace-choices .btn-small::first-letter { text-transform: uppercase; }
+.trace-feedback p { margin: 10px 0 0; line-height: 1.55; }
+.trace-ok { color: var(--accent-2); }
+.trace-bad { color: var(--error); }
+.trace-why { color: var(--text); padding-left: 10px; border-left: 2px solid var(--border-light); }
+.trace-streak { font-family: var(--mono); font-size: 12px; color: var(--text-dim); }
+.trace-orders { margin-top: 12px; border-collapse: collapse; font-size: 14px; }
+.trace-orders th { padding: 3px 12px 3px 0; text-align: left; font-weight: 500; color: var(--text-dim); text-transform: capitalize; white-space: nowrap; }
+.trace-orders td { font-family: var(--mono); }
+.trace-orders tr.is-answer th, .trace-orders tr.is-answer td { color: var(--accent-2); font-weight: 600; }
+
+.trace-code {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.6;
+  background: var(--code-bg);
+  color: var(--code-text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow-x: auto;
+}
+.trace-code span { display: inline-block; min-width: 100%; }
+.trace-code span.hl { background: rgba(var(--mark-rgb), 0.16); box-shadow: inset 3px 0 0 var(--mark); }
+.trace-code-peek { margin-top: 14px; font-size: 14px; }
+.trace-code-peek summary { cursor: pointer; color: var(--text-dim); margin-bottom: 8px; }
+.trace-replay-head { font-family: var(--mono); font-size: var(--fs-xs); letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px; }
+.trace-step-text { margin: 0 0 8px; line-height: 1.55; min-height: 3em; }
+.trace-choices .btn-small.danger { border-color: var(--error); color: var(--error); }
+
+/* Graphs and linked lists */
+.trace-tree .arrowhead { fill: var(--border-light); }
+.trace-tree .edges path { stroke: var(--border-light); stroke-width: 2; }
+.trace-tree .edges line.hot { stroke: var(--mark); stroke-width: 3; }
+.trace-tree .weight circle { fill: var(--panel); stroke: var(--border); }
+.trace-tree .weight text { font-family: var(--mono); font-size: 11px; text-anchor: middle; fill: var(--text-dim); }
+.trace-tree text.dist { font-family: var(--mono); font-size: 11px; text-anchor: middle; fill: var(--accent-2); font-weight: 600; }
+.trace-tree text.ptr { font-family: var(--mono); font-size: 12px; text-anchor: middle; fill: var(--mark); font-weight: 600; }
+.trace-tree .tnode circle.sentinel { stroke-dasharray: 3 3; fill: var(--panel-alt); }
+.trace-tree .tnode circle.sentinel + text { font-size: 10px; fill: var(--text-dim); }
+.trace-seq b i, .trace-held b i { font-style: normal; font-size: 11px; color: var(--mark); margin-right: 4px; }
+.trace-adj { margin: 0 0 12px; font-size: 13px; }
+.trace-adj summary { cursor: pointer; color: var(--text-dim); margin-bottom: 6px; }
+.trace-adj table { border-collapse: collapse; font-family: var(--mono); }
+.trace-adj th { padding: 1px 10px 1px 0; text-align: right; color: var(--text-dim); font-weight: 500; }
+.trace-adj td { padding: 1px 0; }
+
+/* Heaps, tries and stacks */
+.trace-tree .heap-cell rect { fill: var(--panel); stroke: var(--border); stroke-width: 1.2; }
+.trace-tree .heap-cell text { font-family: var(--mono); font-size: 13px; text-anchor: middle; fill: var(--text); }
+.trace-tree .heap-cell.held rect { stroke: var(--warning); stroke-width: 2; stroke-dasharray: 4 3; }
+.trace-tree .heap-cell.current rect { stroke: var(--mark); stroke-width: 2.5; }
+.trace-tree .heap-cell.picked rect { fill: rgba(var(--accent-rgb), 0.16); }
+.trace-tree text.idx { font-family: var(--mono); font-size: 10px; text-anchor: middle; fill: var(--text-dim); }
+.trace-tree .tnode circle.end-ring { fill: none !important; stroke-width: 1.2; }
+.trace-aside, .trace-ops { margin: 0 0 12px; font-size: 13px; color: var(--text-dim); line-height: 1.9; }
+.trace-aside code, .trace-ops code { font-family: var(--mono); background: var(--panel-alt); border-radius: 4px; padding: 1px 5px; color: var(--text); white-space: nowrap; }
+.trace-notes { margin: 4px 0 0 18px; padding: 0; font-size: 13px; }
+
+/* Arrays with pointers */
+.trace-tree .trace-window { fill: rgba(var(--accent-rgb), 0.10); stroke: var(--accent); stroke-width: 1.2; stroke-dasharray: 5 4; }
+.trace-tree .acell rect { fill: var(--panel); stroke: var(--text-dim); stroke-width: 1.5; transition: fill 120ms ease, stroke 120ms ease; }
+.trace-tree .acell.end rect { stroke-dasharray: 3 3; fill: var(--panel-alt); }
+.trace-tree .acell.end text { font-size: 11px; fill: var(--text-dim); }
+.trace-tree .acell.clickable:hover rect, .trace-tree .acell.clickable:focus rect { stroke: var(--accent); stroke-width: 2.5; }
+.trace-tree .acell.picked rect { fill: rgba(var(--accent-rgb), 0.16); stroke: var(--accent); }
+.trace-tree .acell.held rect { stroke: var(--warning); stroke-width: 2.5; stroke-dasharray: 4 3; }
+.trace-tree .acell.current rect { stroke: var(--mark); stroke-width: 3.5; }
+.trace-tree .acell.wrong rect { fill: rgba(var(--error-rgb), 0.16); stroke: var(--error); stroke-width: 2.5; }
+.trace-tree .acell.target rect { stroke: var(--accent-2); stroke-width: 3; }
+.trace-tree text.ptr.off { text-anchor: middle; }
+
+/* Boards, interval bars and sweep lines */
+.trace-tree .gcell.dark rect { fill: var(--panel-alt); }
+.trace-tree .gcell text { font-size: 24px; fill: var(--mark); }
+.trace-tree .gcell text.badge { font-size: 11px; fill: var(--mark); }
+.trace-tree .ibar rect { fill: rgba(var(--accent-rgb), 0.10); }
+.trace-tree .ibar text.ilabel { font-size: 11px; text-anchor: start; fill: var(--text-dim); }
+.trace-tree line.grid { stroke: var(--border); stroke-width: 1; opacity: 0.5; }
+.trace-tree line.sweep { stroke: var(--mark); stroke-width: 2; stroke-dasharray: 5 3; }

@@ -64,6 +64,7 @@ func (ps *PracticeServer) handleListProblems(w http.ResponseWriter, r *http.Requ
 		Slug            string   `json:"slug"`
 		Difficulty      string   `json:"difficulty"`
 		Category        string   `json:"category"`
+		Kind            string   `json:"kind,omitempty"`
 		Tags            []string `json:"tags"`
 		RelatedChapters []int    `json:"relatedChapters"`
 	}
@@ -78,6 +79,7 @@ func (ps *PracticeServer) handleListProblems(w http.ResponseWriter, r *http.Requ
 			Slug:            p.Slug,
 			Difficulty:      p.Difficulty,
 			Category:        p.Category,
+			Kind:            p.Kind,
 			Tags:            p.Tags,
 			RelatedChapters: p.RelatedChapters,
 		}
@@ -149,6 +151,7 @@ func (ps *PracticeServer) handleGetProblem(w http.ResponseWriter, r *http.Reques
 		"slug":              problem.Slug,
 		"difficulty":        problem.Difficulty,
 		"category":          problem.Category,
+		"kind":              problem.Kind,
 		"tags":              problem.Tags,
 		"relatedChapters":   problem.RelatedChapters,
 		"description":       problem.Description,

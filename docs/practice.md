@@ -31,6 +31,149 @@ in [pedagogy.md](pedagogy.md).
   started and hides the category. The learner names the pattern before
   coding.
 
+## Foundations
+
+Before a ladder applies a structure, its **Foundations** block (at the top of
+the category in the problem list, and above the ladder on the chapter page)
+drills the basics on their own:
+
+- **Trace by hand** (`static/trace-drills.js`): a freshly generated structure
+  each time, and the learner clicks nodes to show what an algorithm does.
+  - Trees: preorder, inorder, postorder, level order, the nodes a BST search
+    or insert compares against, and naming which order produced a sequence.
+  - Graphs: BFS and DFS visit order (neighbours in increasing order), any
+    valid topological order, and the order Dijkstra settles nodes.
+  - Linked lists: where prev and curr are after k iterations of an in-place
+    reverse, where slow ends (middle), where Floyd's pointers meet in a cycle,
+    and where trail stops when removing the nth node from the end.
+  - Heaps (drawn as a tree and as its array): where a pushed value settles
+    after sifting up, where the last value settles after a pop, which array
+    bottom-up heapify produces (against sorting, pushing one at a time and
+    sifting from the root forwards), and which value breaks the heap rule.
+  - Tries: the nodes a search visits, what it returns (True, falls off the
+    trie, or a prefix that is not a word), how many nodes an insert creates,
+    and the order autocomplete returns words under a prefix.
+  - Stacks: the order pops return values, which bracket closes a given
+    opener, what a monotonic (next greater element) stack holds after index
+    k, and the order it pops values.
+  - Binary search: the indexes mid lands on, where lo and hi are after k
+    iterations, what lower bound returns (with duplicates and the end), and
+    the probes of a first-True search.
+  - Sliding window: the fixed-size window with the best sum, where left is
+    after shrinking (shortest sum >= target), and where left is and which
+    window is recorded in longest-substring-without-repeats.
+  - Two pointers: where l and r are after k moves of pair sum and container
+    with most water, where the write pointer is when removing duplicates in
+    place, and where a palindrome check fails.
+  - Backtracking: the m-th result that subsets, combinations (start index)
+    and permutations (used[]) record, and the first N-queens solution with
+    row 0 fixed, with the dead ends undone in the replay.
+  - 1-D DP: the houses in the best house-robber plan (dp table in the
+    replay), the maximum subarray (Kadane), how many ways coin change has
+    (with the loop-order trap as a wrong option), and any longest increasing
+    subsequence.
+  - Intervals (closed): which intervals merge into one block, a largest set
+    open at once (sweep line), where the arrows go in minimum arrows, and
+    which intervals are covered by another.
+
+  A wrong answer says which step went wrong and why. **Show me step by
+  step** replays the algorithm with its code line, call stack, queue, heap
+  or pointers. Three first-try answers in a row master an exercise. Results
+  are stored in the practice progress under `trace:<category>:<exercise>`,
+  so Export, Import and Reset all include them. Each category's exercises
+  are a "kit" in that file; the core runs any kit.
+- **Drills**: judged problems with `Kind: "drill"` that build the structure or
+  code one core algorithm on its own:
+  - Trees (8, `problems_trees_drills.go`): build a tree from level order,
+    preorder, inorder, postorder, level order, inorder without recursion,
+    BST insert, BST delete.
+  - Linked List (8, `problems_linked_list_drills.go`): build a list (writing
+    `ListNode` too), list to array, index of a value, middle node, insert at
+    an index, remove elements, Design Linked List, a doubly linked deque.
+  - Graphs (`problems_graphs_drills.go`): adjacency list and matrix, BFS and
+    DFS order, DFS without recursion, unweighted shortest path, flood fill,
+    topological sort, a union-find class. Advanced Graphs has a Dijkstra
+    drill (`problems_advanced_graphs_drills.go`).
+  - Heap (7, `problems_heap_drills.go`): build a min-heap with sift-up
+    (design), pop with sift-down (design), bottom-up heapify, is this a
+    min-heap, heap sort, a max-heap with `heapq` by negation, and a k-way
+    merge with `heapq` tuples. The array drills compare exact arrays, so the
+    tie rule (smaller child, left on a tie) is part of each statement; heap
+    sort has a 50,000-item case with a 5 second limit, so an O(n^2) sort
+    fails.
+  - Stack (7, `problems_stack_drills.go`): build a stack (design), reverse
+    each word, remove adjacent duplicates, queue using two stacks (design),
+    next greater element, previous smaller element, evaluate an expression
+    with parentheses.
+  - Tries (6, `problems_tries_drills.go`): build nodes and count them, the
+    end-of-word flag (contains and longest stored prefix), Implement Trie II
+    (counts on nodes), autocomplete in alphabetical order, delete with
+    pruning, longest common prefix.
+  - Two Pointers (8, `problems_two_pointers_drills.go`): the three shapes on
+    their own. Opposite ends: reverse a list in place, squares of a sorted
+    array (fill from the back). Read/write pointers: remove duplicates from a
+    sorted array (a validator checks the returned k and the kept front of the
+    list), move zeroes (in place, stable). One pointer per sequence: merge
+    two sorted arrays, is subsequence, intersection of two sorted arrays. Last,
+    count pairs with a target sum in a sorted array with duplicates, the
+    run-skipping that 3Sum needs. Move zeroes has a 100,000-item case and
+    count pairs a 50,000-equal-items case, each with a 5 second limit; both
+    were measured to fail the O(n^2) versions.
+  - Binary Search (7, `problems_binary_search_drills.go`): one half-open
+    boundary template (`while lo < hi`, `hi = mid` or `lo = mid + 1`) on search
+    insert position, counting occurrences with a lower and an upper bound,
+    first and last position, first True in a yes/no array, integer square
+    root (searching the answer), peak element (compare with the neighbour)
+    and minimum ship capacity (a feasibility check, the bridge to Koko). The
+    cases check answers, so a linear scan over the array is not rejected;
+    only the capacity drill has 50,000-package cases that fail a scan over
+    every capacity.
+  - Sliding Window (6, `problems_sliding_window_drills.go`): fixed window
+    sums (add what enters, subtract what leaves), maximum average, distinct
+    values per window (a count dictionary, deleting keys at zero), minimum
+    size subarray sum (shrink while valid), longest subarray with sum at
+    most k (shrink until valid), and subarray product less than k (counting
+    `right - left + 1` windows per right edge). Recomputing a window from
+    scratch fails the 5 second limit on the large cases.
+  - Backtracking (6, `problems_backtracking_drills.go`): the choose, explore,
+    un-choose skeleton on all binary strings (in counting order), letter case
+    permutation (options per position), combinations (the start index),
+    arrangements of k of n letters (a `used` list restored after each branch),
+    subsets with a target sum (pruning with `break` on sorted positives) and
+    counting routes through a grid (mark and unmark a visited cell). The
+    40-number target-sum case has a 5 second limit that only a pruned search
+    meets.
+  - Intervals (6, `problems_intervals_drills.go`): all intervals are closed
+    (`[1,3]` and `[3,5]` touch) unless a statement says otherwise. The overlap
+    test `max(starts) <= min(ends)`, intersection of two sorted interval
+    lists (two pointers, advance the one that ends first), total covered
+    length (sort by start, one running block with `max` on the end), remove
+    covered intervals (start ascending, end descending), most intervals at one
+    point (sweep line, starts before ends on ties; the closed twin of Meeting
+    Rooms II), and minimum arrows to burst balloons (sort by end). The
+    cases check answers, not speed.
+  - 1-D DP (6, `problems_1d_dp_drills.go`): each statement names the state
+    and the recurrence. Fibonacci (memo, table or two variables), climb with
+    1, 2 or 3 steps (write the recurrence from the last move), min cost
+    climbing stairs (min over two choices, the answer at the top), count
+    tilings of a 2 by n strip (a coefficient on one term, modulo
+    1_000_000_007), maximum subarray (best sum ending at i, answer is the
+    table's maximum), and Coin Change II (coins in the outer loop count
+    combinations; swapped loops count orderings). Plain recursion fails the
+    5 second limit on the large cases, and the tiling drill has n up to
+    100000, where a recursive solution (memoised or not) hits the 20000
+    recursion limit and only the bottom-up table passes.
+
+  The "without recursion" drills include a hidden input deeper than Python's
+  recursion limit, so only an explicit stack passes.
+
+Drills have their own `Order` sequence in front of the ladder and may have
+`Number` 0. They come back in Review like any solved problem but stay out of
+Mixed Practice, mock interviews, the solved count and the chapter's mastery
+score. After a drill is accepted, **Next drill** leads to the next one and
+then to the first rung of the ladder. `judge/drills*_test.go` check that each
+drill rejects the mistake it is meant to catch.
+
 Every accepted submission is also saved, under
 `dsatutor_accepted_solutions`: up to 10 per problem, newest first, identical
 code not repeated, including solutions from mock interviews. The **My
@@ -110,11 +253,13 @@ internal/practice/
   problem.go            Problem, Harness, Hint, Solution, SelfCheck, TestCase
   category.go           categories in curriculum order, with their chapters
   problems_*.go         one file per category; each appends to EmbeddedProblems in init()
+  problems_*_drills.go  a category's foundations drills (Kind "drill")
   loader.go             loads embedded problems plus optional JSON files, sorted by ladder
   problems/             optional custom *.json problems (embedded at build time)
 internal/judge/         runs code for one test case and decides pass/fail
 internal/sandbox/       sandbox.go (Python subprocess), tracer.py (steps), harness.py (calling convention)
-internal/web/           practice_handlers.go (API); static/app.js and static/learn.js (UI)
+internal/web/           practice_handlers.go (API); static/app.js and static/learn.js (UI);
+                        static/trace-drills.js (Trace by hand)
 ```
 
 ### How a test case is judged

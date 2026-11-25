@@ -135,7 +135,8 @@ func (pl *ProblemLoader) GetAllProblems() []*Problem {
 }
 
 // sortByLadder orders problems the way a learner should meet them: by
-// category (in curriculum order), then by position within the category.
+// category (in curriculum order), then foundations drills before the ladder,
+// then by position.
 func sortByLadder(problems []*Problem) {
 	catOrder := make(map[string]int, len(Blind75Categories))
 	for _, c := range Blind75Categories {
@@ -145,6 +146,9 @@ func sortByLadder(problems []*Problem) {
 		a, b := problems[i], problems[j]
 		if catOrder[a.Category] != catOrder[b.Category] {
 			return catOrder[a.Category] < catOrder[b.Category]
+		}
+		if a.IsDrill() != b.IsDrill() {
+			return a.IsDrill()
 		}
 		if a.Order != b.Order {
 			return a.Order < b.Order
@@ -252,13 +256,20 @@ func (pl *ProblemLoader) GetCategories() []Category {
 // GetStats returns statistics about loaded problems.
 func (pl *ProblemLoader) GetStats() map[string]int {
 	stats := map[string]int{
-		"total":  len(pl.problems),
+		"total":  0,
 		"easy":   0,
 		"medium": 0,
 		"hard":   0,
+		"drills": 0,
 	}
 
+	// Drills are counted on their own so "total" stays the ladder count.
 	for _, p := range pl.problems {
+		if p.IsDrill() {
+			stats["drills"]++
+			continue
+		}
+		stats["total"]++
 		switch strings.ToLower(p.Difficulty) {
 		case "easy":
 			stats["easy"]++

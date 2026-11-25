@@ -72,17 +72,22 @@ func TestProblemContent(t *testing.T) {
 			t.Errorf("%s: duplicate ID", p.ID)
 		}
 		ids[p.ID] = true
-		if other, ok := numbers[p.Number]; ok {
-			t.Errorf("%s: LeetCode number %d also used by %s", p.ID, p.Number, other)
+		// Drills may have no LeetCode counterpart (Number 0).
+		if p.Number != 0 || !p.IsDrill() {
+			if other, ok := numbers[p.Number]; ok {
+				t.Errorf("%s: LeetCode number %d also used by %s", p.ID, p.Number, other)
+			}
+			numbers[p.Number] = p.ID
 		}
-		numbers[p.Number] = p.ID
-		if orders[p.Category] == nil {
-			orders[p.Category] = map[int]string{}
+		// Drills are a ladder of their own in front of the category's ladder.
+		ladder := ladderKey(p)
+		if orders[ladder] == nil {
+			orders[ladder] = map[int]string{}
 		}
-		if other, ok := orders[p.Category][p.Order]; ok {
-			t.Errorf("%s: Order %d in %s also used by %s", p.ID, p.Order, p.Category, other)
+		if other, ok := orders[ladder][p.Order]; ok {
+			t.Errorf("%s: Order %d in %s also used by %s", p.ID, p.Order, ladder, other)
 		}
-		orders[p.Category][p.Order] = p.ID
+		orders[ladder][p.Order] = p.ID
 
 		if !categoryWanted(p.Category) {
 			continue
@@ -93,16 +98,26 @@ func TestProblemContent(t *testing.T) {
 		})
 	}
 
-	for cat, byOrder := range orders {
+	for ladder, byOrder := range orders {
+		cat := strings.TrimSuffix(ladder, "/"+practice.KindDrill)
 		if !categoryWanted(cat) {
 			continue
 		}
 		for i := 1; i <= len(byOrder); i++ {
 			if _, ok := byOrder[i]; !ok {
-				t.Errorf("category %s: Order values must run 1..%d without gaps (missing %d)", cat, len(byOrder), i)
+				t.Errorf("%s: Order values must run 1..%d without gaps (missing %d)", ladder, len(byOrder), i)
 			}
 		}
 	}
+}
+
+// ladderKey names the ladder a problem belongs to: its category, or
+// "<category>/drill" for foundations drills.
+func ladderKey(p *practice.Problem) string {
+	if p.IsDrill() {
+		return p.Category + "/" + practice.KindDrill
+	}
+	return p.Category
 }
 
 func checkProblem(t *testing.T, p *practice.Problem, categories map[string]practice.Category, chs map[int]chapter.Chapter) {
@@ -110,8 +125,11 @@ func checkProblem(t *testing.T, p *practice.Problem, categories map[string]pract
 	if !ok {
 		t.Fatalf("unknown category %q", p.Category)
 	}
-	if p.Number <= 0 || p.Order <= 0 {
-		t.Errorf("Number (LeetCode #) and Order must be set")
+	if p.Kind != "" && !p.IsDrill() {
+		t.Errorf("Kind %q: use \"\" or %q", p.Kind, practice.KindDrill)
+	}
+	if p.Order <= 0 || p.Number < 0 || (p.Number == 0 && !p.IsDrill()) {
+		t.Errorf("Number (LeetCode #) and Order must be set; only drills may have Number 0")
 	}
 	if !difficulties[p.Difficulty] {
 		t.Errorf("difficulty %q", p.Difficulty)
@@ -274,6 +292,11 @@ func checkSolution(t *testing.T, p *practice.Problem) {
 		t.Fatalf("Solution.Code is empty")
 	}
 	minLen := map[string]int{"Explanation": 60, "BruteForce": 60, "KeyInsight": 60, "WhyItWorks": 150}
+	// A drill practises one core algorithm on its own, so there is often no
+	// slower approach to improve on, and no second version worth shipping.
+	if p.IsDrill() {
+		delete(minLen, "BruteForce")
+	}
 	got := map[string]string{"Explanation": s.Explanation, "BruteForce": s.BruteForce, "KeyInsight": s.KeyInsight, "WhyItWorks": s.WhyItWorks}
 	for field, n := range minLen {
 		if len(strings.TrimSpace(got[field])) < n {
@@ -295,7 +318,7 @@ func checkSolution(t *testing.T, p *practice.Problem) {
 			t.Errorf("alternative %q needs Name, Explanation and complexity", alt.Name)
 		}
 	}
-	if !hasCode {
+	if !hasCode && !p.IsDrill() {
 		t.Errorf("needs at least one Alternative with runnable Code (usually the brute force)")
 	}
 

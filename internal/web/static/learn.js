@@ -570,6 +570,7 @@ async function renderPracticeLadder(ch) {
   const problems = practiceState.problems.filter(p => p.category === ch.category);
   const progress = practiceState.progress;
   target.innerHTML = `
+    ${foundationsHtml(ch.category, 'ladder')}
     <p class="ladder-intro">Solve these in order: each adds one idea to the last. Try each one for real before opening a hint.</p>
     <ol class="ladder">${problems.map(p => {
       const prog = progress[p.id] || {};
@@ -583,6 +584,69 @@ async function renderPracticeLadder(ch) {
   target.querySelectorAll('.ladder-item').forEach(item => {
     item.onclick = () => goToProblem(item.dataset.id);
   });
+  wireFoundations(target);
+}
+
+// ---------------------------------------------------------------------------
+// Foundations: drills that build a structure or run one core algorithm on its
+// own, and the by-hand trace trainer (trace-drills.js), shown in front of a
+// category's ladder. style is 'card' (practice list) or 'ladder' (chapter).
+// ---------------------------------------------------------------------------
+
+function categoryDrills(categoryId) {
+  return (practiceState.drills || []).filter(p => p.category === categoryId);
+}
+
+function foundationsHtml(categoryId, style) {
+  const drills = categoryDrills(categoryId);
+  const trace = window.traceDrills?.has(categoryId);
+  if (!drills.length && !trace) return '';
+  const progress = practiceState.progress;
+  const solved = drills.filter(p => progress[p.id]?.solved).length;
+  const item = (p, i) => {
+    const prog = progress[p.id] || {};
+    const status = prog.solved ? 'solved' : (prog.attempts > 0 ? 'attempted' : '');
+    const badges = `<span class="difficulty-badge difficulty-${p.difficulty.toLowerCase()}">${p.difficulty}</span>
+      ${prog.solved ? '<span class="solved-badge">Solved</span>' : ''}`;
+    if (style === 'card') {
+      return `<div class="problem-card drill-card ${status}" data-problem-id="${p.id}">
+        <div class="problem-card-header"><span class="problem-number">F${i + 1}</span><span class="problem-title">${escapeHtml(p.title)}</span></div>
+        <div class="problem-card-meta">${badges}</div>
+      </div>`;
+    }
+    return `<li class="ladder-item drill-item ${status}" data-id="${p.id}"><span class="ladder-title">${escapeHtml(p.title)}</span>${badges}</li>`;
+  };
+  return `<div class="foundations">
+    <div class="foundations-head">
+      <span class="foundations-label">Foundations</span>
+      ${drills.length ? `<span class="foundations-progress">${solved}/${drills.length} drills</span>` : ''}
+    </div>
+    <p class="foundations-intro">Trace each algorithm by hand, then build the structure and code each algorithm on its own until it's automatic. The ladder below applies them.</p>
+    ${trace ? `<button type="button" class="foundations-trace" data-category="${categoryId}">
+      <span class="foundations-trace-title">Trace by hand</span>
+      <span class="foundations-trace-desc">${escapeHtml(window.traceDrills.summary(categoryId))}</span>
+    </button>` : ''}
+    ${drills.length ? (style === 'card'
+      ? `<div class="foundations-drills">${drills.map(item).join('')}</div>`
+      : `<ol class="ladder foundations-drills">${drills.map(item).join('')}</ol>`) : ''}
+  </div>`;
+}
+
+function wireFoundations(root) {
+  root.querySelectorAll('.drill-item').forEach(item => {
+    item.onclick = () => goToProblem(item.dataset.id);
+  });
+  root.querySelectorAll('.foundations-trace').forEach(btn => {
+    btn.onclick = () => window.traceDrills.open(btn.dataset.category);
+  });
+}
+
+// nextAfterDrill is the drill after this one, or the first rung of the
+// category's ladder once the drills are done.
+function nextAfterDrill(problem) {
+  const drills = categoryDrills(problem.category);
+  const i = drills.findIndex(p => p.id === problem.id);
+  return drills[i + 1] || practiceState.problems.find(p => p.category === problem.category) || null;
 }
 
 // ---------------------------------------------------------------------------
@@ -609,9 +673,12 @@ function scheduleReview(problemId, rating, base) {
   return interval;
 }
 
-function dueReviews() {
+// Drills come back for review too, but never into mixed practice, which is
+// about recognising a ladder's pattern.
+function dueReviews({ drills = true } = {}) {
   const now = Date.now();
-  return practiceState.problems.filter(p => {
+  const pool = drills ? practiceState.problems.concat(practiceState.drills || []) : practiceState.problems;
+  return pool.filter(p => {
     const r = practiceState.progress[p.id]?.review;
     return r && r.due <= now;
   });
@@ -657,7 +724,7 @@ function unlockedCategories() {
 
 function pickMixedProblem(excludeId) {
   const unlocked = new Set(unlockedCategories().map(c => c.id));
-  const due = dueReviews().filter(p => p.id !== excludeId);
+  const due = dueReviews({ drills: false }).filter(p => p.id !== excludeId);
   if (due.length) return due[Math.floor(Math.random() * due.length)];
   // Otherwise, the next unsolved rung of each unlocked ladder.
   const candidates = [];
@@ -742,6 +809,7 @@ function renderAfterSolve(problem) {
   const prior = practiceState.progress[problem.id]?.review;
   const base = prior && !practiceState.mode?.reviewScheduled ? prior.interval : (practiceState.mode?.reviewBase || 0);
   const checks = problem.selfCheck || [];
+  const afterDrill = problem.kind === 'drill' && !practiceState.mode?.review ? nextAfterDrill(problem) : null;
   target.classList.remove('hidden');
   target.innerHTML = `
     <div class="after-solve-head">Accepted. Before moving on:</div>
@@ -766,6 +834,7 @@ function renderAfterSolve(problem) {
       <div class="rating-result"></div>
     </div>
     ${practiceState.mode?.mixed ? '<button id="mixed-next" class="btn-small primary">Next mixed problem</button>' : ''}
+    ${afterDrill ? `<button id="drill-next" class="btn-small primary">${afterDrill.kind === 'drill' ? 'Next drill' : 'Drills done. Start the ladder'}: ${escapeHtml(afterDrill.title)}</button>` : ''}
   `;
   target.querySelectorAll('.self-check-show').forEach(btn => {
     btn.onclick = () => btn.nextElementSibling.classList.remove('hidden');
@@ -779,6 +848,8 @@ function renderAfterSolve(problem) {
   });
   const next = el('mixed-next');
   if (next) next.onclick = () => startMixed(problem.id);
+  const drillNext = el('drill-next');
+  if (drillNext) drillNext.onclick = () => openProblem(afterDrill.id);
   // Default schedule in case the learner skips the rating, once per visit.
   if (!practiceState.mode) practiceState.mode = {};
   if (!practiceState.mode.reviewScheduled) {

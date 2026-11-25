@@ -11,13 +11,19 @@ import (
 // hints fade from a question to a code skeleton, and the solution explains the
 // brute force, the insight that improves it, and why the result is correct.
 type Problem struct {
-	ID              string     `json:"id"`
-	Number          int        `json:"number"` // LeetCode problem number
-	Order           int        `json:"order"`  // position in its category's ladder, from 1
-	Title           string     `json:"title"`
-	Slug            string     `json:"slug"`
-	Difficulty      string     `json:"difficulty"` // Easy, Medium, Hard
-	Category        string     `json:"category"`
+	ID         string `json:"id"`
+	Number     int    `json:"number"` // LeetCode problem number
+	Order      int    `json:"order"`  // position in its category's ladder, from 1
+	Title      string `json:"title"`
+	Slug       string `json:"slug"`
+	Difficulty string `json:"difficulty"` // Easy, Medium, Hard
+	Category   string `json:"category"`
+	// Kind is "" for a ladder problem or "drill" for a foundations drill:
+	// building a structure or running a core algorithm on its own, before
+	// the ladder applies it. Drills have their own Order sequence, may have
+	// Number 0 when LeetCode has no such problem, and stay out of Mixed
+	// Practice and mock interviews.
+	Kind            string     `json:"kind,omitempty"`
 	Tags            []string   `json:"tags"`
 	RelatedChapters []int      `json:"relatedChapters"`
 	Description     string     `json:"description"` // Markdown
@@ -164,6 +170,12 @@ type ProblemEntry struct {
 	Tags       []string `json:"tags"`
 	Path       string   `json:"path"`
 }
+
+// IsDrill reports whether the problem is a foundations drill.
+func (p *Problem) IsDrill() bool { return p.Kind == KindDrill }
+
+// KindDrill marks a foundations drill (see Problem.Kind).
+const KindDrill = "drill"
 
 // GetVisibleTestCases returns only non-hidden test cases.
 func (p *Problem) GetVisibleTestCases() []TestCase {
