@@ -52,7 +52,7 @@
     if (view.held.has(id) && view.current !== id) cls.push('held');
     if (view.wrong === id) cls.push('wrong');
     if (view.target === id) cls.push('target');
-    const clickable = view.clickable && !idx;
+    const clickable = view.clickable && (!idx || view.repeats);
     if (clickable) cls.push('clickable');
     return `<g class="${cls.join(' ')}" data-id="${esc(id)}" ${clickable ? `role="button" tabindex="0" aria-label="Node ${esc(label)}"` : ''}>
       <circle cx="${x}" cy="${y}" r="17" />
@@ -64,7 +64,7 @@
 
   function svgWrap(width, height, body, label) {
     return `<svg class="trace-tree" viewBox="0 0 ${width} ${height}" style="width:100%;max-width:${Math.round(width * 1.3)}px" role="img" aria-label="${esc(label)}">
-      <defs><marker id="trace-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrowhead" /></marker></defs>
+      <defs><marker id="trace-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrowhead" /></marker></defs>
       ${body}</svg>`;
   }
 
@@ -458,11 +458,15 @@
     return { n, nodes, byId, edges, adj, directed, weighted };
   }
 
-  function graphSvg(g, view) {
+  // graphSvg draws g. A step's tree (a Set of edge ids) is drawn bold. With
+  // edgeIds, each weight badge is clickable and carries its edge's id, and
+  // the nodes are not clickable.
+  function graphSvg(g, view, { edgeIds = false } = {}) {
     const r = 17;
     let edges = '';
     let weights = '';
-    g.edges.forEach(({ u, v, w }) => {
+    const tree = view.step?.tree || (edgeIds ? new Set(view.picked.keys()) : null);
+    g.edges.forEach(({ u, v, w, id }) => {
       const a = g.byId.get(u);
       const b = g.byId.get(v);
       const dx = b.x - a.x;
@@ -475,22 +479,39 @@
       const x2 = b.x - ux * (r + (g.directed ? 3 : 0));
       const y2 = b.y - uy * (r + (g.directed ? 3 : 0));
       const hot = view.step?.edge && ((view.step.edge[0] === u && view.step.edge[1] === v) || (!g.directed && view.step.edge[0] === v && view.step.edge[1] === u));
-      edges += `<line class="${hot ? 'hot' : ''}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" ${g.directed ? 'marker-end="url(#trace-arrow)"' : ''} />`;
+      const cls = [hot ? 'hot' : '', tree?.has(id) ? 'tree' : ''].filter(Boolean).join(' ');
+      edges += `<line class="${cls}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" ${g.directed ? 'marker-end="url(#trace-arrow)"' : ''} />`;
       if (g.weighted) {
-        const mx = (a.x + b.x) / 2 - uy * 9;
-        const my = (a.y + b.y) / 2 + ux * 9;
-        weights += `<g class="weight"><circle cx="${mx}" cy="${my}" r="9" /><text x="${mx}" y="${my}" dy="0.35em">${w}</text></g>`;
+        const mx = (a.x + b.x) / 2 - uy * (edgeIds ? 0 : 9);
+        const my = (a.y + b.y) / 2 + ux * (edgeIds ? 0 : 9);
+        weights += edgeIds ? edgeBadge(id, mx, my, w, `${u}–${v}`, view) : `<g class="weight"><circle cx="${mx}" cy="${my}" r="9" /><text x="${mx}" y="${my}" dy="0.35em">${w}</text></g>`;
       }
     });
     const dist = view.step?.dist;
     const nodes = g.nodes.map(nd => {
       const extra = dist && dist[nd.id] !== undefined
         ? `<text class="dist" x="${nd.x}" y="${nd.y + 31}">${dist[nd.id] === Infinity ? '∞' : dist[nd.id]}</text>` : '';
-      return nodeSvg(nd.id, nd.x, nd.y, nd.id, view, extra);
+      return nodeSvg(nd.id, nd.x, nd.y, nd.id, edgeIds ? { ...view, clickable: false, picked: new Map(), wrong: undefined } : view, extra);
     }).join('');
     const width = Math.max(...g.nodes.map(nd => nd.x)) + 50;
     const height = Math.max(...g.nodes.map(nd => nd.y)) + 50;
     return svgWrap(width, height, `<g class="edges">${edges}</g>${weights}${nodes}`, g.directed ? 'Directed graph' : 'Graph');
+  }
+
+  // edgeBadge is a clickable weight on an edge, styled like a small node.
+  function edgeBadge(id, x, y, w, name, view) {
+    const cls = ['tnode', 'wedge'];
+    const idx = view.picked.get(id);
+    if (idx) cls.push('picked');
+    if (view.wrong === id) cls.push('wrong');
+    const clickable = view.clickable && !idx;
+    if (clickable) cls.push('clickable');
+    return `<g class="${cls.join(' ')}" data-id="${esc(id)}" ${clickable ? `role="button" tabindex="0" aria-label="Edge ${esc(name)}, weight ${w}"` : ''}>
+      <circle cx="${x}" cy="${y}" r="12" style="fill: var(--panel); stroke: none" />
+      <circle cx="${x}" cy="${y}" r="12" />
+      <text x="${x}" y="${y}" dy="0.35em">${w}</text>
+      ${idx ? `<text class="badge" x="${x + 13}" y="${y - 10}">${idx}</text>` : ''}
+    </g>`;
   }
 
   function adjacencyHtml(g) {
@@ -2276,7 +2297,7 @@
   const fmtPath = (p) => `[${p.join(', ')}]`;
 
   const BT_CODE = {
-    subsets: ['def backtrack(start, path):', '    out.append(path[:])          # every node is a subset', '    for i in range(start, len(nums)):', '        path.append(nums[i])', '        backtrack(i + 1, path)', '        path.pop()                # undo the choice'],
+    subsets: ['def backtrack(start, path):', '    out.append(path[:])   # every node is a subset', '    for i in range(start, len(nums)):', '        path.append(nums[i])', '        backtrack(i + 1, path)', '        path.pop()         # undo the choice'],
     combine: ['def backtrack(start, path):', '    if len(path) == k:', '        out.append(path[:])', '        return', '    for x in range(start, n + 1):', '        path.append(x)', '        backtrack(x + 1, path)', '        path.pop()'],
     permute: ['def backtrack(path):', '    if len(path) == len(items):', '        out.append(path[:])', '        return', '    for i, x in enumerate(items):', '        if used[i]: continue', '        used[i] = True; path.append(x)', '        backtrack(path)', '        used[i] = False; path.pop()'],
     queens: ['def place(row):', '    if row == n: return True', '    for col in range(n):', '        if safe(row, col):', '            queens[row] = col', '            if place(row + 1): return True', '            queens[row] = None    # dead end: undo', '    return False'],
@@ -2690,9 +2711,9 @@
 
   const IV_CODE = {
     merge: ['intervals.sort()                 # by start', 'merged = [intervals[0]]', 'for s, e in intervals[1:]:', '    if s <= merged[-1][1]:       # touches or overlaps', '        merged[-1][1] = max(merged[-1][1], e)', '    else:', '        merged.append([s, e])'],
-    sweep: ['events = [(s, +1) for s, e in iv] + [(e, -1) for s, e in iv]', 'events.sort(key=lambda t: (t[0], -t[1]))  # starts first: closed', 'open_now = best = 0', 'for x, d in events:', '    open_now += d', '    best = max(best, open_now)'],
+    sweep: ['events = [(s, +1) for s, e in iv]', 'events += [(e, -1) for s, e in iv]', 'events.sort(key=lambda t: (t[0], -t[1]))  # starts 1st', 'open_now = best = 0', 'for x, d in events:', '    open_now += d', '    best = max(best, open_now)'],
     arrows: ['balloons.sort(key=lambda b: b[1])   # by end', 'arrow = None', 'for s, e in balloons:', '    if arrow is not None and s <= arrow:', '        continue                     # already burst', '    arrow = e                        # shoot at its end', '    arrows += 1'],
-    covered: ['iv.sort(key=lambda t: (t[0], -t[1]))  # start up, end down', 'far = -1', 'for s, e in iv:', '    if e <= far:', '        covered.append([s, e])', '    else:', '        far = e'],
+    covered: ['iv.sort(key=lambda t: (t[0], -t[1]))  # end desc on ties', 'far = -1', 'for s, e in iv:', '    if e <= far:', '        covered.append([s, e])', '    else:', '        far = e'],
   };
 
   function makeIntervals(count, maxLen = 6) {
@@ -2784,7 +2805,7 @@
       events.forEach(([x, d, i]) => {
         if (d > 0) open.push(i); else open.splice(open.indexOf(i), 1);
         if (open.length > top) top = open.length;
-        steps.push({ line: 4, text: `x = ${x}: ${fmt(iv[i])} ${d > 0 ? 'opens' : 'closes'}. ${open.length} open${open.length === top && d > 0 ? ` (the most so far: ${top})` : ''}.`, current: i, heldIds: [...open], lines: [x], heldLabel: 'open', held: open.map(j => fmt(iv[j])) });
+        steps.push({ line: 5, text: `x = ${x}: ${fmt(iv[i])} ${d > 0 ? 'opens' : 'closes'}. ${open.length} open${open.length === top && d > 0 ? ` (the most so far: ${top})` : ''}.`, current: i, heldIds: [...open], lines: [x], heldLabel: 'open', held: open.map(j => fmt(iv[j])) });
       });
       return {
         prompt: 'Sweep the line left to right (closed intervals: touching counts as overlapping, so starts are processed before ends at the same x). Click a set of intervals that are <strong>all open at once</strong> when the count is highest.',
@@ -2905,6 +2926,1516 @@
   };
 
   // ===========================================================================
+  // Arrays & hashing
+  // ===========================================================================
+
+  const AH_CODE = {
+    twosum: ['seen = {}   # value -> index', 'for j, x in enumerate(nums):', '    if target - x in seen:', '        return [seen[target - x], j]', '    seen[x] = j'],
+    prefix: ['prefix = [0]', 'for x in nums:', '    prefix.append(prefix[-1] + x)', '# sum(nums[l..r]) == prefix[r + 1] - prefix[l]'],
+    starts: ['s = set(nums)', 'for x in s:', '    if x - 1 in s:', '        continue          # not the start of a run', '    length = 1', '    while x + length in s:', '        length += 1'],
+    count: ['count = {0: 1}   # prefix sum -> how often seen', 'total = ans = 0', 'for x in nums:', '    total += x', '    ans += count.get(total - k, 0)', '    count[total] = count.get(total, 0) + 1'],
+  };
+
+  const fmtMap = (m) => (Object.keys(m).length ? Object.entries(m).map(([k, v]) => `${k}: ${v}`) : []);
+
+  function arraysQuestion(exId, size) {
+    const n = { small: 6, medium: 8, large: 10 }[size];
+
+    if (exId === 'twosum') {
+      const a = distinctValues(n, 30);
+      const i0 = randInt(0, n - 2);
+      const target = a[i0] + a[randInt(i0 + 1, n - 1)];
+      const seen = {};
+      const steps = [];
+      let ans;
+      for (let j = 0; j < n; j++) {
+        const x = a[j];
+        if ((target - x) in seen) {
+          ans = [seen[target - x], j];
+          steps.push({ line: 3, text: `${target} - ${x} = ${target - x} is in seen (index ${seen[target - x]}): return [${ans.join(', ')}].`, current: j, heldIds: [seen[target - x]], heldLabel: 'seen', held: fmtMap(seen) });
+          break;
+        }
+        seen[x] = j;
+        steps.push({ line: 4, text: `${target} - ${x} = ${target - x} is not in seen yet. Remember ${x} at index ${j}.`, current: j, heldLabel: 'seen', held: fmtMap(seen) });
+      }
+      return {
+        prompt: `Two Sum, one pass with a hash map, target <strong>${target}</strong>. Click the pair it returns: the earlier index, then the later.`,
+        mode: 'sequence',
+        slots: ['i', 'j'],
+        ids: a.map((_, i) => i),
+        label: cellLabel(a),
+        svg: (view) => arraySvg(a, view),
+        expected: ans,
+        fixedLength: true,
+        code: AH_CODE.twosum,
+        steps: () => steps,
+        right: () => `[${ans.join(', ')}]: ${a[ans[0]]} + ${a[ans[1]]} = ${target}. It returns as soon as the second number of a pair arrives, because the first is already in the map.`,
+        wrong: (k, answer) => {
+          const ok = a[answer[0]] + a[answer[1]] === target;
+          return `<p class="trace-bad">It returns [${ans.join(', ')}].</p>
+            <p class="trace-why">${ok ? `${a[answer[0]]} + ${a[answer[1]]} is also ${target}, but the loop stops at the first index j whose complement was already seen, which is ${ans[1]}.` : `${a[answer[0]]} + ${a[answer[1]]} is not ${target}.`} Each number looks up target - x among the numbers <em>before</em> it, so one pass is enough.</p>`;
+        },
+      };
+    }
+
+    if (exId === 'prefix') {
+      const a = Array.from({ length: n }, () => randInt(-5, 9));
+      const p = [0];
+      a.forEach(x => p.push(p[p.length - 1] + x));
+      const l = randInt(0, n - 2);
+      const r = randInt(l + 1, n - 1);
+      const steps = [{ line: 0, text: 'prefix[0] = 0: the sum of no numbers.', current: 0, vals: p.map((v, i) => (i === 0 ? v : '')) }];
+      for (let i = 1; i <= n; i++) {
+        steps.push({ line: 2, text: `prefix[${i}] = prefix[${i - 1}] + nums[${i - 1}] = ${p[i - 1]} + ${a[i - 1]} = ${p[i]}: the sum of the first ${i}.`, current: i, vals: p.map((v, j) => (j <= i ? v : '')) });
+      }
+      steps.push({ line: 3, text: `sum(nums[${l}..${r}]) = prefix[${r + 1}] - prefix[${l}] = ${p[r + 1]} - ${p[l]} = ${p[r + 1] - p[l]}.`, vals: p, heldIds: [r + 1, l], current: r + 1 });
+      return {
+        prompt: `The cells are the <strong>prefix sums</strong> of nums: prefix[i] is the sum of the first i numbers. To get sum(nums[${l}..${r}]) (inclusive), click the prefix you take, then the one you subtract.`,
+        aside: `<p class="trace-ops">nums = <code>[${a.join(', ')}]</code></p>`,
+        mode: 'sequence',
+        slots: ['take', 'minus'],
+        ids: p.map((_, i) => i),
+        label: (id) => `prefix[${id}]`,
+        svg: (view) => arraySvg(p, view),
+        expected: [r + 1, l],
+        fixedLength: true,
+        code: AH_CODE.prefix,
+        steps: () => steps,
+        right: () => `prefix[${r + 1}] - prefix[${l}] = ${p[r + 1]} - ${p[l]} = ${p[r + 1] - p[l]}. prefix[${r + 1}] covers nums[0..${r}]; subtracting prefix[${l}] removes nums[0..${l - 1}].`,
+        wrong: (k, answer) => `<p class="trace-bad">It is prefix[${r + 1}] - prefix[${l}].</p>
+          <p class="trace-why">${answer[0] === r ? `prefix[${r}] stops before nums[${r}]: prefix[i] covers indexes 0..i - 1, so to include nums[${r}] take prefix[${r + 1}]. ` : ''}${answer[1] === l - 1 ? `prefix[${l - 1}] would leave nums[${l - 1}] in. ` : answer[1] === l + 1 ? `prefix[${l + 1}] would also remove nums[${l}]. ` : ''}The prefix array has one more cell than nums, and that shift is where the off-by-ones come from.</p>`,
+      };
+    }
+
+    if (exId === 'starts') {
+      let vals;
+      let starts;
+      for (let tries = 0; tries < 200; tries++) {
+        const set = new Set();
+        while (set.size < n) {
+          const s = randInt(1, 40);
+          const len = randInt(1, 4);
+          for (let v = s; v < s + len && set.size < n; v++) set.add(v);
+        }
+        vals = shuffle([...set]);
+        starts = vals.map((v, i) => i).filter(i => !set.has(vals[i] - 1));
+        if (starts.length >= 2 && starts.length <= n - 2) break;
+      }
+      const set = new Set(vals);
+      const steps = vals.map((x, i) => {
+        if (set.has(x - 1)) return { line: 3, text: `${x - 1} is in the set, so ${x} is inside a run: skip it. Its run is counted from its start.`, current: i, out: starts.filter(j => j <= i) };
+        let len = 1;
+        while (set.has(x + len)) len++;
+        return { line: 6, text: `${x - 1} is not in the set, so ${x} starts a run: ${Array.from({ length: len }, (_, t) => x + t).join(', ')} (length ${len}).`, current: i, out: starts.filter(j => j <= i) };
+      });
+      return {
+        prompt: 'Longest consecutive sequence in O(n): only start counting from a number that begins a run. Click <strong>every number the while loop starts from</strong>, then Check.',
+        mode: 'sequence',
+        ids: vals.map((_, i) => i),
+        label: (id) => String(vals[id]),
+        svg: (view) => arraySvg(vals, view),
+        expected: starts,
+        fixedLength: false,
+        validate: (ans) => ({ ok: sameSet(ans, starts), k: 0 }),
+        code: AH_CODE.starts,
+        outLabel: 'Run starts',
+        steps: () => steps,
+        right: () => `${starts.map(i => vals[i]).sort((x, y) => x - y).join(', ')}. Each number is walked over by exactly one while loop, from its run's start, so the total work is O(n).`,
+        wrong: (k, ans) => {
+          const extra = ans.find(i => !starts.includes(i));
+          const missing = starts.find(i => !ans.includes(i));
+          return `<p class="trace-bad">The starts are ${starts.map(i => vals[i]).sort((x, y) => x - y).join(', ')}.</p>
+            <p class="trace-why">${extra !== undefined ? `${vals[extra] - 1} is in the set, so ${vals[extra]} is in the middle of a run. ` : ''}${missing !== undefined ? `${vals[missing] - 1} is not in the set, so ${vals[missing]} starts a run. ` : ''}A start is a number whose predecessor is missing; position in the array does not matter.</p>`;
+        },
+      };
+    }
+
+    // count: subarrays summing to k with prefix counts
+    let a;
+    let k;
+    let ans;
+    let unseeded;
+    for (let tries = 0; tries < 300; tries++) {
+      a = Array.from({ length: n }, () => randInt(-3, 5));
+      k = randInt(2, 8);
+      ans = 0;
+      for (let i = 0; i < n; i++) for (let j = i; j < n; j++) if (a.slice(i, j + 1).reduce((x, y) => x + y, 0) === k) ans++;
+      let t = 0;
+      unseeded = ans;
+      a.forEach(x => { t += x; if (t === k) unseeded--; });
+      if (ans >= 2 && unseeded !== ans) break;
+    }
+    const count = { 0: 1 };
+    let total = 0;
+    let run = 0;
+    const lines = [];
+    a.forEach((x, i) => {
+      total += x;
+      const add = count[total - k] || 0;
+      run += add;
+      lines.push(`i = ${i}: total ${total}, look up ${total} - ${k} = ${total - k}: +${add} (ans ${run})`);
+      count[total] = (count[total] || 0) + 1;
+    });
+    const opts = [...new Set([ans, unseeded, ans + 1, Math.max(0, ans - 1)])].slice(0, 4).sort((x, y) => x - y);
+    return {
+      prompt: `How many subarrays (contiguous, non-empty) of this array sum to <strong>${k}</strong>?`,
+      mode: 'choice',
+      svg: (view) => arraySvg(a, view),
+      sequence: [`k = ${k}`],
+      choices: opts.map(v => ({ id: String(v), label: String(v) })),
+      answerId: String(ans),
+      explain: (picked) => `<p class="${picked === String(ans) ? 'trace-ok' : 'trace-bad'}"><strong>${picked === String(ans) ? 'Right' : 'Not quite'}:</strong> ${ans}.${picked === String(unseeded) ? ` ${unseeded} misses the subarrays that start at index 0: that is what happens without the {0: 1} seed in the map.` : ''}</p>
+        <p class="trace-why">A subarray ending at i sums to k when some earlier prefix equals total - k, so the map counts prefixes seen so far:</p>
+        <ol class="trace-notes">${lines.map(t => `<li>${esc(t)}</li>`).join('')}</ol>`,
+    };
+  }
+
+  KITS['arrays-hashing'] = {
+    title: 'Arrays & hashing',
+    exercises: [
+      { id: 'twosum', name: 'Two Sum: which pair?' },
+      { id: 'prefix', name: 'Prefix sums: range sum' },
+      { id: 'starts', name: 'Consecutive runs: starts' },
+      { id: 'count', name: 'Subarrays summing to k' },
+    ],
+    make: arraysQuestion,
+  };
+
+  // ===========================================================================
+  // 2-D dynamic programming
+  // ===========================================================================
+
+  // tableSvg draws an R x C grid of numbers. Ids are r * C + c. A step can
+  // show a dp table instead (step.table, with '' for cells not filled yet).
+  function tableSvg(grid, view, { blocked = new Set(), clickableIds = null, dim = new Set(), mark = null, heads = false } = {}) {
+    const R = grid.length;
+    const C = grid[0].length;
+    const size = 46;
+    const pad = heads ? 34 : 18;
+    const table = view.step?.table;
+    let body = '';
+    for (let r = 0; r < R; r++) {
+      for (let c = 0; c < C; c++) {
+        const id = r * C + c;
+        const cls = ['tnode', 'acell', 'tcell'];
+        if (blocked.has(id)) cls.push('blocked');
+        if ((view.step?.dim || dim).has(id)) cls.push('dim');
+        if (!view.step && mark === id) cls.push('target');
+        const idx = view.picked.get(id);
+        if (idx) cls.push('picked');
+        if (view.current === id) cls.push('current');
+        if (view.held.has(id) && view.current !== id) cls.push('held');
+        if (view.wrong === id) cls.push('wrong');
+        const clickable = view.clickable && !blocked.has(id) && !idx && (!clickableIds || clickableIds.includes(id));
+        if (clickable) cls.push('clickable');
+        const x = pad + c * size;
+        const y = pad + r * size;
+        const text = blocked.has(id) ? '■' : table ? table[r][c] : grid[r][c];
+        body += `<g class="${cls.join(' ')}" data-id="${id}" ${clickable ? `role="button" tabindex="0" aria-label="Row ${r}, column ${c}"` : ''}>
+          <rect x="${x + 2}" y="${y + 2}" width="${size - 4}" height="${size - 4}" rx="5" />
+          <text x="${x + size / 2}" y="${y + size / 2}" dy="0.35em">${esc(text)}</text>
+          ${table && !blocked.has(id) ? `<text class="idx" x="${x + 10}" y="${y + 13}">${esc(grid[r][c])}</text>` : ''}
+          ${idx ? `<text class="badge" x="${x + size - 11}" y="${y + 13}">${idx}</text>` : ''}</g>`;
+      }
+    }
+    if (heads) {
+      for (let c = 0; c < C; c++) body += `<text class="idx head" x="${pad + c * size + size / 2}" y="${pad - 10}">${c}</text>`;
+      for (let r = 0; r < R; r++) body += `<text class="idx head" x="${pad - 14}" y="${pad + r * size + size / 2}" dy="0.35em">${r}</text>`;
+    }
+    return svgWrap(C * size + 2 * pad, R * size + 2 * pad, body, 'Grid');
+  }
+
+  const DP2_CODE = {
+    minpath: ['dp[0][0] = grid[0][0]', 'for r in range(R):', '    for c in range(C):', '        up = dp[r - 1][c] if r else inf', '        left = dp[r][c - 1] if c else inf', '        dp[r][c] = grid[r][c] + min(up, left)'],
+    lcs: ['for i in range(1, len(a) + 1):', '    for j in range(1, len(b) + 1):', '        if a[i - 1] == b[j - 1]:', '            dp[i][j] = dp[i - 1][j - 1] + 1', '        else:', '            dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])'],
+  };
+
+  const tableHtml = (rows, rowHead = (r) => r, colHead = null) => `<table class="trace-orders trace-dp">${colHead ? `<tr><th></th>${colHead.map(h => `<th>${esc(h)}</th>`).join('')}</tr>` : ''}${rows.map((row, r) => `<tr><th>${esc(rowHead(r))}</th>${row.map(v => `<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</table>`;
+
+  function dp2Question(exId, size) {
+    const [R, C] = { small: [3, 3], medium: [3, 4], large: [4, 5] }[size];
+
+    if (exId === 'minpath') {
+      let grid;
+      let dp;
+      for (let tries = 0; tries < 100; tries++) {
+        grid = Array.from({ length: R }, () => Array.from({ length: C }, () => randInt(1, 9)));
+        dp = grid.map(row => row.map(() => 0));
+        for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) dp[r][c] = grid[r][c] + (r || c ? Math.min(r ? dp[r - 1][c] : Infinity, c ? dp[r][c - 1] : Infinity) : 0);
+        // Not just the obvious all-right-then-down path.
+        const edge = grid[0].reduce((x, y) => x + y, 0) + grid.slice(1).reduce((x, row) => x + row[C - 1], 0);
+        if (edge !== dp[R - 1][C - 1]) break;
+      }
+      const best = dp[R - 1][C - 1];
+      const steps = [];
+      const shown = grid.map(row => row.map(() => ''));
+      for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) {
+        shown[r][c] = dp[r][c];
+        const from = !r && !c ? 'the start' : !r ? `left (${dp[r][c - 1]})` : !c ? `above (${dp[r - 1][c]})` : `min(above ${dp[r - 1][c]}, left ${dp[r][c - 1]})`;
+        steps.push({ line: 5, text: `dp[${r}][${c}] = ${grid[r][c]} + ${from === 'the start' ? '0' : from} = ${dp[r][c]}.`, current: r * C + c, heldIds: [r ? (r - 1) * C + c : -1, c ? r * C + c - 1 : -1], table: shown.map(row => [...row]) });
+      }
+      const path = [];
+      let r = R - 1;
+      let c = C - 1;
+      while (r || c) { path.unshift(r * C + c); if (!r) c--; else if (!c) r--; else if (dp[r - 1][c] <= dp[r][c - 1]) r--; else c--; }
+      steps.push({ line: 5, text: `Best: ${best}. Walk back from the corner, always to the smaller neighbour, to recover a path.`, table: shown.map(row => [...row]), out: [0, ...path] });
+      const id = (rr, cc) => rr * C + cc;
+      return {
+        prompt: `Minimum path sum, moving only right or down. Click a cheapest path cell by cell, from the top-left to the bottom-right.`,
+        mode: 'sequence',
+        ids: grid.flatMap((row, rr) => row.map((_, cc) => id(rr, cc))),
+        label: (x) => String(grid[Math.floor(x / C)][x % C]),
+        svg: (view) => tableSvg(grid, view),
+        expected: [0, ...path],
+        fixedLength: true,
+        validate: (ans) => {
+          let k = 0;
+          if (ans[0] !== 0) return { ok: false, k: 0 };
+          for (k = 1; k < ans.length; k++) {
+            const [pr, pc] = [Math.floor(ans[k - 1] / C), ans[k - 1] % C];
+            const [cr, cc] = [Math.floor(ans[k] / C), ans[k] % C];
+            if (!((cr === pr && cc === pc + 1) || (cc === pc && cr === pr + 1))) break;
+          }
+          const sum = ans.reduce((s, x) => s + grid[Math.floor(x / C)][x % C], 0);
+          return { ok: k === ans.length && sum === best, k };
+        },
+        code: DP2_CODE.minpath,
+        steps: () => steps,
+        right: () => `Sum ${best}. dp[r][c] is the cheapest way to reach (r, c): its own cost plus the cheaper of the cell above and the cell to the left.`,
+        wrong: (k, ans) => {
+          if (k < ans.length) return `<p class="trace-bad">${k === 0 ? 'The path starts at the top-left cell.' : `Step ${k + 1} is not one move right or down from the cell before.`}</p>`;
+          const sum = ans.reduce((s, x) => s + grid[Math.floor(x / C)][x % C], 0);
+          return `<p class="trace-bad">That path costs ${sum}; the cheapest costs ${best}.</p>
+            <p class="trace-why">Picking the cheaper next cell each time is greedy and can walk into an expensive region. The table compares every way in. dp:</p>${tableHtml(dp)}`;
+        },
+      };
+    }
+
+    if (exId === 'paths') {
+      let blocked;
+      let ways;
+      let naive;
+      let free;
+      for (let tries = 0; tries < 300; tries++) {
+        blocked = new Set();
+        const count = randInt(1, Math.max(1, Math.floor(R * C / 5)));
+        while (blocked.size < count) { const x = randInt(1, R * C - 2); blocked.add(x); }
+        const solve = (edgeBug, ignore) => {
+          const w = Array.from({ length: R }, () => Array(C).fill(0));
+          for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) {
+            if (!ignore && blocked.has(r * C + c)) { w[r][c] = 0; continue; }
+            if (!r || !c) w[r][c] = edgeBug ? 1 : (!r && !c ? 1 : !r ? w[r][c - 1] : w[r - 1][c]);
+            else w[r][c] = w[r - 1][c] + w[r][c - 1];
+          }
+          return w;
+        };
+        ways = solve(false, false);
+        naive = solve(true, false)[R - 1][C - 1];
+        free = solve(false, true)[R - 1][C - 1];
+        if (ways[R - 1][C - 1] >= 1 && naive !== ways[R - 1][C - 1]) break;
+      }
+      const ans = ways[R - 1][C - 1];
+      const grid = Array.from({ length: R }, () => Array(C).fill(''));
+      const opts = [...new Set([ans, naive, free, ans + 1])].filter(v => v >= 0).slice(0, 4).sort((x, y) => x - y);
+      return {
+        prompt: 'How many paths go from the top-left to the bottom-right, moving only right or down and never through a ■?',
+        mode: 'choice',
+        svg: (view) => tableSvg(grid, view, { blocked }),
+        sequence: [`${R} × ${C} grid`],
+        choices: opts.map(v => ({ id: String(v), label: String(v) })),
+        answerId: String(ans),
+        explain: (picked) => `<p class="${picked === String(ans) ? 'trace-ok' : 'trace-bad'}"><strong>${picked === String(ans) ? 'Right' : 'Not quite'}:</strong> ${ans}.${picked === String(naive) ? ` ${naive} comes from setting the whole first row and column to 1: a block there cuts off every cell after it.` : picked === String(free) ? ` ${free} ignores the blocks.` : ''}</p>
+          <p class="trace-why">ways[r][c] = ways above + ways to the left, and 0 on a block:</p>${tableHtml(ways.map((row, r) => row.map((v, c) => (blocked.has(r * C + c) ? '■' : v))))}`,
+      };
+    }
+
+    if (exId === 'lcs') {
+      const alpha = 'ABCD';
+      const la = { small: 5, medium: 6, large: 8 }[size];
+      let a;
+      let b;
+      let dp;
+      for (let tries = 0; tries < 200; tries++) {
+        a = Array.from({ length: la }, () => pick([...alpha]));
+        b = Array.from({ length: la - 1 + randInt(0, 2) }, () => pick([...alpha]));
+        dp = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
+        for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] + 1 : Math.max(dp[i - 1][j], dp[i][j - 1]);
+        if (dp[a.length][b.length] >= 3 && dp[a.length][b.length] < a.length - 1) break;
+      }
+      const L = dp[a.length][b.length];
+      const isSub = (s) => { let j = 0; for (const ch of b) if (j < s.length && ch === s[j]) j++; return j === s.length; };
+      const one = [];
+      let i = a.length;
+      let j = b.length;
+      while (i && j) { if (a[i - 1] === b[j - 1]) { one.unshift(i - 1); i--; j--; } else if (dp[i - 1][j] >= dp[i][j - 1]) i--; else j--; }
+      const steps = a.map((ch, r) => ({ line: 5, text: `Row ${r + 1} ('${ch}'): ${dp[r + 1].slice(1).join(' ')}. Matching '${ch}' with the same letter in b adds 1 to the diagonal; otherwise take the better of above and left.`, current: r, heldIds: a.map((_, x) => x).filter(x => x < r) }));
+      return {
+        prompt: `Click a <strong>longest common subsequence</strong> of a and b, as letters of a, left to right. Any one of the longest counts.`,
+        aside: `<p class="trace-ops">a = <code>${a.join('')}</code> (the cells) &nbsp; b = <code>${b.join('')}</code></p>`,
+        mode: 'sequence',
+        ids: a.map((_, x) => x),
+        label: cellLabel(a),
+        svg: (view) => arraySvg(a, view),
+        expected: one,
+        fixedLength: false,
+        validate: (ans) => {
+          const inc = ans.every((x, t) => !t || x > ans[t - 1]);
+          const sub = isSub(ans.map(x => a[x]));
+          return { ok: inc && sub && ans.length === L, k: inc && sub ? ans.length : 0 };
+        },
+        code: DP2_CODE.lcs,
+        steps: () => steps,
+        right: () => `Length ${L}, for example ${one.map(x => a[x]).join('')}. dp[i][j] is the LCS of the first i letters of a and the first j of b.`,
+        wrong: (k, ans) => {
+          const inc = ans.every((x, t) => !t || x > ans[t - 1]);
+          const word = ans.map(x => a[x]).join('');
+          return `<p class="trace-bad">${!inc ? 'Pick the letters left to right.' : !isSub(ans.map(x => a[x])) ? `${word} is not a subsequence of b (${b.join('')}).` : `${word} is common to both, but the longest has ${L} letters, for example ${one.map(x => a[x]).join('')}.`}</p>
+            <p class="trace-why">dp table (rows: a, columns: b):</p>${tableHtml(dp.slice(1).map(row => row.slice(1)), (r) => a[r], b)}`;
+        },
+      };
+    }
+
+    // knapsack (0/1), with the unbounded and greedy answers as traps
+    let items;
+    let cap;
+    let best;
+    let unb;
+    let greedy;
+    for (let tries = 0; tries < 300; tries++) {
+      const count = { small: 3, medium: 4, large: 5 }[size];
+      items = Array.from({ length: count }, () => ({ w: randInt(1, 6), v: randInt(2, 15) }));
+      cap = randInt(5, 10);
+      const zero = Array(cap + 1).fill(0);
+      items.forEach(({ w, v }) => { for (let c = cap; c >= w; c--) zero[c] = Math.max(zero[c], zero[c - w] + v); });
+      best = zero[cap];
+      const u = Array(cap + 1).fill(0);
+      items.forEach(({ w, v }) => { for (let c = w; c <= cap; c++) u[c] = Math.max(u[c], u[c - w] + v); });
+      unb = u[cap];
+      let room = cap;
+      greedy = 0;
+      [...items].sort((x, y) => y.v / y.w - x.v / x.w).forEach(({ w, v }) => { if (w <= room) { room -= w; greedy += v; } });
+      if (unb !== best && greedy !== best) break;
+    }
+    const rows = [];
+    const t = Array(cap + 1).fill(0);
+    items.forEach(({ w, v }) => { for (let c = cap; c >= w; c--) t[c] = Math.max(t[c], t[c - w] + v); rows.push([...t]); });
+    const opts = [...new Set([best, unb, greedy, best + 1])].slice(0, 4).sort((x, y) => x - y);
+    return {
+      prompt: `0/1 knapsack: each item at most once, capacity <strong>${cap}</strong>. What is the most value you can carry?`,
+      mode: 'choice',
+      svg: (view) => arraySvg(items.map(it => `${it.w}|${it.v}`), view),
+      sequence: items.map(it => `w ${it.w}, v ${it.v}`),
+      choices: opts.map(v => ({ id: String(v), label: String(v) })),
+      answerId: String(best),
+      explain: (picked) => `<p class="${picked === String(best) ? 'trace-ok' : 'trace-bad'}"><strong>${picked === String(best) ? 'Right' : 'Not quite'}:</strong> ${best}.${picked === String(unb) ? ` ${unb} reuses an item: that is what the one-row table gives if capacity runs upwards.` : picked === String(greedy) ? ` ${greedy} is greedy by value per weight, which can leave capacity unused.` : ''}</p>
+        <p class="trace-why">best[c] after each item (capacity looping downwards, so each item is used once):</p>${tableHtml(rows, (r) => `+ w${items[r].w} v${items[r].v}`, Array.from({ length: cap + 1 }, (_, c) => c))}`,
+    };
+  }
+
+  KITS['2d-dp'] = {
+    title: '2-D dynamic programming',
+    exercises: [
+      { id: 'minpath', name: 'Minimum path sum' },
+      { id: 'paths', name: 'Paths around blocks' },
+      { id: 'lcs', name: 'Longest common subsequence' },
+      { id: 'knapsack', name: '0/1 knapsack' },
+    ],
+    make: dp2Question,
+  };
+
+  // ===========================================================================
+  // Greedy
+  // ===========================================================================
+
+  const GR_CODE = {
+    jump: ['jumps = end = far = 0', 'for i in range(len(nums) - 1):', '    far = max(far, i + nums[i])', '    if i == end:            # used up this jump', '        jumps += 1', '        end = far'],
+    gas: ['tank = start = 0', 'for i in range(len(gas)):', '    tank += gas[i] - cost[i]', '    if tank < 0:      # stuck before i + 1', '        start = i + 1', '        tank = 0', 'return start       # total checked first'],
+    partition: ['last = {ch: i for i, ch in enumerate(s)}', 'start = end = 0', 'for i, ch in enumerate(s):', '    end = max(end, last[ch])', '    if i == end:      # nothing here appears later', '        parts.append(i - start + 1)', '        start = i + 1'],
+  };
+
+  function greedyQuestion(exId, size) {
+    const n = { small: 7, medium: 9, large: 12 }[size];
+
+    if (exId === 'jump') {
+      let a;
+      let minJ;
+      for (let tries = 0; tries < 300; tries++) {
+        a = Array.from({ length: n }, () => randInt(1, 3));
+        const d = Array(n).fill(Infinity);
+        d[0] = 0;
+        for (let i = 0; i < n; i++) for (let s = 1; s <= a[i] && i + s < n; s++) d[i + s] = Math.min(d[i + s], d[i] + 1);
+        minJ = d[n - 1];
+        // More than one way to land should exist, so it is not forced.
+        if (minJ >= 3 && a.filter(v => v > 1).length >= 3) break;
+      }
+      const steps = [];
+      let jumps = 0;
+      let end = 0;
+      let far = 0;
+      const lands = [];
+      for (let i = 0; i < n - 1; i++) {
+        far = Math.max(far, i + a[i]);
+        if (i === end) {
+          jumps++;
+          end = far;
+          steps.push({ line: 5, text: `Index ${i} is the edge of what ${jumps - 1} jump${jumps - 1 === 1 ? '' : 's'} can reach. Jump ${jumps} can reach up to index ${Math.min(end, n - 1)}.`, current: i, window: [i, Math.min(end, n - 1)] });
+        } else {
+          steps.push({ line: 2, text: `From index ${i} you could reach ${i + a[i]}; the farthest so far is ${far}.`, current: i, window: [i, Math.min(far, n - 1)] });
+        }
+      }
+      // One landing path with the minimum: from each window jump to the cell that reaches farthest.
+      let i = 0;
+      while (i < n - 1) {
+        if (i + a[i] >= n - 1) { lands.push(n - 1); break; }
+        let bestNext = i + 1;
+        for (let s = 1; s <= a[i]; s++) if (i + s + a[i + s] > bestNext + a[bestNext]) bestNext = i + s;
+        lands.push(bestNext);
+        i = bestNext;
+      }
+      return {
+        prompt: `Jump game: from index i you may jump 1 to nums[i] steps. Starting at index 0, click where you land on each jump of a route with the <strong>fewest jumps</strong>, ending on the last index.`,
+        mode: 'sequence',
+        ids: a.map((_, x) => x).slice(1),
+        label: cellLabel(a),
+        svg: (view) => arraySvg(a, view, { mark: 0, clickableIds: a.map((_, x) => x).slice(1) }),
+        expected: lands,
+        fixedLength: false,
+        validate: (ans) => {
+          let prev = 0;
+          let k = 0;
+          for (; k < ans.length; k++) { if (ans[k] <= prev || ans[k] > prev + a[prev]) break; prev = ans[k]; }
+          return { ok: k === ans.length && prev === n - 1 && ans.length === minJ, k };
+        },
+        code: GR_CODE.jump,
+        steps: () => steps,
+        right: () => `${minJ} jumps. The greedy never has to pick a landing spot: it tracks how far j jumps can reach, and when it runs out of a jump's range it takes another.`,
+        wrong: (k, ans) => {
+          if (k < ans.length) return `<p class="trace-bad">Index ${ans[k]} cannot be reached in one jump from index ${k ? ans[k - 1] : 0} (it allows up to ${a[k ? ans[k - 1] : 0]} steps forward).</p>`;
+          if (ans[ans.length - 1] !== n - 1) return `<p class="trace-bad">Keep going until you land on the last index.</p>`;
+          return `<p class="trace-bad">That takes ${ans.length} jumps; ${minJ} is enough, for example ${lands.join(' → ')}.</p>
+            <p class="trace-why">Jumping as far as possible each time is not the rule; jump to the spot that lets the <em>next</em> jump reach farthest.</p>`;
+        },
+      };
+    }
+
+    if (exId === 'gas') {
+      let gas;
+      let cost;
+      let start;
+      for (let tries = 0; tries < 500; tries++) {
+        gas = Array.from({ length: n }, () => randInt(1, 8));
+        cost = Array.from({ length: n }, () => randInt(1, 8));
+        const total = gas.reduce((x, y) => x + y, 0) - cost.reduce((x, y) => x + y, 0);
+        if (total < 0 || total > 3) continue;
+        const ok = [];
+        for (let s = 0; s < n; s++) { let t = 0; let fine = true; for (let q = 0; q < n; q++) { const i = (s + q) % n; t += gas[i] - cost[i]; if (t < 0) { fine = false; break; } } if (fine) ok.push(s); }
+        if (ok.length === 1 && ok[0] >= 2) { start = ok[0]; break; }
+      }
+      const diff = gas.map((g, i) => g - cost[i]);
+      const steps = [];
+      let tank = 0;
+      let st = 0;
+      diff.forEach((d, i) => {
+        tank += d;
+        if (tank < 0) {
+          steps.push({ line: 4, text: `Station ${i}: tank ${tank - d} + ${d} = ${tank} < 0. No start from ${st} to ${i} works, so try ${i + 1} with an empty tank.`, current: i, window: [st, i] });
+          st = i + 1;
+          tank = 0;
+        } else {
+          steps.push({ line: 2, text: `Station ${i}: gas ${gas[i]} - cost ${cost[i]} = ${d >= 0 ? '+' : ''}${d}, tank ${tank}.`, current: i, window: [st, i] });
+        }
+      });
+      steps.push({ line: 6, text: `The total is not negative, so the last start standing, ${st}, makes it all the way round.`, current: st });
+      return {
+        prompt: 'Gas station: each cell is gas[i] - cost[i], the change in your tank driving from station i to the next. The total is not negative, so exactly one start works. Click it.',
+        aside: `<p class="trace-ops">gas = <code>[${gas.join(', ')}]</code> cost = <code>[${cost.join(', ')}]</code></p>`,
+        mode: 'sequence',
+        slots: ['start'],
+        ids: diff.map((_, i) => i),
+        label: (id) => `station ${id}`,
+        svg: (view) => arraySvg(diff.map(d => (d > 0 ? `+${d}` : String(d))), view),
+        expected: [start],
+        fixedLength: true,
+        code: GR_CODE.gas,
+        steps: () => steps,
+        right: () => `Station ${start}. One pass: whenever the tank goes negative, every start so far is ruled out at once, because each of them arrived at that point with no more gas than the current start had.`,
+        wrong: (k, ans) => {
+          let t = 0;
+          let fail = -1;
+          for (let q = 0; q < n; q++) { const i = (ans[0] + q) % n; t += diff[i]; if (t < 0) { fail = i; break; } }
+          return `<p class="trace-bad">It is station ${start}.</p>
+            <p class="trace-why">Starting at ${ans[0]}, the tank goes negative after station ${fail}. ${diff[ans[0]] === Math.max(...diff) ? 'The biggest single gain is not always the right start; what matters is never dipping below zero on the way round.' : 'Use "Show me" to see each failed start ruled out.'}</p>`;
+        },
+      };
+    }
+
+    if (exId === 'partition') {
+      let s;
+      let ends;
+      for (let tries = 0; tries < 300; tries++) {
+        s = Array.from({ length: n + 2 }, () => pick([...'abcdefg']));
+        const last = {};
+        s.forEach((ch, i) => { last[ch] = i; });
+        ends = [];
+        let end = 0;
+        s.forEach((ch, i) => { end = Math.max(end, last[ch]); if (i === end) ends.push(i); });
+        if (ends.length >= 3) break;
+      }
+      const last = {};
+      s.forEach((ch, i) => { last[ch] = i; });
+      const steps = [];
+      let start = 0;
+      let end = 0;
+      s.forEach((ch, i) => {
+        const was = end;
+        end = Math.max(end, last[ch]);
+        steps.push(i === end
+          ? { line: 5, text: `i = ${i} reaches the part's end: nothing in ${start}..${i} appears later. Cut here.`, current: i, window: [start, i], out: ends.filter(e => e <= i) }
+          : { line: 3, text: `'${ch}' last appears at ${last[ch]}${last[ch] > was ? `, so the part must stretch to ${end}` : ''}.`, current: i, window: [start, end], heldIds: [last[ch]], out: ends.filter(e => e < i) });
+        if (i === end) start = i + 1;
+      });
+      return {
+        prompt: 'Partition labels: cut the string into as many parts as possible so each letter appears in only one part. Click the <strong>last index of each part</strong>, in order.',
+        mode: 'sequence',
+        ids: s.map((_, i) => i),
+        label: cellLabel(s),
+        svg: (view) => arraySvg(s, view),
+        expected: ends,
+        fixedLength: false,
+        code: GR_CODE.partition,
+        outLabel: 'Cuts after',
+        steps: () => steps,
+        right: () => `Parts: ${ends.map((e, i) => s.slice(i ? ends[i - 1] + 1 : 0, e + 1).join('')).join(' | ')}. Cutting as soon as possible is safe because a later cut could only merge parts.`,
+        wrong: (k, ans) => {
+          if (k === ends.length) return `<p class="trace-bad">${said(k)} That was the end of the string.</p>`;
+          const st = k ? ends[k - 1] + 1 : 0;
+          const part = s.slice(st, ends[k] + 1);
+          const tooEarly = k < ans.length && ans[k] < ends[k];
+          const culprit = tooEarly ? s.slice(st, ans[k] + 1).find(ch => last[ch] > ans[k]) : null;
+          return `<p class="trace-bad">${said(k)} The next part ends at ${ends[k]} ('${part.join('')}').</p>
+            <p class="trace-why">${culprit ? `Cutting at ${ans[k]} would split '${culprit}', which appears again at ${last[culprit]}.` : k < ans.length ? `Every letter in ${st}..${ends[k]} is finished by ${ends[k]}, so the part can end there; waiting longer would give fewer parts.` : `Keep going: the next part ends at ${ends[k]}.`}</p>`;
+        },
+      };
+    }
+
+    // coins: does largest-first greedy give the fewest coins?
+    const sets = [[1, 5, 10, 25], [1, 2, 5, 10], [1, 3, 4], [1, 5, 6, 9], [1, 7, 10], [1, 4, 6]];
+    let coins;
+    let amount;
+    let opt;
+    let gr;
+    let grPicks;
+    for (let tries = 0; tries < 300; tries++) {
+      coins = pick(sets);
+      amount = randInt(6, size === 'small' ? 15 : 30);
+      const d = [0, ...Array(amount).fill(Infinity)];
+      for (let x = 1; x <= amount; x++) coins.forEach(c => { if (c <= x) d[x] = Math.min(d[x], d[x - c] + 1); });
+      opt = d[amount];
+      let left = amount;
+      grPicks = [];
+      [...coins].reverse().forEach(c => { while (left >= c) { left -= c; grPicks.push(c); } });
+      gr = grPicks.length;
+      if (Math.random() < 0.5 ? gr !== opt : gr === opt) break;
+    }
+    const opts = [...new Set([opt, gr, opt + 1, Math.max(1, opt - 1)])].slice(0, 4).sort((x, y) => x - y);
+    const canonical = coins.join() === '1,5,10,25' || coins.join() === '1,2,5,10';
+    return {
+      prompt: `Coins <strong>${coins.join(', ')}</strong>, unlimited of each. What is the <strong>fewest</strong> coins that make <strong>${amount}</strong>?`,
+      mode: 'choice',
+      svg: (view) => arraySvg(coins, view),
+      sequence: [`amount ${amount}`],
+      choices: opts.map(v => ({ id: String(v), label: String(v) })),
+      answerId: String(opt),
+      explain: (picked) => `<p class="${picked === String(opt) ? 'trace-ok' : 'trace-bad'}"><strong>${picked === String(opt) ? 'Right' : 'Not quite'}:</strong> ${opt}.</p>
+        <p class="trace-why">Largest coin first takes ${grPicks.join(' + ')}: ${gr} coin${gr === 1 ? '' : 's'}. ${gr === opt ? (canonical ? 'For this coin system greedy is always optimal (it is "canonical"), but that is a property you have to prove, not assume.' : 'Here greedy happens to match, but for this coin system it is not always optimal, so only DP is safe.') : `That is not optimal: a bigger coin early blocks a better combination. Greedy needs a proof; when there is none, use the DP (Coin Change, 322).`}</p>`,
+    };
+  }
+
+  KITS.greedy = {
+    title: 'Greedy',
+    exercises: [
+      { id: 'jump', name: 'Jump game: fewest jumps' },
+      { id: 'gas', name: 'Gas station: where to start' },
+      { id: 'partition', name: 'Partition labels' },
+      { id: 'coins', name: 'When greedy fails: coins' },
+    ],
+    make: greedyQuestion,
+  };
+
+  // ===========================================================================
+  // Bit manipulation
+  // ===========================================================================
+
+  // bitsSvg draws rows of W bits, most significant on the left, with each
+  // column's place value underneath. Only the row marked answer is
+  // clickable; its cells' ids are bit positions.
+  function bitsSvg(W, rows, view) {
+    const w = 40;
+    const x0 = 70;
+    const rowH = 46;
+    const top = 14;
+    let body = '';
+    rows.forEach((row, r) => {
+      const y = top + r * rowH;
+      body += `<text class="ilabel bitname" x="${x0 - 12}" y="${y + 18}" dy="0.35em">${esc(row.name)}</text>`;
+      for (let col = 0; col < W; col++) {
+        const pos = W - 1 - col;
+        const x = x0 + col * w;
+        const cls = ['tnode', 'acell'];
+        let attrs = '';
+        let text = row.bits ? String(row.bits[pos]) : '';
+        if (row.answer) {
+          const shown = view.step?.bits;
+          if (shown) text = String(shown[pos]);
+          const idx = view.picked.get(pos);
+          if (idx || (view.step && shown && shown[pos] === 1)) cls.push('picked');
+          if (view.wrong === pos) cls.push('wrong');
+          const clickable = view.clickable && !idx;
+          if (clickable) cls.push('clickable');
+          if (!view.step && idx) text = '1';
+          attrs = `data-id="${pos}" ${clickable ? `role="button" tabindex="0" aria-label="Bit ${pos}"` : ''}`;
+        } else {
+          if (row.bits && row.bits[pos] === 1) cls.push('one');
+          if (view.step?.col === pos) cls.push('current');
+        }
+        body += `<g class="${cls.join(' ')}" ${attrs}><rect x="${x + 2}" y="${y}" width="${w - 6}" height="36" rx="5" /><text x="${x + w / 2 - 1}" y="${y + 18}" dy="0.35em">${esc(text)}</text></g>`;
+      }
+    });
+    const by = top + rows.length * rowH + 4;
+    for (let col = 0; col < W; col++) body += `<text class="idx" x="${x0 + col * w + w / 2 - 1}" y="${by}">${2 ** (W - 1 - col)}</text>`;
+    return svgWrap(x0 + W * w + 20, by + 12, body, 'Bits');
+  }
+
+  const toBits = (n, W) => Array.from({ length: W }, (_, i) => (n >> i) & 1);
+  const fromBits = (b) => b.reduce((s, v, i) => s + (v << i), 0);
+  const binStr = (n, W) => n.toString(2).padStart(W, '0');
+
+  function bitQuestion(exId, size) {
+    const W = { small: 4, medium: 6, large: 8 }[size];
+    const ones = (n) => toBits(n, W).map((v, i) => (v ? i : -1)).filter(i => i >= 0);
+    const answerRow = { name: '?', answer: true };
+    const base = (expectedN, prompt, rows, code, steps, right, why) => {
+      const expected = ones(expectedN);
+      return {
+        prompt: `${prompt} Click every bit that is 1 in the answer (none if it is 0), then Check.`,
+        mode: 'sequence',
+        ids: Array.from({ length: W }, (_, i) => i),
+        label: (id) => `2^${id}`,
+        svg: (view) => bitsSvg(W, rows, view),
+        expected,
+        fixedLength: false,
+        validate: (ans) => ({ ok: sameSet(ans, expected), k: 0 }),
+        code,
+        steps: () => steps,
+        right: () => right,
+        wrong: (k, ans) => `<p class="trace-bad">The answer is ${binStr(expectedN, W)} (${expectedN}); you made ${binStr(ans.reduce((s, i) => s | (1 << i), 0), W)}.</p><p class="trace-why">${why}</p>`,
+      };
+    };
+
+    if (exId === 'read') {
+      const n = randInt(1, 2 ** W - 1);
+      const steps = [];
+      let x = n;
+      const got = Array(W).fill(0);
+      for (let i = 0; x; i++) {
+        got[i] = x % 2;
+        steps.push({ line: 2, text: `${x} % 2 = ${x % 2}, so bit ${i} (worth ${2 ** i}) is ${x % 2}. Then ${x} // 2 = ${x >> 1}.`, bits: [...got], col: i });
+        x >>= 1;
+      }
+      const row = { name: '?', answer: true };
+      const q = base(n, `Write <strong>${n}</strong> in binary.`, [row], ['bits = []', 'while n:', '    bits.append(n % 2)   # lowest bit first', '    n //= 2'], steps,
+        `${n} = ${ones(n).map(i => 2 ** i).reverse().join(' + ')} = ${binStr(n, W)}.`,
+        `Each bit is a place value (1, 2, 4, 8, ...). Repeatedly take n % 2 for the lowest bit and halve n: ${steps.map(s => s.text.split(',')[0]).join('; ')}.`);
+      return q;
+    }
+
+    if (exId === 'ops') {
+      const op = pick(['&', '|', '^']);
+      const a = randInt(1, 2 ** W - 1);
+      const b = randInt(1, 2 ** W - 1);
+      const r = op === '&' ? a & b : op === '|' ? a | b : a ^ b;
+      const rule = { '&': 'AND is 1 only where both bits are 1', '|': 'OR is 1 where either bit is 1', '^': 'XOR is 1 where the bits differ' }[op];
+      const steps = [];
+      for (let i = W - 1; i >= 0; i--) {
+        steps.push({ line: 0, text: `Bit ${i}: ${(a >> i) & 1} ${op} ${(b >> i) & 1} = ${(r >> i) & 1}.`, col: i, bits: toBits(r, W).map((v, j) => (j >= i ? v : '')) });
+      }
+      return base(r, `Compute <strong>a ${op} b</strong>, bit by bit.`, [{ name: `a = ${a}`, bits: toBits(a, W) }, { name: `b = ${b}`, bits: toBits(b, W) }, { name: `a ${op} b`, answer: true }],
+        [`r = a ${op} b   # ${rule}`], steps, `${binStr(a, W)} ${op} ${binStr(b, W)} = ${binStr(r, W)} (${r}). ${cap(rule)}.`, `${cap(rule)}; each column is independent.`);
+    }
+
+    if (exId === 'lowbit') {
+      let n;
+      do { n = randInt(2, 2 ** W - 1); } while ((n & (n - 1)) === 0 || (n & 1));
+      const kind = pick(['clear', 'keep']);
+      const r = kind === 'clear' ? n & (n - 1) : n & -n;
+      const low = Math.log2(n & -n);
+      const steps = [
+        { line: 0, text: `n - 1 = ${n - 1}: subtracting 1 turns the lowest 1 (bit ${low}) into 0 and every 0 below it into 1.`, col: low, bits: toBits(n - 1, W) },
+        { line: 1, text: kind === 'clear' ? `n & (n - 1) keeps the bits above bit ${low}, where n and n - 1 agree, and loses bit ${low}: ${binStr(r, W)}.` : `-n is ~n + 1, which agrees with n only at bit ${low}; n & -n = ${binStr(r, W)}.`, col: low, bits: toBits(r, W) },
+      ];
+      return base(r, `n = <strong>${n}</strong>. Compute <strong>${kind === 'clear' ? 'n & (n - 1)' : 'n & -n'}</strong>.`,
+        [{ name: `n = ${n}`, bits: toBits(n, W) }, { name: `n - 1`, bits: toBits(n - 1, W) }, { name: kind === 'clear' ? 'n & (n-1)' : 'n & -n', answer: true }],
+        ['m = n - 1        # lowest 1 -> 0, the 0s below -> 1', kind === 'clear' ? 'r = n & m        # clears the lowest set bit' : 'r = n & -n       # keeps only the lowest set bit'], steps,
+        kind === 'clear' ? `${binStr(r, W)}: the lowest set bit (bit ${low}) is gone. Loop this to count bits, one per set bit.` : `${binStr(r, W)}: only the lowest set bit (bit ${low}, worth ${2 ** low}) survives.`,
+        kind === 'clear' ? `n & (n - 1) clears exactly the lowest 1. Everything above it is unchanged.` : 'n & -n isolates the lowest 1: in two\'s complement -n flips every bit above it.');
+    }
+
+    // shift
+    const left = Math.random() < 0.5;
+    let n;
+    let k;
+    do { n = randInt(1, 2 ** W - 1); k = randInt(1, Math.max(1, W >> 1)); } while (left && (n << k) >= 2 ** W);
+    const r = left ? n << k : n >> k;
+    const steps = [{ line: 0, text: left ? `Every bit moves ${k} place${k === 1 ? '' : 's'} left (towards bigger values), with 0s filling in on the right: ${n} × 2^${k} = ${r}.` : `Every bit moves ${k} place${k === 1 ? '' : 's'} right; the lowest ${k} bit${k === 1 ? ' falls' : 's fall'} off: ${n} // 2^${k} = ${r}.`, bits: toBits(r, W) }];
+    return base(r, `n = <strong>${n}</strong>. Compute <strong>n ${left ? '<<' : '>>'} ${k}</strong>.`,
+      [{ name: `n = ${n}`, bits: toBits(n, W) }, { name: `n ${left ? '<<' : '>>'} ${k}`, answer: true }],
+      [left ? `r = n << ${k}   # times 2 ** ${k}` : `r = n >> ${k}   # floor-divide by 2 ** ${k}`], steps,
+      `${binStr(r, W)} (${r}). ${left ? `Shifting left by ${k} multiplies by ${2 ** k}.` : `Shifting right by ${k} floor-divides by ${2 ** k}.`}`,
+      left ? `Each 1 moves ${k} column${k === 1 ? '' : 's'} to the left.` : `Each 1 moves ${k} column${k === 1 ? '' : 's'} to the right, and the ones that pass bit 0 are dropped.`);
+  }
+
+  KITS['bit-manipulation'] = {
+    title: 'Bit manipulation',
+    exercises: [
+      { id: 'read', name: 'Number to binary' },
+      { id: 'ops', name: 'AND, OR, XOR' },
+      { id: 'lowbit', name: 'The lowest set bit' },
+      { id: 'shift', name: 'Shifts' },
+    ],
+    make: bitQuestion,
+  };
+
+  // ===========================================================================
+  // Math & geometry
+  // ===========================================================================
+
+  // pointsSvg draws labelled points on a small integer grid, with an
+  // optional arrow from the first point to the second.
+  function pointsSvg(pts, view, { arrow = null } = {}) {
+    const unit = 34;
+    const pad = 30;
+    const maxC = 8;
+    const px = (x) => pad + x * unit;
+    const py = (y) => pad + (maxC - y) * unit;
+    let body = '';
+    for (let v = 0; v <= maxC; v++) {
+      body += `<line class="grid" x1="${px(v)}" y1="${py(0)}" x2="${px(v)}" y2="${py(maxC)}" /><line class="grid" x1="${px(0)}" y1="${py(v)}" x2="${px(maxC)}" y2="${py(v)}" />`;
+      if (v % 2 === 0) body += `<text class="idx" x="${px(v)}" y="${py(0) + 16}">${v}</text><text class="idx" x="${px(0) - 14}" y="${py(v) + 4}">${v}</text>`;
+    }
+    if (arrow) {
+      const [a, b] = arrow;
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const t = 3;
+      body += `<clipPath id="trace-grid-clip"><rect x="${px(0)}" y="${py(maxC)}" width="${maxC * unit}" height="${maxC * unit}" /></clipPath>`;
+      body += `<line class="sweep" clip-path="url(#trace-grid-clip)" x1="${px(a.x - dx * t * 4)}" y1="${py(a.y - dy * t * 4)}" x2="${px(a.x + dx * (t * 4 + 1))}" y2="${py(a.y + dy * (t * 4 + 1))}" />`;
+      body += `<g class="edges"><line x1="${px(a.x)}" y1="${py(a.y)}" x2="${px(b.x)}" y2="${py(b.y)}" marker-end="url(#trace-arrow)" /></g>`;
+    }
+    pts.forEach(p => { body += nodeSvg(p.name, px(p.x), py(p.y), p.name, { ...view, clickable: false }, `<text class="idx" x="${px(p.x) + 24}" y="${py(p.y) - 14}">(${p.x}, ${p.y})</text>`); });
+    return `<svg class="trace-tree" viewBox="0 0 ${px(maxC) + pad + 40} ${py(0) + pad}" style="width:100%;max-width:460px" role="img" aria-label="Points">
+      <defs><marker id="trace-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrowhead" /></marker></defs>${body}</svg>`;
+  }
+
+  const MATH_CODE = {
+    sieve: ['is_prime = [True] * (n + 1)', 'for p in range(2, isqrt(n) + 1):', '    if is_prime[p]:', '        for m in range(p * p, n + 1, p):', '            is_prime[m] = False'],
+    spiral: ['top, bottom, left, right = 0, R - 1, 0, C - 1', 'while top <= bottom and left <= right:', '    walk right along top;    top += 1', '    walk down along right;   right -= 1', '    walk left along bottom;  bottom -= 1   (if rows remain)', '    walk up along left;      left += 1     (if columns remain)'],
+    rotate: ['# 90 degrees clockwise: (r, c) -> (c, n - 1 - r)', 'for r in range(n):', '    for c in range(n):', '        out[c][n - 1 - r] = m[r][c]'],
+  };
+
+  function mathQuestion(exId, size) {
+    if (exId === 'gcd') {
+      let a;
+      let b;
+      let lines;
+      for (let tries = 0; tries < 300; tries++) {
+        const g = randInt(2, 9);
+        a = g * randInt(3, size === 'small' ? 12 : 30);
+        b = g * randInt(2, size === 'small' ? 10 : 25);
+        if (a === b) continue;
+        lines = [];
+        let x = Math.max(a, b);
+        let y = Math.min(a, b);
+        while (y) { lines.push(`gcd(${x}, ${y}): ${x} % ${y} = ${x % y}`); [x, y] = [y, x % y]; }
+        lines.push(`gcd(${x}, 0) = ${x}`);
+        if (lines.length >= 3) break;
+      }
+      const gcd = (x, y) => (y ? gcd(y, x % y) : x);
+      const ans = gcd(a, b);
+      const firstRem = Math.max(a, b) % Math.min(a, b);
+      const opts = [...new Set([ans, ans * 2, firstRem, ans > 2 ? ans - 1 : ans + 3].filter(v => v > 0))].slice(0, 4).sort((x, y) => x - y);
+      return {
+        prompt: `Use Euclid's algorithm: what is <strong>gcd(${a}, ${b})</strong>?`,
+        mode: 'choice',
+        svg: (view) => arraySvg([a, b], view),
+        sequence: [`a = ${a}`, `b = ${b}`],
+        choices: opts.map(v => ({ id: String(v), label: String(v) })),
+        answerId: String(ans),
+        explain: (picked) => `<p class="${picked === String(ans) ? 'trace-ok' : 'trace-bad'}"><strong>${picked === String(ans) ? 'Right' : 'Not quite'}:</strong> ${ans}.</p>
+          <p class="trace-why">gcd(a, b) = gcd(b, a % b), because anything that divides a and b also divides a % b. The second number shrinks every step, so it ends at 0:</p>
+          <ol class="trace-notes">${lines.map(t => `<li>${esc(t)}</li>`).join('')}</ol>`,
+      };
+    }
+
+    if (exId === 'sieve') {
+      const N = { small: 30, medium: 50, large: 80 }[size];
+      const cols = 10;
+      const R = Math.ceil(N / cols);
+      const grid = Array.from({ length: R }, (_, r) => Array.from({ length: cols }, (_, c) => r * cols + c + 1));
+      const P = pick([2, 3, 5, 7].filter(p => p * p <= N));
+      const crossedBefore = new Set();
+      [2, 3, 5, 7].filter(p => p < P).forEach(p => { for (let m = p * p; m <= N; m += p) crossedBefore.add(m); });
+      const expected = [];
+      for (let m = P * P; m <= N; m += P) if (!crossedBefore.has(m)) expected.push(m - 1);
+      const idOf = (v) => v - 1;
+      const dim = new Set([0, ...[...crossedBefore].map(idOf), ...grid.flat().filter(v => v > N).map(idOf)]);
+      const steps = [];
+      const crossed = new Set(dim);
+      for (let m = P * P; m <= N; m += P) {
+        const already = crossedBefore.has(m);
+        crossed.add(idOf(m));
+        steps.push({ line: 4, text: already ? `${m} = ${P} × ${m / P} was already crossed out by a smaller prime.` : `${m} = ${P} × ${m / P}: cross it out.`, current: idOf(m), dim: new Set(crossed) });
+      }
+      steps.unshift({ line: 3, text: `Start at ${P} × ${P} = ${P * P}: every smaller multiple of ${P} has a smaller prime factor and is already crossed out.`, current: idOf(P), dim });
+      return {
+        prompt: `Sieve of Eratosthenes up to ${N}. ${P === 2 ? 'This is the first pass' : `The passes for ${[2, 3, 5, 7].filter(x => x < P).join(' and ')} are done (crossed out)`}. Now p = <strong>${P}</strong>: click every number this pass <strong>newly</strong> crosses out, then Check.`,
+        mode: 'sequence',
+        ids: grid.flat().filter(v => v <= N).map(idOf).filter(id => !dim.has(id)),
+        label: (id) => String(id + 1),
+        svg: (view) => tableSvg(grid.map(row => row.map(v => (v <= N ? v : ''))), view, { dim }),
+        expected,
+        fixedLength: false,
+        validate: (ans) => ({ ok: sameSet(ans, expected), k: 0 }),
+        code: MATH_CODE.sieve,
+        outLabel: 'Crossed',
+        steps: () => steps,
+        right: () => `${expected.map(i => i + 1).join(', ')}. Starting at p² is what makes the sieve O(n log log n): smaller multiples are already gone.`,
+        wrong: (k, ans) => {
+          const extra = ans.find(i => !expected.includes(i));
+          const missing = expected.find(i => !ans.includes(i));
+          return `<p class="trace-bad">This pass newly crosses out ${expected.map(i => i + 1).join(', ')}.</p>
+            <p class="trace-why">${extra !== undefined ? `${extra + 1} ${(extra + 1) % P ? `is not a multiple of ${P}` : (extra + 1) < P * P ? `is below ${P * P}; it has a smaller prime factor` : 'was already crossed out'}. ` : ''}${missing !== undefined ? `${missing + 1} = ${P} × ${(missing + 1) / P} is still uncrossed. ` : ''}The pass crosses p², p² + p, p² + 2p, ...</p>`;
+        },
+      };
+    }
+
+    if (exId === 'spiral') {
+      const [R, C] = { small: [3, 3], medium: [3, 4], large: [4, 4] }[size];
+      const vals = distinctValues(R * C, 99);
+      const grid = Array.from({ length: R }, (_, r) => vals.slice(r * C, r * C + C));
+      const order = [];
+      const steps = [];
+      let top = 0;
+      let bottom = R - 1;
+      let left = 0;
+      let right = C - 1;
+      const push = (r, c, line, text) => { order.push(r * C + c); steps.push({ line, text, current: r * C + c, out: [...order] }); };
+      while (top <= bottom && left <= right) {
+        for (let c = left; c <= right; c++) push(top, c, 2, `Right along row ${top}.`);
+        top++;
+        for (let r = top; r <= bottom; r++) push(r, right, 3, `Down column ${right}.`);
+        right--;
+        if (top <= bottom) { for (let c = right; c >= left; c--) push(bottom, c, 4, `Left along row ${bottom}.`); bottom--; }
+        if (left <= right) { for (let r = bottom; r >= top; r--) push(r, left, 5, `Up column ${left}.`); left++; }
+      }
+      return {
+        prompt: 'Click every cell in <strong>spiral order</strong>: clockwise from the top-left, layer by layer.',
+        mode: 'sequence',
+        ids: order.slice().sort((x, y) => x - y),
+        label: (id) => String(grid[Math.floor(id / C)][id % C]),
+        svg: (view) => tableSvg(grid, view),
+        expected: order,
+        fixedLength: true,
+        code: MATH_CODE.spiral,
+        outLabel: 'Visited',
+        steps: () => steps,
+        right: () => `${order.map(id => grid[Math.floor(id / C)][id % C]).join(', ')}. Four boundaries shrink by one after each side is walked.`,
+        wrong: (k, ans) => `<p class="trace-bad">${said(k)} Next is ${grid[Math.floor(order[k] / C)][order[k] % C]}, not ${grid[Math.floor(ans[k] / C)][ans[k] % C]}.</p>
+          <p class="trace-why">${steps[k].text} Each side stops one cell short of where the previous side started, because that boundary has already moved in.</p>`,
+      };
+    }
+
+    if (exId === 'rotate') {
+      const n = { small: 3, medium: 4, large: 5 }[size];
+      const vals = distinctValues(n * n, 99);
+      const grid = Array.from({ length: n }, (_, r) => vals.slice(r * n, r * n + n));
+      let r0;
+      let c0;
+      do { r0 = randInt(0, n - 1); c0 = randInt(0, n - 1); } while (n % 2 && r0 === (n >> 1) && c0 === (n >> 1));
+      const tr = c0;
+      const tc = n - 1 - r0;
+      const rotated = Array.from({ length: n }, (_, r) => Array.from({ length: n }, (_, c) => grid[n - 1 - c][r]));
+      const steps = [{ line: 0, text: `Row ${r0} becomes column ${n - 1 - r0} (the top row becomes the right column), and column ${c0} becomes row ${c0}.`, current: r0 * n + c0, table: grid.map(row => row.map(String)) },
+        { line: 3, text: `So (${r0}, ${c0}) moves to (${tr}, ${tc}). This is the whole matrix rotated.`, current: tr * n + tc, table: rotated.map(row => row.map(String)) }];
+      return {
+        prompt: `Rotate the matrix <strong>90° clockwise</strong>. Click the cell where <strong>${grid[r0][c0]}</strong> (row ${r0}, column ${c0}) ends up.`,
+        mode: 'sequence',
+        slots: [`${grid[r0][c0]} goes to`],
+        ids: vals.map((_, i) => i),
+        label: (id) => `(${Math.floor(id / n)}, ${id % n})`,
+        svg: (view) => tableSvg(grid, view, { mark: r0 * n + c0 }),
+        expected: [tr * n + tc],
+        fixedLength: true,
+        code: MATH_CODE.rotate,
+        steps: () => steps,
+        right: () => `(${tr}, ${tc}): (r, c) goes to (c, n - 1 - r). In place, it is a transpose followed by reversing each row.`,
+        wrong: (k, ans) => {
+          const r = Math.floor(ans[0] / n);
+          const c = ans[0] % n;
+          const ccw = r === n - 1 - c0 && c === r0;
+          const tp = r === c0 && c === r0;
+          return `<p class="trace-bad">It goes to (${tr}, ${tc}).</p><p class="trace-why">${ccw ? 'That is where a counter-clockwise rotation sends it. ' : tp ? 'That is the transpose only; a clockwise rotation also reverses each row. ' : ''}Clockwise, the top row becomes the right column: (r, c) → (c, n - 1 - r) = (${c0}, ${n - 1} - ${r0}).</p>`;
+        },
+      };
+    }
+
+    // orient: which side of p -> q is r on? (cross product sign)
+    let p;
+    let q;
+    let r;
+    let cross;
+    for (let tries = 0; tries < 300; tries++) {
+      p = { name: 'p', x: randInt(0, 4), y: randInt(0, 4) };
+      q = { name: 'q', x: randInt(3, 8), y: randInt(2, 8) };
+      if (p.x === q.x && p.y === q.y) continue;
+      const g = (x, y) => (y ? g(y, x % y) : Math.abs(x));
+      const dx = q.x - p.x;
+      const dy = q.y - p.y;
+      if (Math.random() < 0.3) {
+        const s = g(Math.abs(dx), Math.abs(dy));
+        const t = pick([-1, 2]);
+        r = { name: 'r', x: p.x + (dx / s) * t, y: p.y + (dy / s) * t };
+      } else r = { name: 'r', x: randInt(0, 8), y: randInt(0, 8) };
+      if (r.x < 0 || r.x > 8 || r.y < 0 || r.y > 8 || (r.x === p.x && r.y === p.y) || (r.x === q.x && r.y === q.y)) continue;
+      cross = dx * (r.y - p.y) - dy * (r.x - p.x);
+      break;
+    }
+    const ans = cross > 0 ? 'left' : cross < 0 ? 'right' : 'on';
+    const names = { left: 'Left (counter-clockwise)', right: 'Right (clockwise)', on: 'On the line (collinear)' };
+    return {
+      prompt: 'Walking from <strong>p</strong> to <strong>q</strong>, is <strong>r</strong> on your left, on your right, or on the line?',
+      mode: 'choice',
+      svg: (view) => pointsSvg([p, q, r], view, { arrow: [p, q] }),
+      sequence: [`p (${p.x}, ${p.y})`, `q (${q.x}, ${q.y})`, `r (${r.x}, ${r.y})`],
+      choices: ['left', 'right', 'on'].map(id => ({ id, label: names[id] })),
+      answerId: ans,
+      explain: (picked) => `<p class="${picked === ans ? 'trace-ok' : 'trace-bad'}"><strong>${picked === ans ? 'Right' : 'Not quite'}:</strong> ${names[ans]}.</p>
+        <p class="trace-why">cross = (q.x - p.x)(r.y - p.y) - (q.y - p.y)(r.x - p.x) = (${q.x - p.x})(${r.y - p.y}) - (${q.y - p.y})(${r.x - p.x}) = ${cross}. Positive is left, negative is right, zero is collinear. Integers only, so no floating-point slope errors and no division by zero on vertical lines.</p>`,
+    };
+  }
+
+  KITS['math-geometry'] = {
+    title: 'Math & geometry',
+    exercises: [
+      { id: 'gcd', name: 'Euclid: gcd' },
+      { id: 'sieve', name: 'Sieve: one pass' },
+      { id: 'spiral', name: 'Spiral order' },
+      { id: 'rotate', name: 'Rotate 90°' },
+      { id: 'orient', name: 'Left, right or on?' },
+    ],
+    make: mathQuestion,
+  };
+
+  // ===========================================================================
+  // Advanced graphs
+  // ===========================================================================
+
+  const AG_CODE = {
+    prim: ['in_tree = {start}', 'heap = [(w, start, v) for v, w in adj[start]]', 'while len(in_tree) < n:', '    w, u, v = heappop(heap)', '    if v in in_tree: continue   # both ends inside', '    in_tree.add(v); total += w', '    for x, wx in adj[v]:', '        if x not in in_tree:', '            heappush(heap, (wx, v, x))'],
+    kruskal: ['parent = {u: u for u in nodes}', 'for w, u, v in sorted(edges):', '    ru, rv = find(u), find(v)', '    if ru == rv: continue       # would close a cycle', '    parent[ru] = rv             # union the components', '    tree.append((u, v)); total += w', '    if len(tree) == n - 1: break'],
+    floyd: ['for k in range(n):        # pass k: via k', '    for i in range(n):', '        for j in range(n):', '            if dist[i][k] + dist[k][j] < dist[i][j]:', '                dist[i][j] = dist[i][k] + dist[k][j]'],
+    hierholzer: ['def visit(u):', '    while out[u]:              # smallest first', '        v = out[u].pop(0)', '        visit(v)', '    route.append(u)', 'visit(start)', 'return route[::-1]'],
+    flights: ['cost = [inf] * n; cost[src] = 0', 'for _ in range(k + 1):        # k stops = k + 1 flights', '    nxt = cost[:]              # freeze last round', '    for u, v, w in flights:', '        if cost[u] + w < nxt[v]:', '            nxt[v] = cost[u] + w', '    cost = nxt', 'return cost[dst] if cost[dst] < inf else -1'],
+  };
+
+  // distinctWeights gives g's edges the weights 1..m in random order, so the
+  // minimum spanning tree is unique, and names each edge e0, e1, ...
+  function distinctWeights(g) {
+    const ws = shuffle(Array.from({ length: g.edges.length }, (_, i) => i + 1));
+    g.edges.forEach((e, i) => { e.w = ws[i]; e.id = `e${i}`; });
+    g.adj = new Map(g.nodes.map(nd => [nd.id, []]));
+    g.edges.forEach(({ u, v, w }) => {
+      g.adj.get(u).push({ v, w });
+      if (!g.directed) g.adj.get(v).push({ v: u, w });
+    });
+    g.adj.forEach(list => list.sort((a, b) => a.v - b.v));
+    return g;
+  }
+
+  const edgeOf = (g, u, v) => g.edges.find(e => (e.u === u && e.v === v) || (!g.directed && e.u === v && e.v === u));
+  const edgeName = (e) => `${e.u}–${e.v} (${e.w})`;
+
+  function primRun(g, start) {
+    const inTree = new Set([start]);
+    const order = [start];
+    const tree = new Set();
+    const via = new Map();
+    const heap = [];
+    const steps = [];
+    let total = 0;
+    const push = (u) => {
+      g.adj.get(u).forEach(({ v, w }) => { if (!inTree.has(v)) heap.push({ w, u, v }); });
+      heap.sort((a, b) => a.w - b.w);
+    };
+    const snap = (current, line, text, edge) => steps.push({
+      current, line, text, edge, out: order.slice(), tree: new Set(tree),
+      held: heap.map(e => `${e.u}–${e.v}:${e.w}`), heldIds: [], heldLabel: 'Heap, cheapest first (edge:weight)',
+    });
+    push(start);
+    snap(start, 1, `Start the tree at ${start} and push every edge leaving it.`);
+    while (order.length < g.n) {
+      const e = heap.shift();
+      if (inTree.has(e.v)) {
+        snap(e.u, 4, `Pop ${e.u}–${e.v} (${e.w}). ${e.v} joined the tree after this edge was pushed, so both ends are inside and it would close a cycle. Skip it.`, [e.u, e.v]);
+        continue;
+      }
+      inTree.add(e.v);
+      order.push(e.v);
+      tree.add(edgeOf(g, e.u, e.v).id);
+      via.set(e.v, e);
+      total += e.w;
+      push(e.v);
+      snap(e.v, 5, `Pop ${e.u}–${e.v} (${e.w}), the cheapest edge leaving the tree: ${e.v} joins, total ${total}. Then push ${e.v}'s edges to nodes still outside.`, [e.u, e.v]);
+    }
+    snap(null, 2, `All ${g.n} nodes are in the tree: ${g.n - 1} edges, total weight ${total}.`);
+    return { steps, order, via, total };
+  }
+
+  function kruskalRun(g) {
+    const parent = new Map(g.nodes.map(nd => [nd.id, nd.id]));
+    const find = (x) => { while (parent.get(x) !== x) x = parent.get(x); return x; };
+    const sorted = g.edges.slice().sort((a, b) => a.w - b.w);
+    const tree = new Set();
+    const order = [];
+    const rejected = [];
+    const steps = [];
+    let total = 0;
+    const groups = () => {
+      const m = new Map();
+      g.nodes.map(nd => nd.id).sort((a, b) => a - b).forEach(u => {
+        const r = find(u);
+        if (!m.has(r)) m.set(r, []);
+        m.get(r).push(u);
+      });
+      return [...m.values()].map(c => `{${c.join(', ')}}`);
+    };
+    const snap = (line, text, edge) => steps.push({
+      line, text, edge, out: order.slice(), tree: new Set(tree),
+      held: groups(), heldIds: [], heldLabel: 'Components',
+    });
+    snap(0, `Every node starts as its own component. Edges in weight order: ${sorted.map(e => e.w).join(', ')}.`);
+    for (const e of sorted) {
+      const ru = find(e.u);
+      const rv = find(e.v);
+      if (ru === rv) {
+        rejected.push(e.id);
+        snap(3, `${edgeName(e)}: ${e.u} and ${e.v} are already in the same component, so this edge would close a cycle. Skip it.`, [e.u, e.v]);
+        continue;
+      }
+      parent.set(ru, rv);
+      tree.add(e.id);
+      order.push(e.id);
+      total += e.w;
+      snap(5, `${edgeName(e)} joins two different components: add it and merge them. Total ${total}.`, [e.u, e.v]);
+      if (order.length === g.n - 1) break;
+    }
+    snap(6, `${g.n - 1} edges for ${g.n} nodes: the tree is complete, total weight ${total}. Later edges can only close cycles.`);
+    return { steps, order, rejected, total };
+  }
+
+  // flightsRun is Bellman-Ford limited to k + 1 rounds. With copy it reads
+  // only last round's prices (the right way); without, one round can chain
+  // several flights. rows holds the prices after each round.
+  function flightsRun(g, flights, src, rounds, copy = true) {
+    const ids = g.nodes.map(nd => nd.id);
+    let cost = new Map(ids.map(u => [u, u === src ? 0 : Infinity]));
+    const rows = [new Map(cost)];
+    const steps = [];
+    const fmt = (c) => (c === Infinity ? '∞' : c);
+    const snap = (line, text, shown, frozen, edge) => steps.push({
+      line, text, edge, dist: Object.fromEntries(shown),
+      held: ids.filter(u => frozen.get(u) < Infinity).sort((a, b) => a - b).map(u => `${u}:${frozen.get(u)}`), heldIds: [], heldLabel: 'Last round (frozen)',
+    });
+    snap(0, `With no flights you can only be at ${src}, for free.`, cost, cost);
+    for (let r = 1; r <= rounds; r++) {
+      const nxt = copy ? new Map(cost) : cost;
+      snap(2, `Round ${r}: copy the prices. Reading only the copy means every route found this round uses at most ${r} flight${r === 1 ? '' : 's'}.`, nxt, cost);
+      flights.forEach(({ u, v, w }) => {
+        if (cost.get(u) === Infinity) return;
+        const c = cost.get(u) + w;
+        if (c < nxt.get(v)) {
+          const old = nxt.get(v);
+          nxt.set(v, c);
+          snap(5, `${u} → ${v}: ${cost.get(u)} + ${w} = ${c}, better than ${fmt(old)}: nxt[${v}] = ${c}.`, nxt, cost, [u, v]);
+        } else {
+          snap(4, `${u} → ${v}: ${cost.get(u)} + ${w} = ${c}, no better than ${fmt(nxt.get(v))}.`, nxt, cost, [u, v]);
+        }
+      });
+      cost = nxt;
+      rows.push(new Map(cost));
+      snap(6, `End of round ${r}: each price is the cheapest using at most ${r} flight${r === 1 ? '' : 's'}.`, cost, cost);
+    }
+    return { cost, rows, steps };
+  }
+
+  // circleGraph places n nodes round a circle (slightly jittered) and adds
+  // the given directed edges, each named e0, e1, ...
+  function circleGraph(n, edges, weighted) {
+    const turn = Math.random() * Math.PI * 2;
+    const nodes = Array.from({ length: n }, (_, i) => {
+      const a = turn + (i * 2 * Math.PI) / n;
+      return { id: i, x: Math.round(170 + 125 * Math.cos(a) + randInt(-8, 8)), y: Math.round(150 + 115 * Math.sin(a) + randInt(-8, 8)) };
+    });
+    const minX = Math.min(...nodes.map(nd => nd.x));
+    const minY = Math.min(...nodes.map(nd => nd.y));
+    nodes.forEach(nd => { nd.x += 40 - minX; nd.y += 40 - minY; });
+    const es = edges.map(([u, v, w = 1], i) => ({ u, v, w, id: `e${i}` }));
+    const adj = new Map(nodes.map(nd => [nd.id, []]));
+    es.forEach(({ u, v, w }) => adj.get(u).push({ v, w }));
+    adj.forEach(list => list.sort((a, b) => a.v - b.v));
+    return { n, nodes, byId: new Map(nodes.map(nd => [nd.id, nd])), edges: es, adj, directed: true, weighted };
+  }
+
+  // floydPass runs passes 0..K-1 and then reports what pass K does.
+  function floydPass(n, edges, K) {
+    const d = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => (i === j ? 0 : Infinity)));
+    edges.forEach(([u, v, w]) => { d[u][v] = Math.min(d[u][v], w); });
+    for (let k = 0; k < K; k++) {
+      for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) if (d[i][k] + d[k][j] < d[i][j]) d[i][j] = d[i][k] + d[k][j];
+    }
+    const before = d.map(row => row.slice());
+    const changed = [];
+    const steps = [];
+    const fmt = (c) => (c === Infinity ? '∞' : String(c));
+    const show = () => d.map(row => row.map(fmt));
+    const snap = (line, text, current, heldIds) => steps.push({ line, text, current, heldIds, held: [], table: show(), out: changed.slice() });
+    snap(0, `Before pass ${K}, dist[i][j] is the cheapest path using ${K === 0 ? 'no node' : K === 1 ? 'only node 0' : `only nodes 0..${K - 1}`} in the middle. Pass ${K} lets paths go through ${K} as well.`, undefined, []);
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
+        if (i === K || j === K || i === j) continue;
+        if (d[i][K] === Infinity || d[K][j] === Infinity) continue;
+        const via = d[i][K] + d[K][j];
+        const cells = [i * n + K, K * n + j];
+        if (via < d[i][j]) {
+          const old = d[i][j];
+          d[i][j] = via;
+          changed.push(i * n + j);
+          snap(4, `${i} → ${K} → ${j}: ${before[i][K]} + ${before[K][j]} = ${via}, better than ${fmt(old)}. dist[${i}][${j}] = ${via}.`, i * n + j, cells);
+        } else {
+          snap(3, `${i} → ${K} → ${j}: ${d[i][K]} + ${d[K][j]} = ${via}, no better than ${fmt(d[i][j])}.`, i * n + j, cells);
+        }
+      }
+    }
+    snap(0, changed.length
+      ? `Pass ${K} done: ${changed.length} cell${changed.length === 1 ? '' : 's'} got smaller. Row ${K} and column ${K} never change in their own pass, and neither does the diagonal. Cells that skip the check had ∞ in row or column ${K}.`
+      : `Pass ${K} changed nothing.`, undefined, []);
+    return { before, changed, steps };
+  }
+
+  function hierholzerRun(g, start) {
+    const out = new Map([...g.adj].map(([u, list]) => [u, list.map(x => x.v)]));
+    const route = [];
+    const stack = [];
+    const used = new Set();
+    const steps = [];
+    const snap = (current, line, text, edge, shown = route) => steps.push({
+      current, line, text, edge, out: shown.slice(), tree: new Set(used),
+      held: stack.slice(), heldIds: stack.slice(), heldLabel: 'Call stack (bottom to top)',
+    });
+    (function visit(u) {
+      stack.push(u);
+      snap(u, 0, stack.length === 1 ? `visit(${start}): start the walk at ${start}.` : `visit(${u}).`);
+      while (out.get(u).length) {
+        const v = out.get(u).shift();
+        used.add(g.edges.find(e => e.u === u && e.v === v).id);
+        snap(u, 2, `${u} → ${v} is ${u}'s smallest unused edge: use it and walk on to ${v}.${out.get(u).length ? ` (${u} still has ${out.get(u).join(', ')} for later.)` : ''}`, [u, v]);
+        visit(v);
+      }
+      route.push(u);
+      stack.pop();
+      snap(u, 4, `${u} has no unused edges left, so it is finished: append it to route. ${stack.length ? `Back in visit(${stack[stack.length - 1]}).` : ''}`);
+    })(start);
+    const path = route.slice().reverse();
+    snap(null, 6, `Every edge is used. route lists the path backwards, so reverse it: ${path.join(' → ')}.`, undefined, path);
+    return { steps, path, route };
+  }
+
+  // A random directed walk of m edges, never repeating an edge or using both
+  // directions between two nodes, so it is an Eulerian path of its own graph.
+  function eulerWalk(n, m) {
+    for (let tries = 0; tries < 500; tries++) {
+      const seen = new Set();
+      const walk = [randInt(0, n - 1)];
+      while (walk.length <= m) {
+        const u = walk[walk.length - 1];
+        const opts = Array.from({ length: n }, (_, v) => v).filter(v => v !== u && !seen.has(`${u},${v}`) && !seen.has(`${v},${u}`));
+        if (!opts.length) break;
+        const v = pick(opts);
+        seen.add(`${u},${v}`);
+        walk.push(v);
+      }
+      if (walk.length === m + 1) return walk;
+    }
+    return null;
+  }
+
+  // greedyStuck follows smallest unused edges from u until there are none.
+  function greedyStuck(g, usedPairs, u) {
+    const used = new Set(usedPairs);
+    for (;;) {
+      const next = g.adj.get(u).map(x => x.v).find(v => !used.has(`${u},${v}`));
+      if (next === undefined) return { at: u, left: g.edges.length - used.size };
+      used.add(`${u},${next}`);
+      u = next;
+    }
+  }
+
+  function floydQuestion(size) {
+    const n = { small: 4, medium: 5, large: 5 }[size];
+    let edges;
+    let K;
+    let run;
+    const want = size === 'large' ? 3 : 2;
+    for (let tries = 0; tries < 400; tries++) {
+      const pairs = [];
+      for (let u = 0; u < n; u++) for (let v = u + 1; v < n; v++) pairs.push(Math.random() < 0.5 ? [u, v] : [v, u]);
+      edges = shuffle(pairs).slice(0, Math.round(n * (size === 'small' ? 1.3 : 1.5))).map(([u, v]) => [u, v, randInt(1, 9)]);
+      K = randInt(0, n - 1);
+      run = floydPass(n, edges, K);
+      if (run.changed.length >= want || (tries > 300 && run.changed.length)) break;
+    }
+    const g = circleGraph(n, edges, true);
+    const fmt = (c) => (c === Infinity ? '∞' : String(c));
+    const grid = run.before.map(row => row.map(fmt));
+    const expected = run.changed;
+    const name = (id) => `${Math.floor(id / n)}→${id % n}`;
+    return {
+      prompt: `The table is <strong>dist</strong> ${K === 0 ? 'before any pass' : K === 1 ? 'after pass 0' : `after passes 0..${K - 1}`} of Floyd-Warshall (row = from, column = to). Click every cell that <strong>pass ${K}</strong> makes smaller, by routing through node ${K}.`,
+      mode: 'sequence',
+      ids: Array.from({ length: n * n }, (_, i) => i),
+      label: name,
+      svg: (view) => `<div class="trace-stack">${graphSvg(g, { ...view, picked: new Map(), clickable: false, current: undefined, held: new Set(), wrong: undefined, step: undefined, target: K })}${tableSvg(grid, view, { heads: true, mark: null })}</div>`,
+      expected,
+      code: AG_CODE.floyd,
+      outLabel: 'Changed',
+      validate: (ans) => {
+        const k = ans.findIndex(id => !expected.includes(id));
+        return { ok: k < 0 && ans.length === expected.length, k: k < 0 ? ans.length : k };
+      },
+      steps: () => run.steps,
+      right: () => `Pass ${K} improves ${expected.map(name).join(', ')}.`,
+      wrong: (k, ans) => {
+        const b = run.before;
+        if (k < ans.length) {
+          const id = ans[k];
+          const [i, j] = [Math.floor(id / n), id % n];
+          const why = i === j ? 'The diagonal stays 0: no path back to yourself is cheaper than staying put.'
+            : i === K || j === K ? `Row ${K} and column ${K} can't change in pass ${K}: going through ${K} on the way to or from ${K} adds nothing.`
+              : b[i][K] === Infinity || b[K][j] === Infinity ? `There is no path ${b[i][K] === Infinity ? `${i} → ${K}` : `${K} → ${j}`} yet (∞), so going through ${K} doesn't help.`
+                : `${i} → ${K} → ${j} costs ${b[i][K]} + ${b[K][j]} = ${b[i][K] + b[K][j]}, which doesn't beat ${fmt(b[i][j])}.`;
+          return `<p class="trace-bad">${i}→${j} doesn't change in pass ${K}.</p><p class="trace-why">${why}</p>`;
+        }
+        const missed = expected.filter(id => !ans.includes(id));
+        const ex = missed[0];
+        const [i, j] = [Math.floor(ex / n), ex % n];
+        return `<p class="trace-bad">Those all change, but you missed ${missed.map(name).join(', ')}.</p>
+          <p class="trace-why">For example ${i} → ${K} → ${j} costs ${b[i][K]} + ${b[K][j]} = ${b[i][K] + b[K][j]}, less than ${fmt(b[i][j])}. Check every cell whose row has a number in column ${K} and whose column has a number in row ${K}.</p>`;
+      },
+    };
+  }
+
+  function hierholzerQuestion(size) {
+    const [n, m] = { small: [5, 6], medium: [5, 8], large: [6, 10] }[size];
+    let g;
+    let run;
+    let start;
+    const wantStuck = Math.random() < 0.85;
+    for (let tries = 0; tries < 2000; tries++) {
+      const walk = eulerWalk(n, m);
+      if (!walk) continue;
+      g = circleGraph(n, walk.slice(1).map((v, i) => [walk[i], v]), false);
+      start = walk[0];
+      run = hierholzerRun(g, start);
+      const stuck = greedyStuck(g, [], start).left > 0;
+      if (stuck === wantStuck) break;
+    }
+    const path = run.path;
+    return {
+      prompt: `Find a path from <strong>${start}</strong> that uses every arrow exactly once, the way Reconstruct Itinerary wants it: whenever there is a choice, go to the <strong>smallest</strong> node that still lets you use every arrow. Click the nodes in order (a node can be clicked again).`,
+      mode: 'sequence',
+      repeats: true,
+      ids: g.nodes.map(nd => nd.id),
+      label: (id) => id,
+      svg: (view) => graphSvg(g, { ...view, target: view.target ?? (view.step ? undefined : start) }),
+      expected: path,
+      fixedLength: true,
+      code: AG_CODE.hierholzer,
+      outLabel: 'route',
+      steps: () => run.steps,
+      right: () => `${path.join(' → ')}. Hierholzer's algorithm gets there without any look-ahead: walk smallest-first, and when a node runs out of edges, add it to the route and back up.`,
+      wrong: (k, ans) => {
+        if (k === 0) return `<p class="trace-bad">The path starts at ${start}.</p><p class="trace-why">${g.edges.filter(e => e.u === start).length > g.edges.filter(e => e.v === start).length ? `${start} has one more arrow out than in, so a path that uses every arrow must start there.` : `Every node has as many arrows in as out, so the path is a loop and could start anywhere; this one fixes the start at ${start}.`}</p>`;
+        const prev = path[k - 1];
+        const x = ans[k];
+        const want = path[k];
+        const usedPairs = path.slice(1, k).map((v, i) => `${path[i]},${v}`);
+        const left = g.adj.get(prev).map(e => e.v).filter(v => !usedPairs.includes(`${prev},${v}`));
+        let why;
+        if (!left.includes(x)) {
+          why = `There is no unused arrow ${prev} → ${x}. From ${prev} the unused arrows go to ${left.join(', ')}.`;
+        } else if (x < want) {
+          const s = greedyStuck(g, [...usedPairs, `${prev},${x}`], x);
+          why = `Going ${prev} → ${x} now gets stuck at ${s.at} with ${s.left} arrow${s.left === 1 ? '' : 's'} unused. Hierholzer's algorithm does try ${x} first, but that walk ends at ${s.at}, so it lands at the end of the route; the rest of ${prev}'s arrows, starting with ${prev} → ${want}, come before it.`;
+        } else {
+          why = `${prev} → ${want} is smaller and still lets you use every arrow.`;
+        }
+        return `<p class="trace-bad">${said(k)} After ${prev} comes ${want}, not ${x}.</p><p class="trace-why">${why}</p>`;
+      },
+    };
+  }
+
+  function agQuestion(exId, size) {
+    if (exId === 'dijkstra') return graphQuestion('dijkstra', size);
+    if (exId === 'floyd') return floydQuestion(size);
+    if (exId === 'hierholzer') return hierholzerQuestion(size);
+
+    if (exId === 'prim') {
+      const g = distinctWeights(makeGraph(size, { weighted: true }));
+      const start = pick(g.nodes).id;
+      const run = primRun(g, start);
+      const seq = run.order;
+      return {
+        prompt: `Run <strong>Prim's algorithm</strong> from <strong>${start}</strong>. Click the nodes in the order they join the tree. Each step adds the cheapest edge with exactly one end in the tree.`,
+        aside: adjacencyHtml(g),
+        mode: 'sequence',
+        ids: g.nodes.map(nd => nd.id),
+        label: (id) => id,
+        svg: (view) => graphSvg(g, { ...view, target: view.target ?? (view.step ? undefined : start) }),
+        expected: seq,
+        fixedLength: true,
+        code: AG_CODE.prim,
+        outLabel: 'In the tree',
+        steps: () => run.steps,
+        right: () => `Joined in order ${seq.join(', ')}, through ${seq.slice(1).map(v => edgeName(edgeOf(g, run.via.get(v).u, v))).join(', ')}. Total weight ${run.total}.`,
+        wrong: (k, ans) => {
+          if (k === 0) return `<p class="trace-bad">${said(0)} Prim starts with just ${start} in the tree.</p>`;
+          const inTree = new Set(seq.slice(0, k));
+          const best = run.via.get(seq[k]);
+          const x = ans[k];
+          const links = g.adj.get(x).filter(({ v }) => inTree.has(v)).sort((a, b) => a.w - b.w);
+          const why = links.length
+            ? `${x} could join through ${x}–${links[0].v} (${links[0].w}), but ${best.u}–${best.v} (${best.w}) is the cheapest edge leaving the tree.`
+            : `${x} has no edge to the tree yet (${[...inTree].join(', ')}). Prim only grows the tree it has.`;
+          const dij = dijkstraRun(g, start).order;
+          const note = dij.join() === ans.join() && dij.join() !== seq.join()
+            ? ' Your order is Dijkstra\'s: it compares the whole distance from the start, while Prim compares only the one edge that joins the tree.' : '';
+          return `<p class="trace-bad">${said(k)} Next ${seq[k]} joins, not ${x}.</p><p class="trace-why">${why}${note}</p>`;
+        },
+      };
+    }
+
+    if (exId === 'kruskal') {
+      let g;
+      let run;
+      const want = size === 'small' ? 1 : 2;
+      for (let tries = 0; tries < 200; tries++) {
+        g = distinctWeights(makeGraph(size, { weighted: true }));
+        run = kruskalRun(g);
+        if (run.rejected.length >= want) break;
+      }
+      const byId = new Map(g.edges.map(e => [e.id, e]));
+      const seq = run.order;
+      return {
+        prompt: `Run <strong>Kruskal's algorithm</strong>. Click the edges it adds, in order, by clicking their weights. It takes edges cheapest first and skips any whose ends are already connected.`,
+        mode: 'sequence',
+        ids: g.edges.map(e => e.id),
+        label: (id) => edgeName(byId.get(id)),
+        svg: (view) => graphSvg(g, view, { edgeIds: true }),
+        expected: seq,
+        fixedLength: true,
+        code: AG_CODE.kruskal,
+        outLabel: 'In the tree',
+        steps: () => run.steps,
+        right: () => `The tree is ${seq.map(id => edgeName(byId.get(id))).join(', ')}, total weight ${run.total}. Skipped on the way: ${run.rejected.map(id => edgeName(byId.get(id))).join(', ')}.`,
+        wrong: (k, ans) => {
+          const x = byId.get(ans[k]);
+          const next = byId.get(seq[k]);
+          const parent = new Map(g.nodes.map(nd => [nd.id, nd.id]));
+          const find = (a) => { while (parent.get(a) !== a) a = parent.get(a); return a; };
+          seq.slice(0, k).forEach(id => { const e = byId.get(id); parent.set(find(e.u), find(e.v)); });
+          const why = find(x.u) === find(x.v)
+            ? `${x.u} and ${x.v} are already connected by the edges chosen so far, so ${edgeName(x)} would close a cycle.`
+            : `${edgeName(x)} does join two components, but ${edgeName(next)} is cheaper and also joins two. Kruskal always takes the cheapest edge that does not close a cycle.`;
+          return `<p class="trace-bad">${said(k)} Next comes ${edgeName(next)}, not ${edgeName(x)}.</p><p class="trace-why">${why}</p>`;
+        },
+      };
+    }
+
+    // flights: Bellman-Ford limited to k + 1 rounds (Cheapest Flights Within K Stops).
+    // Mostly a trip the limit makes dearer; sometimes no trip at all, or one
+    // the limit doesn't affect. The last complete candidate is kept if none fits.
+    const roll = Math.random();
+    const wantNone = roll < 0.15;
+    const wantDiff = roll < 0.8;
+    let c = null;
+    for (let tries = 0; tries < 300; tries++) {
+      const g0 = makeGraph(size, { directed: true, weighted: true });
+      const fl = g0.edges.slice().sort((a, b) => a.u - b.u || a.v - b.v);
+      const s0 = pick(g0.nodes).id;
+      const k0 = randInt(0, size === 'small' ? 1 : 2);
+      const all = flightsRun(g0, fl, s0, g0.n - 1);
+      const reach = g0.nodes.map(nd => nd.id).filter(u => u !== s0 && all.cost.get(u) < Infinity);
+      if (!reach.length) continue;
+      const d0 = pick(reach);
+      c = { g: g0, flights: fl, src: s0, dst: d0, k: k0, free: all, right: flightsRun(g0, fl, s0, k0 + 1), inPlace: flightsRun(g0, fl, s0, k0 + 1, false) };
+      const r = c.right.cost.get(d0);
+      if ((r === Infinity) === wantNone && (r !== all.cost.get(d0)) === wantDiff) break;
+    }
+    const { g, flights, src, dst, k, free, right, inPlace } = c;
+    const val = (c) => (c === Infinity ? -1 : c);
+    const ans = val(right.cost.get(dst));
+    const unlimited = val(free.cost.get(dst));
+    const chained = val(inPlace.cost.get(dst));
+    const needed = free.rows.findIndex(row => row.get(dst) === free.cost.get(dst));
+    const opts = [...new Set([ans, unlimited, chained, -1, ans === -1 ? unlimited + 2 : ans + randInt(1, 3)])].slice(0, 4).sort((a, b) => a - b);
+    const ids = g.nodes.map(nd => nd.id).sort((a, b) => a - b);
+    const fmt = (c) => (c === Infinity ? '∞' : c);
+    const table = tableHtml(right.rows.map(row => ids.map(u => fmt(row.get(u)))), (r) => `${r} flight${r === 1 ? '' : 's'}`, ids);
+    const stops = `${k} stop${k === 1 ? '' : 's'}`;
+    return {
+      prompt: `Arrows are one-way flights and the numbers are prices. What is the cheapest trip from <strong>${src}</strong> to <strong>${dst}</strong> with at most <strong>${stops}</strong> (${k + 1} flight${k ? 's' : ''})? Answer -1 if there is none.`,
+      aside: `<p class="trace-notes">The flights are relaxed in this order: ${flights.map(e => `${e.u}→${e.v} (${e.w})`).join(', ')}.</p>`,
+      mode: 'choice',
+      svg: (view) => graphSvg(g, { ...view, current: view.step ? view.current : src, target: dst }),
+      sequence: [`${src} → ${dst}`, `≤ ${stops}`],
+      choices: opts.map(v => ({ id: String(v), label: v === -1 ? '-1 (no route)' : String(v) })),
+      answerId: String(ans),
+      code: AG_CODE.flights,
+      steps: () => right.steps,
+      explain: (picked) => {
+        const notes = [];
+        if (unlimited !== ans) notes.push(`Without the limit the cheapest is ${unlimited}, but that route needs ${needed} flights.`);
+        if (picked !== String(ans) && picked === String(chained) && chained !== ans) notes.push(`${chained} is what you get by updating the prices in place instead of copying them: one round then chains several flights, so the stop limit leaks.`);
+        return `<p class="${picked === String(ans) ? 'trace-ok' : 'trace-bad'}"><strong>${picked === String(ans) ? 'Right' : 'Not quite'}:</strong> ${ans}.</p>
+          <p class="trace-why">Bellman-Ford runs one round per flight allowed. Prices after each round:</p>${table}
+          ${notes.length ? `<p class="trace-why">${notes.join(' ')}</p>` : ''}`;
+      },
+    };
+  }
+
+  KITS['advanced-graphs'] = {
+    title: 'Advanced graphs',
+    exercises: [
+      { id: 'prim', name: "Prim's MST" },
+      { id: 'kruskal', name: "Kruskal's MST" },
+      { id: 'dijkstra', name: 'Dijkstra' },
+      { id: 'flights', name: 'K stops: Bellman-Ford' },
+      { id: 'floyd', name: 'Floyd-Warshall: one pass' },
+      { id: 'hierholzer', name: 'Hierholzer: Euler path' },
+    ],
+    make: agQuestion,
+  };
+
+  // ===========================================================================
   // Core: progress, checking, rendering
   // ===========================================================================
 
@@ -2987,7 +4518,8 @@
   function view() {
     const step = S.replay?.steps[S.replay.i];
     const picked = new Map();
-    (step ? step.out || [] : (S.q.mode === 'choice' ? [] : S.answer)).forEach((id, i) => picked.set(id, i + 1));
+    // A node clicked more than once (repeats) shows all its positions.
+    (step ? step.out || [] : (S.q.mode === 'choice' ? [] : S.answer)).forEach((id, i) => picked.set(id, picked.has(id) ? `${picked.get(id)},${i + 1}` : i + 1));
     const wrongIdx = S.checked && !S.correct && !step && S.q.mode !== 'choice' ? (S.mismatch ?? -1) : -1;
     return {
       step,
@@ -2996,6 +4528,7 @@
       held: new Set(step?.heldIds || []),
       wrong: wrongIdx >= 0 ? S.answer[wrongIdx] : undefined,
       clickable: !step && !S.checked && S.q.mode !== 'choice',
+      repeats: !!S.q.repeats,
       checked: S.checked,
       done: S.checked && S.correct,
     };
@@ -3040,7 +4573,7 @@
         <div class="trace-seq big">${q.sequence.map(v => `<b>${esc(v)}</b>`).join('')}</div>
         <div class="trace-buttons trace-choices">${q.choices.map(c => `<button class="btn-small ${S.picked === c.id ? (S.correct ? 'primary' : 'danger') : ''}" data-choice="${esc(c.id)}" ${S.checked ? 'disabled' : ''}>${esc(c.label)}</button>`).join('')}</div>
         <div class="trace-feedback">${S.feedback}</div>
-        <div class="trace-buttons"><button class="btn-small ${S.checked ? 'primary' : 'ghost'}" data-act="new">New one</button></div>`;
+        <div class="trace-buttons">${S.checked && q.steps ? '<button class="btn-small" data-act="show">Show me step by step</button>' : ''}<button class="btn-small ${S.checked ? 'primary' : 'ghost'}" data-act="new">New one</button></div>`;
     }
     const full = q.fixedLength ? S.answer.length === q.expected.length : S.answer.length > 0;
     const placeholder = q.slots ? `Click: ${q.slots.join(', then ')}` : 'Your order appears here';
@@ -3076,7 +4609,7 @@
 
   function pickNode(raw) {
     const id = S.q.ids.find(x => String(x) === raw);
-    if (id === undefined || S.answer.includes(id) || S.checked || S.replay) return;
+    if (id === undefined || (!S.q.repeats && S.answer.includes(id)) || S.checked || S.replay) return;
     if (S.q.fixedLength && S.answer.length >= S.q.expected.length) return;
     S.answer.push(id);
     render();
@@ -3200,7 +4733,7 @@
     // Exposed for tests and the browser console.
     _internals: {
       KITS, state: S, makeTree, traverse, bstPath, treeDfsSteps, treeBfsSteps, treeBstSteps,
-      makeGraph, bfsRun, dfsRun, topoRun, dijkstraRun,
+      makeGraph, bfsRun, dfsRun, topoRun, dijkstraRun, primRun, kruskalRun, flightsRun, distinctWeights, floydPass, hierholzerRun,
     },
   };
 })();

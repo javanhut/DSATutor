@@ -22,7 +22,6 @@ pedagogy.md before it is added.
 
 ## Foundations still to add
 
-Trees, Linked List, Graphs, Heap, Tries, Stack, Binary Search, Sliding
-Window, Two Pointers, Backtracking, 1-D DP and Intervals have drills and
-trace exercises (Advanced Graphs has one Dijkstra drill). Still without them:
-Arrays & Hashing, 2-D DP, Greedy, Bit Manipulation and Math & Geometry.
+Every category has drills and trace exercises, Advanced Graphs included
+(seven drills; Prim, Kruskal, Dijkstra, k-stop Bellman-Ford, Floyd-Warshall
+and Hierholzer trainers).

@@ -75,6 +75,29 @@ drills the basics on their own:
   - Intervals (closed): which intervals merge into one block, a largest set
     open at once (sweep line), where the arrows go in minimum arrows, and
     which intervals are covered by another.
+  - Arrays & hashing: which pair one-pass Two Sum returns, which two prefix
+    sums give a range sum, which numbers start a consecutive run, and how
+    many subarrays sum to k (missing the {0: 1} seed is a wrong option).
+  - 2-D DP: a cheapest right/down path (the dp table fills in the replay),
+    paths around blocked cells, any longest common subsequence, and 0/1
+    knapsack (the unbounded and ratio-greedy answers are wrong options).
+  - Greedy: a fewest-jumps route, the gas station start, partition labels,
+    and the fewest coins, where largest-coin-first sometimes fails.
+  - Bit manipulation: a number in binary, AND/OR/XOR, n & (n - 1) and
+    n & -n, and shifts, clicking the 1 bits of the answer.
+  - Math & geometry: gcd by Euclid, one pass of the sieve (from p²),
+    spiral order, where a cell goes in a 90° rotation, and which side of a
+    line a point is on (cross product).
+  - Advanced graphs (distinct weights, so the tree is unique): the order
+    Prim's adds nodes, the edges Kruskal's adds (clicking edge weights; the
+    replay shows the components), the order Dijkstra settles nodes, and the
+    cheapest trip with at most k stops (Bellman-Ford rounds on a copy; the
+    unlimited and update-in-place answers are wrong options), the cells one
+    Floyd-Warshall pass makes smaller, and the smallest-first Eulerian path
+    (Reconstruct Itinerary style; the replay shows Hierholzer's call stack
+    and the route built backwards). Choice questions with a `steps()` get a
+    replay once answered, and a question with `repeats` lets a node be
+    clicked more than once.
 
   A wrong answer says which step went wrong and why. **Show me step by
   step** replays the algorithm with its code line, call stack, queue, heap
@@ -92,8 +115,17 @@ drills the basics on their own:
     an index, remove elements, Design Linked List, a doubly linked deque.
   - Graphs (`problems_graphs_drills.go`): adjacency list and matrix, BFS and
     DFS order, DFS without recursion, unweighted shortest path, flood fill,
-    topological sort, a union-find class. Advanced Graphs has a Dijkstra
-    drill (`problems_advanced_graphs_drills.go`).
+    topological sort, a union-find class.
+  - Advanced Graphs (7, `problems_advanced_graphs_drills.go`): Dijkstra
+    costs, Dijkstra with the path rebuilt from parents (every test has a
+    unique cheapest path), Prim's MST weight, Kruskal's accepted edges in order
+    (ties by input order, a spanning forest when disconnected), Bellman-Ford
+    with negative weights (`"inf"` for unreachable, `[]` for a reachable
+    negative cycle, an unreachable one is ignored), Floyd-Warshall all pairs
+    (-1 for unreachable) and an Eulerian path by Hierholzer, checked by a
+    validator because many paths are valid. Only the Prim drill has a large
+    case (5000 nodes, 100000 edges, 3 second limit) that a per-step scan of
+    every edge fails; the rest check answers, not speed.
   - Heap (7, `problems_heap_drills.go`): build a min-heap with sift-up
     (design), pop with sift-down (design), bottom-up heapify, is this a
     min-heap, heap sort, a max-heap with `heapq` by negation, and a k-way
@@ -109,6 +141,17 @@ drills the basics on their own:
     end-of-word flag (contains and longest stored prefix), Implement Trie II
     (counts on nodes), autocomplete in alphabetical order, delete with
     pruning, longest common prefix.
+  - Arrays & Hashing (6, `problems_arrays_hashing_drills.go`): a frequency
+    map (pairs in any order), first unique character (count, then walk the
+    string), many range sums with a prefix array, Subarray Sum Equals K
+    (prefix sums plus a map of counts seeded with `{0: 1}`), count pairs with
+    absolute difference k (a map of earlier counts, looked up before
+    recording) and rotate array in place by three reversals. The large
+    cases carry a 5 second limit and were measured to fail the naive
+    versions (re-counting, re-summing each range, a double loop over pairs
+    or subarrays, a pure Python double loop for first unique). The
+    `s.count` version of first unique and the repeated `insert(0, pop())`
+    rotation pass, so those are not claimed as caught.
   - Two Pointers (8, `problems_two_pointers_drills.go`): the three shapes on
     their own. Opposite ends: reverse a list in place, squares of a sorted
     array (fill from the back). Read/write pointers: remove duplicates from a
@@ -163,6 +206,46 @@ drills the basics on their own:
     5 second limit on the large cases, and the tiling drill has n up to
     100000, where a recursive solution (memoised or not) hits the 20000
     recursion limit and only the bottom-up table passes.
+  - 2-D DP (6, `problems_2d_dp_drills.go`): each statement names what
+    `table[i][j]` means, the recurrence and the base row and column. Unique
+    paths with obstacles (an obstacle in the first row blocks the rest of it),
+    minimum path sum (a min of two neighbours; a zero border undercounts),
+    triangle (filled from the bottom; the one-row version must sweep columns
+    left to right), the longest repeated subarray (a mismatch resets to 0 and
+    the answer is the largest cell, where Longest Common Subsequence carries
+    values forward), the 0/1 knapsack (the one-row version sweeps capacity
+    downwards; upwards is the unbounded knapsack) and counting all-ones square
+    submatrices (min of above, left and diagonal, summed over corners). Plain
+    recursion fails the 5 second limit on the large cases, and the repeated
+    subarray drill has 1000-element arrays where checking every start pair
+    also runs out of time.
+  - Greedy (6, `problems_greedy_drills.go`): each explanation gives the exchange
+    argument. Assign cookies (sort both, smallest cookie that fits), lemonade
+    change (spend a 10 before three 5s), most meetings in one room (half-open
+    intervals, sort by end; tests defeat earliest start and shortest first),
+    a coin set checked against the true minimum (returns `[greedy, best]`, so
+    greedy fails on `[1,3,4]`), boats to save people (pair heaviest with
+    lightest) and maximum units on a truck (sort by units per box, not pile
+    size or total). The cases check answers, not speed.
+  - Bit Manipulation (8, `problems_bit_manipulation_drills.go`): a ladder
+    from representation to tricks. Write a number in binary (`% 2`, `// 2`),
+    read a binary string (shift and add), get, set, clear and toggle one bit,
+    Power of Two (`n & (n - 1)`), the positions of the set bits (`n & -n`),
+    Hamming Distance (XOR, then count), Single Number III (split on the lowest
+    bit where the two answers differ) and subsets in bitmask order. Each
+    explanation says why its identity holds. `bin`, `int(x, 2)` and `format`
+    are not blocked in the sandbox, so the drills do not claim to forbid them,
+    and the cases check answers, not speed.
+  - Math & Geometry (8, `problems_math_drills.go`): reverse the digits of an
+    integer (`% 10`, `// 10`, sign handled explicitly), GCD and LCM by Euclid,
+    is-prime with the square-root bound, Count Primes by sieve, fast
+    exponentiation with a modulus, transpose, diagonal traverse (cells grouped
+    by `r + c`) and the cross-product orientation of three points (exact
+    integers; the tests include slopes that floats cannot tell apart). Each
+    explanation says why its identity holds. Large cases separate the real
+    algorithm from counting down for a gcd, a prime test per number against a
+    sieve (about 15 s locally) and an `exp`-step power loop; the largest
+    exponent is 10^15 because the judge passes integers as JSON doubles.
 
   The "without recursion" drills include a hidden input deeper than Python's
   recursion limit, so only an explicit stack passes.
